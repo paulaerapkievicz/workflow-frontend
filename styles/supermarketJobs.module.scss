@@ -1,0 +1,103 @@
+.jobsContainer {
+  display: flex;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.createJobBtn {
+  background: #00796b;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.createJobBtn:hover {
+  background: #005c4f;
+}
+
+.jobsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.jobsTable th,
+.jobsTable td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.jobsTable th {
+  background: #00796b;
+  color: white;
+}
+
+.editBtn,
+.deleteBtn {
+  padding: 5px 10px;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-right: 5px;
+}
+
+.editBtn {
+  background: #ff9800;
+  color: white;
+}
+
+.deleteBtn {
+  background: #d32f2f;
+  color: white;
+}
+
+.editBtn:hover {
+  background: #e68900;
+}
+
+.deleteBtn:hover {
+  background: #b71c1c;
+}
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modalContent label {
+  font-weight: bold;
+}
+
+.modalContent input,
+.modalContent textarea,
+.modalContent select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 100%;
+}
+
+.saveBtn {
+  background: #00796b;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}

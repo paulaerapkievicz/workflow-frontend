@@ -1,0 +1,52 @@
+@use "./variables" as *;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: $font-base;
+  background-color: $background-light;
+  color: $text-dark;
+}
+
+main {
+  background-color: $background-white;
+  min-height: 100vh;
+  color: $text-dark;
+
+  p {
+    margin: 0;
+  }
+}
+
+// Scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $primary-color;
+  border-radius: 40px;
+}
+
+// Links
+a {
+  color: $primary-color;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Botões globais (pode ser sobrescrito localmente se necessário)
+button {
+  @include button($primary-color, $primary-dark);
+}
