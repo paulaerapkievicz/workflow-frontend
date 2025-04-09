@@ -13,7 +13,7 @@ export default function HomePage() {
     <>
       <Head>
         <title>WorkFlow - Gestão Inteligente de Vagas e Pagamentos</title>
-        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+        <link rel="shortcut icon" href="/favicon.ico " type="image/x-icon" />
         <meta property="og:title" content="WorkFlow - Plataforma de Gestão de Vagas e Pagamentos" />
         <meta name="description" content="Gerencie vagas, pagamentos e operações do seu supermercado de forma eficiente com o WorkFlow." />
       </Head>

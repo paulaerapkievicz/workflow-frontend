@@ -11,7 +11,7 @@ const HeaderNoAuth = function () {
       <img src="/homeNoAuth/logoCta.png" alt="logoCta" className={styles.imgCta}/>
     </div> */}
     <Container className={styles.nav}>
-			<img src="/logoWorkflow.svg" alt="logoWorkflow" className={styles.imgLogoNav}/>
+			<img src="/logoWorkflow.png" alt="logoWorkflow" className={styles.imgLogoNav}/>
 			<div>
         <Link href="/login">
           <Button className={styles.navBtn} outline>Entrar</Button>

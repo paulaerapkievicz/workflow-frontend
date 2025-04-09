@@ -1,9 +1,18 @@
 .sidebar {
   width: 250px;
-  background: #00796b;
-  color: white;
   padding: 20px;
   height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+
+  body[data-theme='light'] & {
+    background: #4e6cff;
+    color: white;
+  }
+
+  body[data-theme='dark'] & {
+    background: #1e293b;
+    color: white;
+  }
 }
 
 .sidebar h2 {
@@ -21,14 +30,37 @@
 }
 
 .sidebar a {
-  color: white;
   text-decoration: none;
   font-size: 16px;
   display: block;
   padding: 8px;
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, color 0.3s ease;
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
+  body[data-theme='light'] & {
+    color: white;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+
+  body[data-theme='dark'] & {
+    color: #f8fafc;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+.logoContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+
+  img {
+    max-width: 100%;
+    height: auto;
   }
 }

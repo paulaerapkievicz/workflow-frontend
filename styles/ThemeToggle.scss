@@ -1,0 +1,78 @@
+@use './variables' as *;
+
+.theme-toggle {
+  position: relative;
+  width: 60px;
+  height: 30px;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  background-color: map-get($light-theme, background-secondary);
+  transition: background-color 0.4s ease, box-shadow 0.3s ease;
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+
+  .icon {
+    font-size: 16px;
+    pointer-events: none;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+  }
+
+  .toggle-circle {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: $primary-dark;
+    transition: transform 0.4s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+    z-index: 1;
+  }
+
+  body[data-theme='light'] & {
+    background-color: map-get($light-theme, background-secondary);
+
+    .toggle-circle {
+      transform: translateX(0);
+      background-color: $primary-dark;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .sun {
+      opacity: 1;
+      filter: brightness(1.2);
+    }
+
+    .moon {
+      opacity: 0.4;
+    }
+  }
+
+  body[data-theme='dark'] & {
+    background-color: map-get($dark-theme, background-secondary);
+
+    .toggle-circle {
+      transform: translateX(30px) scale(1.05);
+      background-color: $primary;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+
+    .sun {
+      opacity: 0.4;
+    }
+
+    .moon {
+      opacity: 1;
+      filter: brightness(1.4);
+    }
+  }
+
+  &:hover {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  }
+}

@@ -1,11 +1,23 @@
+@use './variables' as *;
+
 .jobsContainer {
   display: flex;
   min-height: 100vh;
+
+  body[data-theme='light'] & {
+    background-color: map-get($light-theme, background);
+    color: map-get($light-theme, text);
+  }
+
+  body[data-theme='dark'] & {
+    background-color: map-get($dark-theme, background);
+    color: map-get($dark-theme, text);
+  }
 }
 
 .content {
   flex: 1;
-  padding: 20px;
+  padding: $padding-base;
 }
 
 .header {
@@ -16,88 +28,72 @@
 }
 
 .createJobBtn {
-  background: #00796b;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.createJobBtn:hover {
-  background: #005c4f;
+  @include button($primary-color, $primary-dark, map-get($light-theme, surface));
 }
 
 .jobsTable {
   width: 100%;
   border-collapse: collapse;
-}
 
-.jobsTable th,
-.jobsTable td {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-}
+  th,
+  td {
+    padding: 10px;
 
-.jobsTable th {
-  background: #00796b;
-  color: white;
-}
+    body[data-theme='light'] & {
+      border-bottom: 1px solid map-get($light-theme, muted);
+    }
 
-.editBtn,
-.deleteBtn {
-  padding: 5px 10px;
-  border: none;
-  cursor: pointer;
-  border-radius: 5px;
-  margin-right: 5px;
+    body[data-theme='dark'] & {
+      border-bottom: 1px solid map-get($dark-theme, muted);
+    }
+  }
+
+  th {
+    background-color: $primary-color;
+    color: map-get($light-theme, surface);
+  }
 }
 
 .editBtn {
-  background: #ff9800;
-  color: white;
+  @include button($accent-color, $accent-dark, map-get($light-theme, surface));
 }
 
 .deleteBtn {
-  background: #d32f2f;
-  color: white;
-}
-
-.editBtn:hover {
-  background: #e68900;
-}
-
-.deleteBtn:hover {
-  background: #b71c1c;
+  @include button($error-color, $error-dark, map-get($light-theme, surface));
 }
 
 .modalContent {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
 
-.modalContent label {
-  font-weight: bold;
-}
+  label {
+    font-weight: bold;
+  }
 
-.modalContent input,
-.modalContent textarea,
-.modalContent select {
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  width: 100%;
+  input,
+  textarea,
+  select {
+    padding: 8px;
+    border-radius: 5px;
+    width: 100%;
+
+    body[data-theme='light'] & {
+      background-color: map-get($light-theme, surface);
+      border: 1px solid map-get($light-theme, muted);
+      color: map-get($light-theme, text);
+    }
+
+    body[data-theme='dark'] & {
+      background-color: map-get($dark-theme, surface);
+      border: 1px solid map-get($dark-theme, muted);
+      color: map-get($dark-theme, text);
+    }
+  }
 }
 
 .saveBtn {
-  background: #00796b;
-  color: white;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  display: block;
+  @include button($primary-color, $primary-dark, map-get($light-theme, surface));
   width: 100%;
   margin-top: 10px;
 }
