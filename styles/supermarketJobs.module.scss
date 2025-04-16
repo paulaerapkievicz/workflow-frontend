@@ -17,83 +17,246 @@
 
 .content {
   flex: 1;
-  padding: $padding-base;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 2rem;
+
+  h1 {
+    font-size: 1.8rem;
+  }
 }
 
 .createJobBtn {
-  @include button($primary-color, $primary-dark, map-get($light-theme, surface));
+  background-color: $primary-color;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  transition: 0.3s;
+
+  &:hover {
+    background-color: darken($primary-color, 10%);
+  }
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  select,
+  input[type="date"] {
+    padding: 0.6rem;
+    border: 1px solid lighten($primary-color, 20%);
+    border-radius: 0.5rem;
+    background-color: transparent;
+    transition: border 0.2s ease;
+
+    &:focus {
+      border-color: $primary-color;
+      outline: none;
+    }
+
+    body[data-theme='dark'] & {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: map-get($dark-theme, text);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    body[data-theme='light'] & {
+      background-color: #fff;
+      color: map-get($light-theme, text);
+    }
+  }
 }
 
 .jobsTable {
   width: 100%;
   border-collapse: collapse;
+  margin-top: 1rem;
 
-  th,
-  td {
-    padding: 10px;
-
-    body[data-theme='light'] & {
-      border-bottom: 1px solid map-get($light-theme, muted);
-    }
-
-    body[data-theme='dark'] & {
-      border-bottom: 1px solid map-get($dark-theme, muted);
-    }
+  th, td {
+    text-align: left;
+    padding: 0.75rem 1rem;
   }
 
   th {
     background-color: $primary-color;
-    color: map-get($light-theme, surface);
+    color: #fff;
+  }
+
+  tbody tr:nth-child(even) {
+    body[data-theme='light'] & {
+      background-color: lighten($primary-color, 45%);
+    }
+
+    body[data-theme='dark'] & {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  td {
+    vertical-align: middle;
+
+    button {
+      margin-right: 0.5rem;
+
+      &:last-child {
+        margin-right: 0;
+      }
+    }
   }
 }
 
 .editBtn {
-  @include button($accent-color, $accent-dark, map-get($light-theme, surface));
+  background-color: $accent-color;
+  border: none;
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition: 0.3s;
+
+  &:hover {
+    background-color: darken($accent-color, 10%);
+  }
 }
 
 .deleteBtn {
-  @include button($error-color, $error-dark, map-get($light-theme, surface));
+  background-color: $error-color;
+  border: none;
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition: 0.3s;
+
+  &:hover {
+    background-color: darken($error-color, 10%);
+  }
 }
 
 .modalContent {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 
   label {
-    font-weight: bold;
+    margin-top: 1rem;
+    font-weight: 500;
   }
 
-  input,
-  textarea,
-  select {
-    padding: 8px;
-    border-radius: 5px;
-    width: 100%;
+  select, input[type="date"] {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 0.4rem;
+    border: 1px solid lighten($primary-color, 20%);
+    background: transparent;
 
-    body[data-theme='light'] & {
-      background-color: map-get($light-theme, surface);
-      border: 1px solid map-get($light-theme, muted);
-      color: map-get($light-theme, text);
+    &:focus {
+      border-color: $primary-color;
+      outline: none;
     }
 
     body[data-theme='dark'] & {
-      background-color: map-get($dark-theme, surface);
-      border: 1px solid map-get($dark-theme, muted);
+      background-color: rgba(255, 255, 255, 0.05);
       color: map-get($dark-theme, text);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    body[data-theme='light'] & {
+      background-color: #fff;
+      color: map-get($light-theme, text);
+    }
+  }
+}
+
+.shiftRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+
+  input[type="time"] {
+    flex: 1;
+    padding: 0.4rem;
+    border-radius: 0.3rem;
+    border: 1px solid lighten($primary-color, 20%);
+
+    &:focus {
+      border-color: $primary-color;
+      outline: none;
+    }
+  }
+
+  button {
+    background-color: $error-color;
+    border: none;
+    color: #fff;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.3rem;
+    cursor: pointer;
+    transition: 0.3s;
+
+    &:hover {
+      background-color: darken($error-color, 10%);
     }
   }
 }
 
 .saveBtn {
-  @include button($primary-color, $primary-dark, map-get($light-theme, surface));
-  width: 100%;
-  margin-top: 10px;
+  margin-top: 1.5rem;
+  background-color: $primary-color;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  transition: 0.3s;
+
+  &:hover {
+    background-color: darken($primary-color, 10%);
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .jobsTable {
+    font-size: 0.9rem;
+    
+    th, td {
+      padding: 0.5rem;
+    }
+  }
+
+  .shiftRow {
+    flex-direction: column;
+    align-items: stretch;
+
+    input[type="time"] {
+      width: 100%;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+  }
 }

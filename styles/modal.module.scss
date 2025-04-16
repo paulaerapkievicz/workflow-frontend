@@ -4,64 +4,103 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5); // sombra escura de fundo
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   z-index: 1000;
+  padding: 20px;
 }
 
 .modal {
-  position: relative;
-  width: 400px;
-  max-width: 90%;
-  padding: $padding-base;
-  border-radius: $radius-base;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: background 0.3s, color 0.3s;
 
   body[data-theme='light'] & {
-    background-color: map-get($light-theme, surface);
+    background-color: map-get($light-theme, background);
     color: map-get($light-theme, text);
   }
 
   body[data-theme='dark'] & {
-    background-color: map-get($dark-theme, surface);
+    background-color: map-get($dark-theme, background);
     color: map-get($dark-theme, text);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+
+  body[data-theme='dark'] & {
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
   h2 {
     margin: 0;
-    margin-bottom: 10px;
-    font-size: 22px;
-  }
-}
-
-.closeBtn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: transparent;
-  border: none;
-  font-size: 20px;
-  font-weight: bold;
-  cursor: pointer;
-  z-index: 10;
-
-  body[data-theme='light'] & {
-    color: map-get($light-theme, text);
-  }
-
-  body[data-theme='dark'] & {
-    color: map-get($dark-theme, text);
-  }
-
-  &:hover {
-    color: $accent-color;
+    font-size: 1.5rem;
+    font-weight: 600;
   }
 }
 
 .modalBody {
-  margin-top: 10px;
+  overflow-y: auto;
+  padding: 1.5rem;
+  flex: 1;
+  transition: background 0.3s, color 0.3s;
+
+  body[data-theme='light'] & {
+    background-color: map-get($light-theme, background);
+    color: map-get($light-theme, text);
+  }
+
+  body[data-theme='dark'] & {
+    background-color: map-get($dark-theme, background);
+    color: map-get($dark-theme, text);
+  }
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: inherit;
+  transition: transform 0.2s ease, color 0.3s ease;
+
+  &:hover {
+    transform: rotate(90deg);
+    color: $error-color;
+  }
+
+  &:focus {
+    outline: 2px dashed $primary-color;
+    outline-offset: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal {
+    max-width: 100%;
+    border-radius: 0.5rem;
+  }
+
+  .modalHeader {
+    padding: 1rem;
+  }
+
+  .modalBody {
+    padding: 1rem;
+  }
 }

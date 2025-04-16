@@ -10,13 +10,13 @@ export default function Modal({ title, onClose, children }: ModalProps) {
   return (
     <div className={styles.modalBackdrop}>
       <div className={styles.modal}>
-        <header>
+        <header className={styles.modalHeader}>
           <h2>{title}</h2>
-          <button className={styles.closeBtn} onClick={onClose}>
-            X
-          </button>
+          <button className={styles.closeBtn} onClick={onClose}>X</button>
         </header>
-        <div className={styles.modalBody}>{children}</div>
+        <div className={styles.modalBody}>
+          {children}
+        </div>
       </div>
     </div>
   );

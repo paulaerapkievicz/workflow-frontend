@@ -42,3 +42,19 @@ main {
   //   padding: 8px;
   // }
 }
+
+// Estiliza as opções do dropdown
+select option {
+  background-color: white;
+  color: black;
+
+  body[data-theme='dark'] & {
+    background-color: map-get($dark-theme, surface);
+    color: map-get($dark-theme, text);
+  }
+
+  body[data-theme='light'] & {
+    background-color: map-get($light-theme, surface);
+    color: map-get($light-theme, text);
+  }
+}
