@@ -25,13 +25,20 @@ export const getPaymentById = async (id: string): Promise<Payment> => {
 
 // Criar novo pagamento
 export const createPayment = async (payment: Omit<Payment, "id" | "createdAt" | "updatedAt">): Promise<Payment> => {
-  const response = await api.post("/payments", payment);
+  const response = await api.post("/payments", {
+    ...payment,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
   return response.data;
 };
 
 // Atualizar pagamento
 export const updatePayment = async (payment: Payment): Promise<Payment> => {
-  const response = await api.put(`/payments/${payment.id}`, payment);
+  const response = await api.put(`/payments/${payment.id}`, {
+    ...payment,
+    updatedAt: new Date().toISOString(),
+  });
   return response.data;
 };
 

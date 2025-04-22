@@ -1,0 +1,131 @@
+.jobsContainer {
+  display: flex;
+  padding: 20px;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.header p {
+  font-size: 16px;
+  color: #777;
+}
+
+.filters {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filters select,
+.filters input {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.filters select {
+  width: 200px;
+}
+
+.filters input[type="month"] {
+  width: 160px;
+}
+
+.filters input[type="date"] {
+  width: 160px;
+}
+
+.jobsTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.jobsTable th,
+.jobsTable td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.jobsTable th {
+  background-color: #f4f4f4;
+  color: #333;
+  font-weight: 600;
+}
+
+.jobsTable td {
+  color: #555;
+}
+
+.jobsTable tr:hover {
+  background-color: #f1f1f1;
+}
+
+.editBtn {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.editBtn:hover {
+  background-color: #0056b3;
+}
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.modalContent label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.modalContent select,
+.modalContent input {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.saveBtn {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  align-self: flex-start;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.saveBtn:hover {
+  background-color: #218838;
+}

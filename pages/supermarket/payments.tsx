@@ -1,127 +1,99 @@
+// pages/supermarket/payments.tsx
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import Sidebar from "@/src/components/supermarket/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import styles from "@/styles/supermarketJobs.module.scss";
-import { getPayments, createPayment, updatePayment, deletePayment, Payment } from "@/src/services/paymentService";
+import { getPayments, updatePayment, Payment } from "@/src/services/paymentService";
 import { getJobs, Job } from "@/src/services/jobService";
 
 interface FormData {
   id?: string;
-  jobId: string;
-  amount: number;
-  status: string;
-  paymentDate: string;
+  status: Payment["status"];
+  payment_date: string;
 }
 
 export default function SupermarketPayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    jobId: "",
-    amount: 0,
-    status: "pending",
-    paymentDate: ""
-  });
+  const [selectedPayment, setSelectedPayment] = useState<FormData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ status: "", date: "" });
+  const [filters, setFilters] = useState({ status: "", startDate: "", endDate: "", branch: "" });
 
   useEffect(() => {
-    loadPayments();
-    loadJobs();
+    loadData();
   }, []);
 
-  const loadPayments = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await getPayments();
-      setPayments(data);
+      const [paymentsData, jobsData] = await Promise.all([getPayments(), getJobs()]);
+      setPayments(paymentsData);
+      setJobs(jobsData);
       setError(null);
     } catch {
-      setError("Erro ao carregar pagamentos");
+      setError("Erro ao carregar dados de pagamentos ou vagas.");
     } finally {
       setLoading(false);
     }
   };
 
-  const loadJobs = async () => {
-    try {
-      const data = await getJobs();
-      setJobs(data);
-    } catch {
-      console.error("Erro ao carregar vagas");
-    }
-  };
-
-  const openModal = (payment?: Payment) => {
-    setIsEditing(!!payment);
-    if (payment) {
-      setFormData({
-        id: String(payment.id),
-        jobId: payment.jobId,
-        amount: payment.amount,
-        status: payment.status,
-        paymentDate: payment.paymentDate.split("T")[0]
-      });
-    } else {
-      setFormData({
-        jobId: "",
-        amount: 0,
-        status: "pending",
-        paymentDate: ""
-      });
-    }
+  const openModal = (payment: Payment) => {
+    setSelectedPayment({
+      id: payment.id,
+      status: payment.status,
+      payment_date: payment.payment_date?.split("T")[0] || new Date().toISOString().split("T")[0],
+    });
     setIsModalOpen(true);
   };
 
-  const closeModal = () => setIsModalOpen(false);
+  const closeModal = () => {
+    setSelectedPayment(null);
+    setIsModalOpen(false);
+  };
 
   const savePayment = async () => {
+    if (!selectedPayment || !selectedPayment.id) return;
+
+    const existing = payments.find((p) => p.id === selectedPayment.id);
+    if (!existing) return alert("Pagamento não encontrado.");
+
+    const updated: Payment = {
+      ...existing,
+      status: selectedPayment.status,
+      payment_date: `${selectedPayment.payment_date}T00:00:00.000Z`,
+      updatedAt: new Date().toISOString(),
+    };
+
     try {
-      const payload = {
-        jobId: formData.jobId,
-        amount: formData.amount,
-        status: formData.status,
-        paymentDate: `${formData.paymentDate}T00:00:00`
-      };
-
-      if (isEditing && formData.id) {
-        await updatePayment({ ...(payload as any), id: formData.id });
-      } else {
-        await createPayment(payload as Omit<Payment, "id">);
-      }
+      await updatePayment(updated);
+      await loadData();
       closeModal();
-      loadPayments();
     } catch {
-      alert("Erro ao salvar pagamento");
+      alert("Erro ao atualizar pagamento.");
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Tem certeza que deseja excluir?")) {
-      try {
-        await deletePayment(Number(id));
-        loadPayments();
-      } catch {
-        alert("Erro ao excluir pagamento");
-      }
-    }
-  };
-
-  const filteredPayments = payments.filter(payment => {
+  const filteredPayments = payments.filter((payment) => {
+    const job = jobs.find(j => j.id === payment.job_id);
     return (
       (!filters.status || payment.status === filters.status) &&
-      (!filters.date || payment.paymentDate.startsWith(filters.date))
+      (!filters.startDate || (payment.payment_date && new Date(payment.payment_date) >= new Date(filters.startDate))) &&
+      (!filters.endDate || (payment.payment_date && new Date(payment.payment_date) <= new Date(filters.endDate))) &&
+      (!filters.branch || job?.branchId === filters.branch)
     );
   });
 
-  const getJobInfo = (id: string) => {
-    const job = jobs.find(job => job.id === id);
-    return job ? `${job.categoryId} | ${new Date(job.startTime).toLocaleDateString()}` : "Job não encontrado";
+  const getJobDetails = (jobId: string) => {
+    const job = jobs.find(j => j.id === jobId);
+    return job
+      ? `Filial: ${job.branchId} | ${new Date(job.startTime).toLocaleDateString()}`
+      : "Vaga não encontrada";
   };
+
+  const uniqueBranches = Array.from(new Set(jobs.map(j => j.branchId)));
 
   return (
     <>
@@ -130,21 +102,39 @@ export default function SupermarketPayments() {
         <Sidebar />
         <section className={styles.content}>
           <header className={styles.header}>
-            <h1>Gerenciar Pagamentos</h1>
-            <button className={styles.createJobBtn} onClick={() => openModal()}>Novo Pagamento</button>
+            <h1>Pagamentos</h1>
           </header>
 
           <div className={styles.filters}>
             <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
-              <option value="">Filtrar por Status</option>
+              <option value="">Status</option>
               <option value="pending">Pendente</option>
               <option value="paid">Pago</option>
-              <option value="cancelled">Cancelado</option>
+              <option value="canceled">Cancelado</option>
             </select>
-            <input type="date" value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} />
+
+            <div className={styles.dateRangeFilter}>
+              <label>Período:</label>
+              <input type="date" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} />
+              <span>até</span>
+              <input type="date" value={filters.endDate} onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} />
+            </div>
+
+            <select value={filters.branch} onChange={(e) => setFilters({ ...filters, branch: e.target.value })}>
+              <option value="">Todas as Filiais</option>
+              {uniqueBranches.map(branch => (
+                <option key={branch} value={branch}>Filial {branch}</option>
+              ))}
+            </select>
           </div>
 
-          {loading ? <p>Carregando...</p> : error ? <p>{error}</p> : (
+          {loading ? (
+            <p>Carregando pagamentos...</p>
+          ) : error ? (
+            <p>{error}</p>
+          ) : filteredPayments.length === 0 ? (
+            <p>Nenhum pagamento encontrado com os filtros atuais.</p>
+          ) : (
             <table className={styles.jobsTable}>
               <thead>
                 <tr>
@@ -156,15 +146,16 @@ export default function SupermarketPayments() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPayments.map((payment) => (
+                {filteredPayments.map(payment => (
                   <tr key={payment.id}>
-                    <td>{getJobInfo(payment.jobId)}</td>
-                    <td>R$ {payment.amount.toFixed(2)}</td>
-                    <td>{payment.status}</td>
-                    <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                    <td>{getJobDetails(payment.job_id)}</td>
+                    <td>R$ {Number(payment.amount).toFixed(2)}</td>
+                    <td>{payment.status === "pending" ? "Pendente" : payment.status === "paid" ? "Pago" : "Cancelado"}</td>
+                    <td>{payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : "-"}</td>
                     <td>
-                      <button className={styles.editBtn} onClick={() => openModal(payment)}>Editar</button>
-                      <button className={styles.deleteBtn} onClick={() => handleDelete(payment.id)}>Excluir</button>
+                      <button className={styles.editBtn} onClick={() => openModal(payment)}>
+                        {payment.status === "pending" ? "Confirmar Pagamento" : "Editar"}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -174,34 +165,28 @@ export default function SupermarketPayments() {
         </section>
       </main>
 
-      {isModalOpen && (
-        <Modal onClose={closeModal} title={isEditing ? "Editar Pagamento" : "Novo Pagamento"}>
+      {isModalOpen && selectedPayment && (
+        <Modal onClose={closeModal} title="Editar Pagamento">
           <div className={styles.modalContent}>
-            <label>Vaga</label>
-            <select value={formData.jobId} onChange={(e) => setFormData({ ...formData, jobId: e.target.value })}>
-              <option value="">Selecione a Vaga</option>
-              {jobs.map(job => (
-                <option key={job.id} value={job.id}>
-                  {getJobInfo(job.id)}
-                </option>
-              ))}
-            </select>
-
-            <label>Valor</label>
-            <input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })} />
-
-            <label>Status</label>
-            <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+            <label>Status:</label>
+            <select
+              value={selectedPayment.status}
+              onChange={(e) => setSelectedPayment({ ...selectedPayment, status: e.target.value as Payment["status"] })}
+            >
               <option value="pending">Pendente</option>
               <option value="paid">Pago</option>
-              <option value="cancelled">Cancelado</option>
+              <option value="canceled">Cancelado</option>
             </select>
 
-            <label>Data de Pagamento</label>
-            <input type="date" value={formData.paymentDate} onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })} />
+            <label>Data de Pagamento:</label>
+            <input
+              type="date"
+              value={selectedPayment.payment_date}
+              onChange={(e) => setSelectedPayment({ ...selectedPayment, payment_date: e.target.value })}
+            />
 
             <button className={styles.saveBtn} onClick={savePayment}>
-              {isEditing ? "Atualizar" : "Salvar"}
+              Salvar Alterações
             </button>
           </div>
         </Modal>

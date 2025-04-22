@@ -1,11 +1,11 @@
 import Link from "next/link";
 import styles from "@/styles/sidebar.module.scss";
-import ThemeToggle from '@/src/components/ThemeToggle';
+// import ThemeToggle from '@/src/components/ThemeToggle';
 
 export default function Sidebar() {
   return (
     <nav className={styles.sidebar}>
-      <ThemeToggle />
+      {/* <ThemeToggle /> */}
 
       <h2>Supermercado</h2>
       <ul>

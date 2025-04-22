@@ -13,7 +13,7 @@ const Header = () => {
           <Image
             src="/logoWorkflow.png"
             alt="Workflow Logo"
-            width={40}
+            width={100}
             height={40}
           />
         </Link>

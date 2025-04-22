@@ -10,9 +10,9 @@
   z-index: 1000;
 
   // Gradiente translúcido no fundo
-  background: linear-gradient(90deg, rgba(81, 112, 117, 0.9), rgba(10, 50, 60, 0.85));
+  background: linear-gradient(90deg, rgba(241, 244, 245, 0.9), rgba(187, 223, 235, 0.9), #4e6cff);
   backdrop-filter: blur(8px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(219, 222, 224, 0.2);
 }
 
 .container {
@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
+  width: 100px;
   height: 48px;
   background-color: rgba(255, 255, 255, 0.1); // fundo atrás da logo
   border-radius: 50%;
