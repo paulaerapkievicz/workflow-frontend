@@ -4,30 +4,39 @@ export interface Branch {
   id: string;
   name: string;
   address: string;
+  phone?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  geofenceRadius?: number | null;
   supermarketId: string;
   createdAt: string;
   updatedAt: string;
 }
 
-// Buscar todas as filiais
-export const getBranches = async (): Promise<Branch[]> => {
-  const response = await api.get("/branches");
-  return response.data;
+export const getBranches = async (): Promise<Branch[]> => (await api.get("/branches")).data;
+
+export const getBranchesBySupermarket = async (supermarketId: string): Promise<Branch[]> => {
+  const all = await getBranches();
+  return all.filter((b) => b.supermarketId === supermarketId);
 };
 
-// Criar uma nova filial
-export const createBranch = async (branch: Omit<Branch, "id" | "createdAt" | "updatedAt">): Promise<Branch> => {
-  const response = await api.post("/branches", branch);
-  return response.data;
-};
+export const createBranch = async (
+  branch: {
+    name: string;
+    address: string;
+    phone?: string;
+    supermarketId: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    geofenceRadius?: number | null;
+  }
+): Promise<Branch> => (await api.post("/branches", branch)).data;
 
-// Atualizar filial
-export const updateBranch = async (branch: Branch): Promise<Branch> => {
-  const response = await api.put(`/branches/${branch.id}`, branch);
-  return response.data;
-};
+export const updateBranch = async (
+  id: string,
+  branch: Partial<Branch>
+): Promise<Branch> => (await api.put(`/branches/${id}`, branch)).data;
 
-// Excluir filial
-export const deleteBranch = async (id: number): Promise<void> => {
+export const deleteBranch = async (id: string): Promise<void> => {
   await api.delete(`/branches/${id}`);
 };

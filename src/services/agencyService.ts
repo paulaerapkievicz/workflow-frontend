@@ -4,36 +4,40 @@ export interface Agency {
   id: string;
   name: string;
   cnpj: string;
+  address?: string;
+  phone?: string | null;
   ownerId: string;
+  availableBalance: number;
+  commissionPercentage: number;
   createdAt: string;
   updatedAt: string;
 }
 
-// Buscar todas as agências
-export const getAgencies = async (): Promise<Agency[]> => {
-  const response = await api.get("/agencies");
-  return response.data;
+export interface AgencyFreelancer {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  skills?: string | null;
+  agencyId: string | null;
+  availableBalance: number;
+}
+
+export const getAgencies = async (): Promise<Agency[]> => (await api.get("/agencies")).data;
+
+export const getAgencyById = async (id: string): Promise<Agency> =>
+  (await api.get(`/agencies/${id}`)).data;
+
+// Freelancers da agência logada (a API devolve todos; filtramos pelo agencyId).
+export const getMyFreelancers = async (agencyId: string): Promise<AgencyFreelancer[]> => {
+  const all: AgencyFreelancer[] = (await api.get("/freelancers")).data;
+  return all.filter((f) => f.agencyId === agencyId);
 };
 
-// Buscar uma agência por ID
-export const getAgencyById = async (id: string): Promise<Agency> => {
-  const response = await api.get(`/agencies/${id}`);
-  return response.data;
-};
-
-// Criar uma nova agência
-export const createAgency = async (agency: Omit<Agency, "id" | "createdAt" | "updatedAt">): Promise<Agency> => {
-  const response = await api.post("/agencies", agency);
-  return response.data;
-};
-
-// Atualizar agência
-export const updateAgency = async (id: string, agency: Partial<Agency>): Promise<Agency> => {
-  const response = await api.put(`/agencies/${id}`, agency);
-  return response.data;
-};
-
-// Excluir agência
-export const deleteAgency = async (id: string): Promise<void> => {
-  await api.delete(`/agencies/${id}`);
-};
+export const addFreelancer = async (payload: {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  skills?: string;
+}): Promise<AgencyFreelancer> => (await api.post("/agency/freelancers", payload)).data;

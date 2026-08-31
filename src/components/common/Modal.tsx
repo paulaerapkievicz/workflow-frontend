@@ -12,7 +12,7 @@ export default function Modal({ title, onClose, children }: ModalProps) {
       <div className={styles.modal}>
         <header className={styles.modalHeader}>
           <h2>{title}</h2>
-          <button className={styles.closeBtn} onClick={onClose}>X</button>
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar">✕</button>
         </header>
         <div className={styles.modalBody}>
           {children}

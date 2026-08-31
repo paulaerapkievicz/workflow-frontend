@@ -1,20 +1,16 @@
-import Link from "next/link";
-import styles from "@/styles/sidebar.module.scss";
-// import ThemeToggle from '@/src/components/ThemeToggle';
+import SideNav from "@/src/components/panel/SideNav";
 
 export default function Sidebar() {
   return (
-    <nav className={styles.sidebar}>
-      {/* <ThemeToggle /> */}
-
-      <h2>Supermercado</h2>
-      <ul>
-        <li><Link href="/supermarket/dashboard">Dashboard</Link></li>
-        <li><Link href="/supermarket/jobs">Vagas</Link></li>
-        <li><Link href="/supermarket/payments">Pagamentos</Link></li>
-        <li><Link href="/supermarket/branches">Filiais</Link></li>
-        <li><Link href="/supermarket/favorites">Favoritos</Link></li>
-      </ul>
-    </nav>
+    <SideNav
+      title="Supermercado"
+      items={[
+        { href: "/supermarket/dashboard", label: "Dashboard", icon: "▚" },
+        { href: "/supermarket/orders", label: "Pedidos", icon: "🛒" },
+        { href: "/supermarket/jobs", label: "Vagas", icon: "📋" },
+        { href: "/supermarket/payments", label: "Faturamento", icon: "💳" },
+        { href: "/supermarket/branches", label: "Filiais", icon: "📍" },
+      ]}
+    />
   );
 }

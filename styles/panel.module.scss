@@ -1,0 +1,427 @@
+@use './variables' as *;
+
+// ===========================================================================
+// Painéis internos (supermercado / agência / freelancer / admin)
+// Design system compartilhado — consumido por quase todas as telas.
+// ===========================================================================
+
+.container {
+  display: flex;
+  align-items: stretch;
+  min-height: calc(100vh - 64px);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 2rem 2.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+
+  h1 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+}
+
+// ----- Cards de indicadores -----
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.35rem 1.4rem;
+  box-shadow: var(--shadow-sm);
+
+  h2 {
+    margin: 0 0 0.15rem;
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    font-weight: 500;
+  }
+}
+
+// dá um leve destaque quando o card é um "stat" dentro de .cards
+.cards .card {
+  position: relative;
+  transition: transform 0.14s ease, box-shadow 0.2s ease;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 1.1rem;
+    bottom: 1.1rem;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+    opacity: 0.9;
+  }
+
+  &:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+}
+
+.balanceCard {
+  @extend .card;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 380px;
+  background: linear-gradient(155deg, var(--surface), var(--surface-2));
+
+  strong {
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+}
+
+// ----- Botões -----
+.primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1.05rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.2s ease, opacity 0.15s ease;
+  box-shadow: 0 10px 20px -14px var(--primary);
+
+  &:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  &:active { transform: translateY(0); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+}
+
+.secondaryBtn {
+  @extend .primaryBtn;
+  background: var(--accent);
+  box-shadow: 0 10px 20px -14px var(--accent);
+  &:hover { background: var(--accent-dark); }
+}
+
+.ghostBtn {
+  @extend .primaryBtn;
+  background: transparent;
+  color: var(--primary-dark);
+  border: 1.5px solid var(--border-strong);
+  box-shadow: none;
+  &:hover { background: var(--primary-soft); border-color: var(--primary); }
+}
+
+// ----- Tabelas -----
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 0.9rem;
+
+  th, td {
+    text-align: left;
+    padding: 0.8rem 1rem;
+    vertical-align: middle;
+  }
+
+  thead th {
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody td { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background 0.12s ease; }
+  tbody tr:hover td { background: var(--surface-hover); }
+
+  td button { margin-right: 0.4rem; }
+}
+
+// ----- Badges de status -----
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.badgePending  { background: #fef3c7; color: #92400e; border-color: transparent; }
+.badgeProgress { background: #dbeafe; color: #1e40af; border-color: transparent; }
+.badgeWaiting  { background: #fde68a; color: #92400e; border-color: transparent; }
+.badgeApproved { background: #ede9fe; color: #5b21b6; border-color: transparent; }
+.badgeDone     { background: #dcfce7; color: #166534; border-color: transparent; }
+.badgeCanceled { background: #fee2e2; color: #991b1b; border-color: transparent; }
+
+body[data-theme='dark'] {
+  .badgePending  { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+  .badgeProgress { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+  .badgeWaiting  { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+  .badgeApproved { background: rgba(139, 92, 246, 0.22); color: #c4b5fd; }
+  .badgeDone     { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+  .badgeCanceled { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+}
+
+// ----- Formulários -----
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+
+  label { font-weight: 600; font-size: 0.86rem; color: var(--text); }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 10px;
+    font: inherit;
+    font-size: 0.92rem;
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder { color: var(--text-muted); }
+    &:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+  }
+
+  textarea { min-height: 90px; resize: vertical; }
+}
+
+.error {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-soft);
+  border-radius: 9px;
+  font-size: 0.86rem;
+}
+
+.success {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  color: var(--ok);
+  background: var(--ok-soft);
+  border: 1px solid var(--ok-soft);
+  border-radius: 9px;
+  font-size: 0.86rem;
+}
+
+.muted { color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; }
+
+.linkRow {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+
+  a { color: var(--primary-dark); font-weight: 600; }
+}
+
+// ----- Grade de fotos -----
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.85rem;
+
+  figure {
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+
+    img { width: 100%; height: 120px; object-fit: cover; display: block; }
+    figcaption { padding: 0.4rem 0.6rem; font-size: 0.78rem; color: var(--text-muted); }
+  }
+}
+
+// ----- Auth legado (mantido por compatibilidade) -----
+.authWrapper {
+  max-width: 460px;
+  margin: 3rem auto;
+  padding: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+
+  h1 { margin-top: 0; font-size: 1.5rem; }
+}
+
+.roleTabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  padding: 0.3rem;
+  background: var(--surface-2);
+  border-radius: 12px;
+
+  button {
+    flex: 1;
+    padding: 0.55rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 9px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+
+    &.active { background: var(--surface); color: var(--primary-dark); box-shadow: var(--shadow-sm); }
+  }
+}
+
+// ----- Filtros -----
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  padding: 0.9rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+
+  input, select {
+    padding: 0.48rem 0.6rem;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 9px;
+    font-size: 0.9rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    background: var(--surface);
+    color: var(--text);
+    min-width: 160px;
+
+    &:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  }
+}
+
+.tableWrap { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.tableToolbar {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+
+  strong { font-size: 0.95rem; }
+}
+
+.colChooser {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  margin-top: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  label {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+}
+
+.shiftRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  input[type="text"] { flex: 1; min-width: 120px; }
+  input[type="time"] { width: auto; }
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+
+  input { width: auto; accent-color: var(--primary); }
+}
+
+.starRating { color: #f59e0b; letter-spacing: 1px; }
+
+@media (max-width: 860px) {
+  .container { flex-direction: column; }
+  .content { padding: 1.25rem; }
+}

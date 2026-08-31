@@ -40,13 +40,13 @@ export const deleteFreelancer = async (id: string): Promise<void> => {
 };
 
 // Listar categorias do freelancer
-export const getFreelancerCategories = async (id: string): Promise<any[]> => {
+export const getFreelancerCategories = async (id: string): Promise<unknown[]> => {
   const response = await api.get(`/freelancers/${id}/categories`);
   return response.data;
 };
 
 // Adicionar categoria ao freelancer
-export const addCategoryToFreelancer = async (freelancerId: string, categoryId: string): Promise<any> => {
+export const addCategoryToFreelancer = async (freelancerId: string, categoryId: string): Promise<unknown> => {
   const response = await api.post(`/freelancers/${freelancerId}/categories`, { categoryId });
   return response.data;
 };

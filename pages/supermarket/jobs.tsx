@@ -1,256 +1,147 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Sidebar from "@/src/components/supermarket/Sidebar";
 import Modal from "@/src/components/common/Modal";
-import styles from "@/styles/supermarketJobs.module.scss";
-import { getJobs, createJob, updateJob, deleteJob, Job } from "@/src/services/jobService";
+import RequireAuth from "@/src/components/RequireAuth";
+import StatusBadge from "@/src/components/StatusBadge";
+import DataTable, { Column } from "@/src/components/DataTable";
+import FilterBar, { FilterFieldDef } from "@/src/components/FilterBar";
+import panel from "@/styles/panel.module.scss";
+import { getJobs, Job, formatShifts, STATUS_LABELS, minutesToHours } from "@/src/services/jobService";
 import { getBranches, Branch } from "@/src/services/branchService";
 import { getCategories, Category } from "@/src/services/categoryService";
+import { getJobPhotos, photoUrl, JobPhoto } from "@/src/services/jobPhotoService";
+import { matchesFilter, RowFilter } from "@/src/lib/filterRows";
 
-interface ShiftTime {
-  start: string;
-  end: string;
-}
+const money = (v?: number | null) => (v == null ? "—" : `R$ ${Number(v).toFixed(2)}`);
 
-interface FormData {
-  id?: string;
-  supermarketId: string;
-  branchId: string;
-  categoryId: string;
-  date: string;
-  shifts: ShiftTime[];
-}
-
-export default function SupermarketJobs() {
+function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    supermarketId: "",
-    branchId: "",
-    categoryId: "",
-    date: "",
-    shifts: [{ start: "08:00", end: "12:00" }]
-  });
+  const [photos, setPhotos] = useState<JobPhoto[]>([]);
+  const [photoJob, setPhotoJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ branchId: "", categoryId: "", date: "" });
+  const [filter, setFilter] = useState<RowFilter>({});
 
-  useEffect(() => {
-    loadJobs();
-    loadBranches();
-    loadCategories();
-  }, []);
-
-  const loadJobs = async () => {
+  const load = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await getJobs();
-      setJobs(data);
-      setError(null);
-    } catch {
-      setError("Erro ao carregar vagas");
+      const [j, b, c] = await Promise.all([getJobs(), getBranches(), getCategories()]);
+      setJobs(j);
+      setBranches(b);
+      setCategories(c);
     } finally {
       setLoading(false);
     }
   };
+  useEffect(() => { load(); }, []);
 
-  const loadBranches = async () => {
-    try {
-      const data = await getBranches();
-      setBranches(data);
-    } catch {
-      console.error("Erro ao carregar filiais");
-    }
+  const branchName = (id: string) => branches.find((b) => b.id === id)?.name ?? "—";
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "—";
+
+  const openPhotos = async (job: Job) => {
+    setPhotoJob(job);
+    try { setPhotos(await getJobPhotos(job.id)); } catch { setPhotos([]); }
   };
 
-  const loadCategories = async () => {
-    try {
-      const data = await getCategories();
-      setCategories(data);
-    } catch {
-      console.error("Erro ao carregar categorias");
-    }
-  };
+  const rows = useMemo(
+    () =>
+      jobs.filter((job) =>
+        matchesFilter(
+          {
+            status: job.status,
+            freelancerName: job.assignedFreelancer?.name,
+            branchName: job.jobBranch?.name ?? branchName(job.branchId),
+            title: job.title,
+            categoryName: job.jobCategory?.name ?? categoryName(job.categoryId),
+            date: job.startTime,
+          },
+          filter
+        )
+      ),
+    [jobs, filter, branches, categories] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
-  const openModal = (job?: Job) => {
-    setIsEditing(!!job);
-    if (job) {
-      setFormData({
-        id: String(job.id),
-        supermarketId: job.supermarketId,
-        branchId: job.branchId,
-        categoryId: job.categoryId,
-        date: job.startTime.split("T")[0],
-        shifts: jobs
-          .filter(j => j.date === job.startTime.split("T")[0] && j.branchId === job.branchId && j.categoryId === job.categoryId)
-          .map(j => ({
-            start: j.startTime.split("T")[1].substring(0,5),
-            end: j.endTime.split("T")[1].substring(0,5)
-          }))
-      });
-    } else {
-      setFormData({
-        supermarketId: "",
-        branchId: "",
-        categoryId: "",
-        date: "",
-        shifts: [{ start: "08:00", end: "12:00" }]
-      });
-    }
-    setIsModalOpen(true);
-  };
+  const filterFields: FilterFieldDef[] = [
+    { key: "status", label: "Status", type: "select", options: Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l })) },
+    { key: "title", label: "Título", type: "text" },
+    { key: "freelancer", label: "Freelancer", type: "text" },
+    { key: "branch", label: "Filial", type: "text" },
+    { key: "category", label: "Função", type: "text" },
+    { key: "date", label: "Data", type: "date" },
+  ];
 
-  const closeModal = () => setIsModalOpen(false);
-
-  const saveJob = async () => {
-    try {
-      for (const shift of formData.shifts) {
-        const payload = {
-          supermarketId: formData.supermarketId,
-          branchId: formData.branchId,
-          categoryId: formData.categoryId,
-          startTime: `${formData.date}T${shift.start}:00`,
-          endTime: `${formData.date}T${shift.end}:00`
-        };
-
-        if (isEditing && formData.id) {
-          await updateJob({ ...(payload as any), id: formData.id });
-        } else {
-          await createJob(payload as Omit<Job, "id">);
-        }
-      }
-      closeModal();
-      loadJobs();
-    } catch {
-      alert("Erro ao salvar vaga");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirm("Tem certeza que deseja excluir?")) {
-      try {
-        await deleteJob(Number(id));
-        loadJobs();
-      } catch {
-        alert("Erro ao excluir vaga");
-      }
-    }
-  };
-
-  const filteredJobs = jobs.filter(job => {
-    return (
-      (!filters.branchId || job.branchId === filters.branchId) &&
-      (!filters.categoryId || job.categoryId === filters.categoryId) &&
-      (!filters.date || job.startTime.startsWith(filters.date))
-    );
-  });
-
-  const getBranchName = (id: string) => branches.find(branch => branch.id === id)?.name || "Filial não encontrada";
-  const getCategoryName = (id: string) => categories.find(category => category.id === id)?.name || "Categoria não encontrada";
+  const columns: Column<Job>[] = [
+    { key: "title", label: "Título", render: (j) => j.title },
+    { key: "branch", label: "Filial", render: (j) => j.jobBranch?.name ?? branchName(j.branchId) },
+    { key: "category", label: "Função", render: (j) => j.jobCategory?.name ?? categoryName(j.categoryId) },
+    { key: "date", label: "Data", render: (j) => new Date(j.startTime).toLocaleDateString("pt-BR") },
+    { key: "shifts", label: "Turnos", render: (j) => formatShifts(j.shifts) },
+    { key: "contracted", label: "Horas contratadas", render: (j) => minutesToHours(j.contractedMinutes) },
+    { key: "worked", label: "Horas trabalhadas", render: (j) => minutesToHours(j.workedMinutes), defaultHidden: true },
+    { key: "value", label: "Valor", render: (j) => money(j.grossAmount) },
+    { key: "freelancer", label: "Freelancer", render: (j) => j.assignedFreelancer?.name ?? "—" },
+    { key: "status", label: "Status", render: (j) => <StatusBadge status={j.status} /> },
+    {
+      key: "actions",
+      label: "Ações",
+      toggleable: false,
+      render: (j) =>
+        ["in_progress", "completed"].includes(j.status) ? (
+          <button className={panel.ghostBtn} onClick={() => openPhotos(j)}>Fotos</button>
+        ) : null,
+    },
+  ];
 
   return (
     <>
       <Head><title>Vagas | Supermercado</title></Head>
-      <main className={styles.jobsContainer}>
+      <main className={panel.container}>
         <Sidebar />
-        <section className={styles.content}>
-          <header className={styles.header}>
-            <h1>Gerenciar Vagas</h1>
-            <button className={styles.createJobBtn} onClick={() => openModal()}>Criar Nova Vaga</button>
-          </header>
-
-          <div className={styles.filters}>
-            <select value={filters.branchId} onChange={(e) => setFilters({ ...filters, branchId: e.target.value })}>
-              <option value="">Filtrar por Filial</option>
-              {branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
-            </select>
-            <select value={filters.categoryId} onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}>
-              <option value="">Filtrar por Categoria</option>
-              {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
-            </select>
-            <input type="date" value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} />
-          </div>
-
-          {loading ? <p>Carregando...</p> : error ? <p>{error}</p> : (
-            <table className={styles.jobsTable}>
-              <thead>
-                <tr>
-                  <th>Categoria</th>
-                  <th>Filial</th>
-                  <th>Data</th>
-                  <th>Horário</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredJobs.map((job) => (
-                  <tr key={job.id}>
-                    <td>{getCategoryName(job.categoryId)}</td>
-                    <td>{getBranchName(job.branchId)}</td>
-                    <td>{new Date(job.startTime).toLocaleDateString()}</td>
-                    <td>{new Date(job.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(job.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td>
-                      <button className={styles.editBtn} onClick={() => openModal(job)}>Editar</button>
-                      <button className={styles.deleteBtn} onClick={() => handleDelete(job.id)}>Excluir</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <section className={panel.content}>
+          <header className={panel.header}><h1>Vagas</h1></header>
+          <p className={panel.muted}>As vagas são geradas a partir dos seus pedidos. O valor é calculado por hora trabalhada, conforme a tabela da agência.</p>
+          <FilterBar fields={filterFields} value={filter} onChange={setFilter} />
+          {loading ? (
+            <p>Carregando…</p>
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={rows}
+              rowKey={(j) => j.id}
+              storageKey="supermarket-jobs"
+              empty="Nenhuma vaga. Crie um pedido."
+            />
           )}
         </section>
       </main>
 
-      {isModalOpen && (
-        <Modal onClose={closeModal} title={isEditing ? "Editar Vaga" : "Criar Nova Vaga"}>
-          <div className={styles.modalContent}>
-            <label>Filial</label>
-            <select value={formData.branchId} onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}>
-              <option value="">Selecione a Filial</option>
-              {branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
-            </select>
-
-            <label>Categoria</label>
-            <select value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}>
-              <option value="">Selecione a Categoria</option>
-              {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
-            </select>
-
-            <label>Data da Atuação</label>
-            <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-
-            <label>Turnos</label>
-            {formData.shifts.map((shift, index) => (
-              <div key={index} className={styles.shiftRow}>
-                <input type="time" value={shift.start} onChange={(e) => {
-                  const newShifts = [...formData.shifts];
-                  newShifts[index].start = e.target.value;
-                  setFormData({ ...formData, shifts: newShifts });
-                }} />
-                <input type="time" value={shift.end} onChange={(e) => {
-                  const newShifts = [...formData.shifts];
-                  newShifts[index].end = e.target.value;
-                  setFormData({ ...formData, shifts: newShifts });
-                }} />
-                {formData.shifts.length > 1 && (
-                  <button type="button" onClick={() => {
-                    const newShifts = formData.shifts.filter((_, i) => i !== index);
-                    setFormData({ ...formData, shifts: newShifts });
-                  }}>Remover</button>
-                )}
-              </div>
-            ))}
-            <button type="button" onClick={() => setFormData({ ...formData, shifts: [...formData.shifts, { start: "", end: "" }] })}>+ Adicionar Turno</button>
-
-            <button className={styles.saveBtn} onClick={saveJob}>
-              {isEditing ? "Atualizar" : "Salvar"}
-            </button>
-          </div>
+      {photoJob && (
+        <Modal title={`Comprovações — ${photoJob.title}`} onClose={() => setPhotoJob(null)}>
+          {photos.length === 0 ? (
+            <p>Nenhuma foto enviada.</p>
+          ) : (
+            <div className={panel.photoGrid}>
+              {photos.map((p) => (
+                <figure key={p.id}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photoUrl(p.url)} alt={p.caption ?? "Comprovação"} />
+                  {p.caption && <figcaption>{p.caption}</figcaption>}
+                </figure>
+              ))}
+            </div>
+          )}
         </Modal>
       )}
     </>
+  );
+}
+
+export default function Page() {
+  return (
+    <RequireAuth role="supermarket">
+      <JobsPage />
+    </RequireAuth>
   );
 }

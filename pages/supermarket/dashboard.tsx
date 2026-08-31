@@ -1,62 +1,54 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
-import { useRouter } from "next/router";
 import Sidebar from "@/src/components/supermarket/Sidebar";
-import styles from "@/styles/supermarketDashboard.module.scss";
+import RequireAuth from "@/src/components/RequireAuth";
+import panel from "@/styles/panel.module.scss";
+import { getJobs, Job } from "@/src/services/jobService";
+import { getMyInvoices, Invoice } from "@/src/services/paymentService";
 
-export default function SupermarketDashboard() {
-  const router = useRouter();
-
-  // Simulações de dados (substituir depois por API real)
-  const [metrics, setMetrics] = useState({
-    vagasAbertas: 12,
-    vagasEmExecucao: 7,
-    faturamento: 8500,
-    filiais: 3,
-  });
+function Dashboard() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
-    // Futuro: buscar métricas da API
-    // fetch("/api/supermarket/metrics").then(...)
-
+    getJobs().then(setJobs).catch(() => {});
+    getMyInvoices().then(setInvoices).catch(() => {});
   }, []);
+
+  const open = jobs.filter((j) => j.status === "pending").length;
+  const running = jobs.filter((j) => ["accepted", "in_progress"].includes(j.status)).length;
+  const completed = jobs.filter((j) => j.status === "completed").length;
+  const invoicesToPay = invoices.filter((i) => i.status === "pending").length;
+  const paidTotal = invoices
+    .filter((i) => i.status === "paid")
+    .reduce((s, i) => s + Number(i.totalAmount), 0);
 
   return (
     <>
-      <Head>
-        <title>Dashboard | Supermercado</title>
-      </Head>
-      <main className={styles.dashboardContainer}>
+      <Head><title>Dashboard | Supermercado</title></Head>
+      <main className={panel.container}>
         <Sidebar />
-        <section className={styles.content}>
-          <header className={styles.header}>
-            <h1>Bem-vindo ao Painel do Supermercado</h1>
-            <p>Gerencie suas vagas, pagamentos e filiais</p>
+        <section className={panel.content}>
+          <header className={panel.header}>
+            <h1>Painel do Supermercado</h1>
           </header>
-
-          <div className={styles.cards}>
-            <div className={styles.card}>
-              <h2>{metrics.vagasAbertas}</h2>
-              <p>Vagas Abertas</p>
-            </div>
-
-            <div className={styles.card}>
-              <h2>{metrics.vagasEmExecucao}</h2>
-              <p>Vagas em Execução</p>
-            </div>
-
-            <div className={styles.card}>
-              <h2>R$ {metrics.faturamento.toLocaleString("pt-BR")}</h2>
-              <p>Faturamento Total</p>
-            </div>
-
-            <div className={styles.card}>
-              <h2>{metrics.filiais}</h2>
-              <p>Filiais Ativas</p>
-            </div>
+          <div className={panel.cards}>
+            <div className={panel.card}><h2>{open}</h2><p>Vagas disponíveis</p></div>
+            <div className={panel.card}><h2>{running}</h2><p>Em andamento</p></div>
+            <div className={panel.card}><h2>{completed}</h2><p>Concluídas</p></div>
+            <div className={panel.card}><h2>{invoicesToPay}</h2><p>Faturas a pagar</p></div>
+            <div className={panel.card}><h2>R$ {paidTotal.toFixed(2)}</h2><p>Total pago às agências</p></div>
           </div>
         </section>
       </main>
     </>
+  );
+}
+
+export default function Page() {
+  return (
+    <RequireAuth role="supermarket">
+      <Dashboard />
+    </RequireAuth>
   );
 }

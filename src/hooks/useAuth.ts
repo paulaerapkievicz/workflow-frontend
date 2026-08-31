@@ -1,27 +1,48 @@
-// src/hooks/useAuth.ts
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
+import { authService, AuthProfile, AuthUser, Role } from "@/src/services/authService";
+
+interface AuthState {
+  user: AuthUser | null;
+  profile: AuthProfile | null;
+  role: Role | null;
+  loading: boolean;
+  authenticated: boolean;
+}
 
 export function useAuth() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [userType, setUserType] = useState<string | null>(null);
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    profile: null,
+    role: null,
+    loading: true,
+    authenticated: false,
+  });
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    //localStorage.setItem("token", "fake-token");
-    //localStorage.setItem("userType", "freelancer"); // ou "agency", "supermarket", "admin"
-
-    const type = localStorage.getItem('userType'); // exemplo: "supermarket", "agency" etc.
-    setAuthenticated(!!token);
-    setUserType(type);
+  const refresh = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setState({ user: null, profile: null, role: null, loading: false, authenticated: false });
+      return;
+    }
+    try {
+      const { user, profile } = await authService.me();
+      setState({ user, profile, role: user.role, loading: false, authenticated: true });
+    } catch {
+      authService.logout();
+      setState({ user: null, profile: null, role: null, loading: false, authenticated: false });
+    }
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userType');
-    setAuthenticated(false);
-    setUserType(null);
-    window.location.href = '/';
-  };
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-  return { authenticated, userType, logout };
+  const logout = useCallback(() => {
+    authService.logout();
+    setState({ user: null, profile: null, role: null, loading: false, authenticated: false });
+    if (typeof window !== "undefined") window.location.href = "/";
+  }, []);
+
+  return { ...state, refresh, logout };
 }

@@ -1,0 +1,413 @@
+@use "./variables" as *;
+
+// ---------------------------------------------------------------------------
+// Tela de autenticação — split-screen: marca à esquerda, formulário à direita.
+// ---------------------------------------------------------------------------
+
+.page {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  min-height: calc(100vh - 64px);
+  background: map-get($light-theme, background);
+  color: map-get($light-theme, text);
+
+  body[data-theme="dark"] & {
+    background: map-get($dark-theme, background);
+    color: map-get($dark-theme, text);
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ----- Lado da marca -----
+.brand {
+  position: relative;
+  overflow: hidden;
+  padding: 3.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.75rem;
+  color: #fff;
+  background: linear-gradient(150deg, #2d4fe0 0%, #4e6cff 45%, #7b5bff 100%);
+
+  @media (max-width: 900px) {
+    padding: 2.25rem 1.5rem;
+    gap: 1rem;
+  }
+
+  // bolhas decorativas
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(2px);
+    opacity: 0.35;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), transparent 70%);
+  }
+  &::before { width: 320px; height: 320px; top: -90px; right: -80px; }
+  &::after  { width: 240px; height: 240px; bottom: -70px; left: -60px; opacity: 0.25; }
+}
+
+.brandInner {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 2rem;
+
+  span {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(4px);
+  }
+}
+
+.brandTitle {
+  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+
+.brandText {
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.86);
+  margin: 0 0 1.75rem;
+}
+
+.brandList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-size: 0.98rem;
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .check {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  @media (max-width: 900px) {
+    display: none;
+  }
+}
+
+// ----- Lado do formulário -----
+.formSide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: map-get($light-theme, surface);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  padding: 2.25rem;
+  box-shadow: 0 20px 45px -20px rgba(15, 23, 42, 0.25);
+
+  body[data-theme="dark"] & {
+    background: map-get($dark-theme, surface);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 45px -20px rgba(0, 0, 0, 0.6);
+  }
+
+  @media (max-width: 900px) {
+    padding: 1.75rem;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+  }
+}
+
+.mobileMark {
+  display: none;
+
+  @media (max-width: 900px) {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: $primary-dark;
+    margin-bottom: 1.5rem;
+
+    body[data-theme="dark"] & { color: #fff; }
+  }
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.35rem;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: map-get($light-theme, muted);
+  margin: 0 0 1.75rem;
+
+  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  label {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    font: inherit;
+    font-size: 0.95rem;
+    color: map-get($light-theme, text);
+    background: #fff;
+    border: 1.5px solid #d7dce5;
+    border-radius: 11px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder { color: #9aa4b2; }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+      box-shadow: 0 0 0 3px rgba(78, 108, 255, 0.16);
+    }
+
+    body[data-theme="dark"] & {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+  }
+}
+
+.passwordWrap {
+  position: relative;
+
+  input { padding-right: 3rem; }
+
+  button {
+    position: absolute;
+    top: 50%;
+    right: 0.4rem;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: $primary-dark;
+    cursor: pointer;
+    border-radius: 8px;
+
+    &:hover { background: rgba(78, 108, 255, 0.1); }
+
+    body[data-theme="dark"] & { color: #9db2ff; }
+  }
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin-top: -0.25rem;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: map-get($light-theme, muted);
+  cursor: pointer;
+  user-select: none;
+
+  input { width: auto; }
+
+  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+}
+
+.link {
+  color: $primary-dark;
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+
+  body[data-theme="dark"] & { color: #9db2ff; }
+}
+
+.submit {
+  margin-top: 0.35rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(120deg, #4e6cff, #6a5bff);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 12px 24px -12px rgba(78, 108, 255, 0.7);
+
+  &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 16px 30px -12px rgba(78, 108, 255, 0.75); }
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:disabled { opacity: 0.6; cursor: progress; }
+}
+
+.error {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.85rem;
+  color: $error-dark;
+  background: rgba(229, 57, 53, 0.1);
+  border: 1px solid rgba(229, 57, 53, 0.25);
+  border-radius: 10px;
+}
+
+.success {
+  margin: 0;
+  padding: 0.85rem 0.9rem;
+  font-size: 0.9rem;
+  color: #0f7a3d;
+  background: rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(22, 163, 74, 0.28);
+  border-radius: 10px;
+  line-height: 1.5;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.5rem 0 1.1rem;
+  color: map-get($light-theme, muted);
+  font-size: 0.8rem;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(15, 23, 42, 0.12);
+  }
+
+  body[data-theme="dark"] & {
+    color: map-get($dark-theme, muted);
+    &::before, &::after { background: rgba(255, 255, 255, 0.12); }
+  }
+}
+
+.foot {
+  text-align: center;
+  font-size: 0.9rem;
+  color: map-get($light-theme, muted);
+  margin: 0;
+
+  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+}
+
+// abas de perfil (cadastro)
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.3rem;
+  margin-bottom: 1.5rem;
+  background: map-get($light-theme, background-secondary);
+  border-radius: 12px;
+
+  button {
+    padding: 0.55rem 0.4rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: map-get($light-theme, muted);
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover { color: $primary-dark; }
+  }
+
+  .tabActive {
+    background: #fff;
+    color: $primary-dark;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  }
+
+  body[data-theme="dark"] & {
+    background: rgba(255, 255, 255, 0.05);
+    .tabActive { background: rgba(255, 255, 255, 0.12); color: #fff; }
+  }
+}
+
+.scrollForm {
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  margin-right: -0.35rem;
+
+  @media (max-width: 900px) {
+    max-height: none;
+    overflow: visible;
+  }
+}

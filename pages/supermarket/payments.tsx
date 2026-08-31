@@ -1,196 +1,135 @@
-// pages/supermarket/payments.tsx
 import { useEffect, useState } from "react";
 import Head from "next/head";
+import axios from "axios";
 import Sidebar from "@/src/components/supermarket/Sidebar";
-import Modal from "@/src/components/common/Modal";
-import styles from "@/styles/supermarketJobs.module.scss";
-import { getPayments, updatePayment, Payment } from "@/src/services/paymentService";
-import { getJobs, Job } from "@/src/services/jobService";
+import RequireAuth from "@/src/components/RequireAuth";
+import panel from "@/styles/panel.module.scss";
+import {
+  getBillingSummary, getClosings, payClosing, BillingSummary, MonthlyClosing,
+  CLOSING_STATUS_LABELS,
+} from "@/src/services/billingService";
 
-interface FormData {
-  id?: string;
-  status: Payment["status"];
-  payment_date: string;
-}
+const hrs = (h: number) => `${h.toFixed(1).replace(".", ",")} h`;
+const money = (v: number) => `R$ ${Number(v).toFixed(2)}`;
+const monthLabel = (ref: string) => {
+  const [y, m] = ref.split("-");
+  if (!y || !m) return ref;
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+};
 
-export default function SupermarketPayments() {
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<FormData | null>(null);
+function BillingPage() {
+  const [summary, setSummary] = useState<BillingSummary | null>(null);
+  const [closings, setClosings] = useState<MonthlyClosing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ status: "", startDate: "", endDate: "", branch: "" });
+  const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const load = async () => {
     setLoading(true);
     try {
-      const [paymentsData, jobsData] = await Promise.all([getPayments(), getJobs()]);
-      setPayments(paymentsData);
-      setJobs(jobsData);
-      setError(null);
-    } catch {
-      setError("Erro ao carregar dados de pagamentos ou vagas.");
+      const [s, c] = await Promise.all([getBillingSummary(), getClosings()]);
+      setSummary(s);
+      setClosings(c);
     } finally {
       setLoading(false);
     }
   };
+  useEffect(() => { load().catch(() => {}); }, []);
 
-  const openModal = (payment: Payment) => {
-    setSelectedPayment({
-      id: payment.id,
-      status: payment.status,
-      payment_date: payment.payment_date?.split("T")[0] || new Date().toISOString().split("T")[0],
-    });
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setSelectedPayment(null);
-    setIsModalOpen(false);
-  };
-
-  const savePayment = async () => {
-    if (!selectedPayment || !selectedPayment.id) return;
-
-    const existing = payments.find((p) => p.id === selectedPayment.id);
-    if (!existing) return alert("Pagamento não encontrado.");
-
-    const updated: Payment = {
-      ...existing,
-      status: selectedPayment.status,
-      payment_date: `${selectedPayment.payment_date}T00:00:00.000Z`,
-      updatedAt: new Date().toISOString(),
-    };
-
+  const pay = async (id: string) => {
+    setBusy(id);
     try {
-      await updatePayment(updated);
-      await loadData();
-      closeModal();
-    } catch {
-      alert("Erro ao atualizar pagamento.");
+      await payClosing(id);
+      await load();
+    } catch (err) {
+      alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    } finally {
+      setBusy(null);
     }
   };
 
-  const filteredPayments = payments.filter((payment) => {
-    const job = jobs.find(j => j.id === payment.job_id);
-    return (
-      (!filters.status || payment.status === filters.status) &&
-      (!filters.startDate || (payment.payment_date && new Date(payment.payment_date) >= new Date(filters.startDate))) &&
-      (!filters.endDate || (payment.payment_date && new Date(payment.payment_date) <= new Date(filters.endDate))) &&
-      (!filters.branch || job?.branchId === filters.branch)
-    );
-  });
-
-  const getJobDetails = (jobId: string) => {
-    const job = jobs.find(j => j.id === jobId);
-    return job
-      ? `Filial: ${job.branchId} | ${new Date(job.startTime).toLocaleDateString()}`
-      : "Vaga não encontrada";
-  };
-
-  const uniqueBranches = Array.from(new Set(jobs.map(j => j.branchId)));
-
   return (
     <>
-      <Head><title>Pagamentos | Supermercado</title></Head>
-      <main className={styles.jobsContainer}>
+      <Head><title>Faturamento | Supermercado</title></Head>
+      <main className={panel.container}>
         <Sidebar />
-        <section className={styles.content}>
-          <header className={styles.header}>
-            <h1>Pagamentos</h1>
-          </header>
+        <section className={panel.content}>
+          <header className={panel.header}><h1>Faturamento</h1></header>
 
-          <div className={styles.filters}>
-            <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
-              <option value="">Status</option>
-              <option value="pending">Pendente</option>
-              <option value="paid">Pago</option>
-              <option value="canceled">Cancelado</option>
-            </select>
-
-            <div className={styles.dateRangeFilter}>
-              <label>Período:</label>
-              <input type="date" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} />
-              <span>até</span>
-              <input type="date" value={filters.endDate} onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} />
-            </div>
-
-            <select value={filters.branch} onChange={(e) => setFilters({ ...filters, branch: e.target.value })}>
-              <option value="">Todas as Filiais</option>
-              {uniqueBranches.map(branch => (
-                <option key={branch} value={branch}>Filial {branch}</option>
-              ))}
-            </select>
-          </div>
-
-          {loading ? (
-            <p>Carregando pagamentos...</p>
-          ) : error ? (
-            <p>{error}</p>
-          ) : filteredPayments.length === 0 ? (
-            <p>Nenhum pagamento encontrado com os filtros atuais.</p>
+          {loading || !summary ? (
+            <p>Carregando…</p>
           ) : (
-            <table className={styles.jobsTable}>
-              <thead>
-                <tr>
-                  <th>Vaga</th>
-                  <th>Valor</th>
-                  <th>Status</th>
-                  <th>Data de Pagamento</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPayments.map(payment => (
-                  <tr key={payment.id}>
-                    <td>{getJobDetails(payment.job_id)}</td>
-                    <td>R$ {Number(payment.amount).toFixed(2)}</td>
-                    <td>{payment.status === "pending" ? "Pendente" : payment.status === "paid" ? "Pago" : "Cancelado"}</td>
-                    <td>{payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : "-"}</td>
-                    <td>
-                      <button className={styles.editBtn} onClick={() => openModal(payment)}>
-                        {payment.status === "pending" ? "Confirmar Pagamento" : "Editar"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              <div className={panel.cards}>
+                <div className={panel.card}><h2>{summary.totals.totalJobs}</h2><p>Vagas concluídas</p></div>
+                <div className={panel.card}><h2>{hrs(summary.totals.contractedHours)}</h2><p>Horas contratadas</p></div>
+                <div className={panel.card}><h2>{hrs(summary.totals.workedHours)}</h2><p>Horas trabalhadas</p></div>
+                <div className={panel.card}><h2>{money(summary.totals.totalAmount)}</h2><p>Valor total</p></div>
+                <div className={panel.card}><h2>{money(summary.totals.openInvoicesAmount)}</h2><p>Faturas a pagar</p></div>
+              </div>
+
+              <h2 style={{ fontSize: "1.1rem", marginTop: "1.5rem" }}>Fechamentos mensais</h2>
+              <table className={panel.table}>
+                <thead><tr><th>Mês</th><th>Agência</th><th>Vagas</th><th>Horas trab.</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                  {closings.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.referenceMonth ? monthLabel(c.referenceMonth) : "—"}</td>
+                      <td>{c.invoiceAgency?.name ?? "—"}</td>
+                      <td>{c.totalJobs ?? "—"}</td>
+                      <td>{c.workedMinutes != null ? hrs(c.workedMinutes / 60) : "—"}</td>
+                      <td>{money(c.totalAmount)}</td>
+                      <td><span className={panel.badge}>{CLOSING_STATUS_LABELS[c.status]}</span></td>
+                      <td>
+                        {c.status === "pending" && (
+                          <button className={panel.primaryBtn} disabled={busy === c.id} onClick={() => pay(c.id)}>
+                            {busy === c.id ? "…" : "Pagar fatura"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {closings.length === 0 && <tr><td colSpan={7}>Nenhum fechamento recebido ainda.</td></tr>}
+                </tbody>
+              </table>
+
+              <h2 style={{ fontSize: "1.1rem", marginTop: "1.5rem" }}>Histórico por mês e função</h2>
+              {summary.months.length === 0 && <p className={panel.muted}>Ainda não há vagas concluídas.</p>}
+              {summary.months.map((m) => (
+                <div key={m.referenceMonth} className={panel.card} style={{ marginBottom: "1rem" }}>
+                  <div className={panel.tableToolbar}>
+                    <strong>{monthLabel(m.referenceMonth)}</strong>
+                    <span className={panel.muted}>
+                      {m.totalJobs} vagas · {hrs(m.contractedHours)} contratadas · {hrs(m.workedHours)} trabalhadas · {money(m.totalAmount)}
+                    </span>
+                  </div>
+                  <table className={panel.table}>
+                    <thead><tr><th>Função</th><th>Qtd.</th><th>Horas contratadas</th><th>Horas trabalhadas</th><th>Valor</th></tr></thead>
+                    <tbody>
+                      {m.byCategory.map((c) => (
+                        <tr key={c.categoryId}>
+                          <td>{c.categoryName}</td>
+                          <td>{c.count}</td>
+                          <td>{hrs(c.contractedHours)}</td>
+                          <td>{hrs(c.workedHours)}</td>
+                          <td>{money(c.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </>
           )}
         </section>
       </main>
-
-      {isModalOpen && selectedPayment && (
-        <Modal onClose={closeModal} title="Editar Pagamento">
-          <div className={styles.modalContent}>
-            <label>Status:</label>
-            <select
-              value={selectedPayment.status}
-              onChange={(e) => setSelectedPayment({ ...selectedPayment, status: e.target.value as Payment["status"] })}
-            >
-              <option value="pending">Pendente</option>
-              <option value="paid">Pago</option>
-              <option value="canceled">Cancelado</option>
-            </select>
-
-            <label>Data de Pagamento:</label>
-            <input
-              type="date"
-              value={selectedPayment.payment_date}
-              onChange={(e) => setSelectedPayment({ ...selectedPayment, payment_date: e.target.value })}
-            />
-
-            <button className={styles.saveBtn} onClick={savePayment}>
-              Salvar Alterações
-            </button>
-          </div>
-        </Modal>
-      )}
     </>
+  );
+}
+
+export default function Page() {
+  return (
+    <RequireAuth role="supermarket">
+      <BillingPage />
+    </RequireAuth>
   );
 }

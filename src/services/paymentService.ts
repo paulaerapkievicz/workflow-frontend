@@ -1,48 +1,58 @@
 import api from "@/src/services/api";
 
+export type PaymentStatus = "settled" | "canceled";
+
 export interface Payment {
   id: string;
-  freelancer_id: string;
-  job_id: string;
-  amount: number;
-  status: "pending" | "paid" | "canceled";
-  payment_date?: string;
+  jobId: string;
+  freelancerId: string;
+  // valores opcionais: a API só devolve os que o papel pode ver (carteira opaca)
+  amount?: number;
+  grossAmount?: number;
+  agencyAmount?: number;
+  freelancerAmount?: number;
+  status: PaymentStatus;
+  paidAt?: string | null;
+  releasedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  paymentJob?: {
+    id: string;
+    title: string;
+    status: string;
+    jobBranch?: { id: string; name: string } | null;
+    jobCategory?: { id: string; name: string } | null;
+  } | null;
+  paymentFreelancer?: { id: string; name: string } | null;
 }
 
-// Buscar todos os pagamentos
-export const getPayments = async (): Promise<Payment[]> => {
-  const response = await api.get("/payments");
-  return response.data;
+export interface Invoice {
+  id: string;
+  supermarketId: string;
+  jobId?: string | null;
+  paymentId?: string | null;
+  totalAmount: number;
+  status: "pending" | "paid" | "canceled";
+  createdAt: string;
+  invoiceJob?: { id: string; title: string } | null;
+}
+
+export const getMyPayments = async (): Promise<Payment[]> =>
+  (await api.get("/payments/mine")).data;
+
+export const getMyInvoices = async (): Promise<Invoice[]> =>
+  (await api.get("/invoices/mine")).data;
+
+export const payInvoice = async (id: string): Promise<Invoice> =>
+  (await api.post(`/invoices/${id}/pay`)).data;
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  settled: "Liberado",
+  canceled: "Cancelado",
 };
 
-// Buscar pagamento por ID
-export const getPaymentById = async (id: string): Promise<Payment> => {
-  const response = await api.get(`/payments/${id}`);
-  return response.data;
-};
-
-// Criar novo pagamento
-export const createPayment = async (payment: Omit<Payment, "id" | "createdAt" | "updatedAt">): Promise<Payment> => {
-  const response = await api.post("/payments", {
-    ...payment,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-  return response.data;
-};
-
-// Atualizar pagamento
-export const updatePayment = async (payment: Payment): Promise<Payment> => {
-  const response = await api.put(`/payments/${payment.id}`, {
-    ...payment,
-    updatedAt: new Date().toISOString(),
-  });
-  return response.data;
-};
-
-// Excluir pagamento
-export const deletePayment = async (id: string): Promise<void> => {
-  await api.delete(`/payments/${id}`);
+export const INVOICE_STATUS_LABELS: Record<Invoice["status"], string> = {
+  pending: "A pagar",
+  paid: "Paga",
+  canceled: "Cancelada",
 };

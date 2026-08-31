@@ -1,182 +1,205 @@
-// import HeaderGeneric from "@/src/components/common/headerGeneric";
-// import styles from "../styles/registerLogin.module.scss"
-// import Head from "next/head";
-// import { Container, Form, FormGroup, Label, Input, Button } from 'reactstrap'
-// import Footer from "@/src/components/common/footer";
-// import { FormEvent, useEffect, useState } from "react";
-// import authService from "@/src/services/authService";
-// import { useRouter } from "next/router";
-// import ToastComponent from "@/src/components/toast";
+import { useEffect, useState } from "react";
+import Head from "next/head";
+import Link from "next/link";
+import axios from "axios";
+import s from "@/styles/auth.module.scss";
+import { authService, RegisterPayload } from "@/src/services/authService";
+import { getAgencies, Agency } from "@/src/services/agencyService";
 
-// const Register = function () {
-//   const router = useRouter();
-//   const [toastIsOpen, setToastIsOpen] = useState(false);
-//   const [toastMessage, setToastMessage] = useState("");
+type RoleKey = "supermarket" | "agency" | "freelancer";
 
-//   useEffect(() => {
-//     if (sessionStorage.getItem("onebitflix-token")) {
-//       router.push("/home");
-//     }
-//   }, []);
+const ROLE_TABS: { key: RoleKey; label: string }[] = [
+  { key: "supermarket", label: "Supermercado" },
+  { key: "agency", label: "Agência" },
+  { key: "freelancer", label: "Freelancer" },
+];
 
-//   const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
-//     event.preventDefault();
+const ROLE_HOME: Record<string, string> = {
+  supermarket: "/supermarket/dashboard",
+  agency: "/agency/dashboard",
+  freelancer: "/freelancer/dashboard",
+};
 
-//     const formData = new FormData(event.currentTarget);
-//     const firstName = formData.get("firstName")!.toString();
-//     const lastName = formData.get("lastName")!.toString();
-//     const phone = formData.get("phone")!.toString();
-//     const birth = formData.get("birth")!.toString();
-//     const email = formData.get("email")!.toString();
-//     const password = formData.get("password")!.toString();
-//     const confirmPassword = formData.get("confirmPassword")!.toString();
-//     const params = { firstName, lastName, phone, birth, email, password };
+export default function RegisterPage() {
+  const [role, setRole] = useState<RoleKey>("supermarket");
+  const [show, setShow] = useState(false);
+  const [form, setForm] = useState({
+    name: "", email: "", password: "", phone: "",
+    companyName: "", cnpj: "", address: "",
+    commissionPercentage: "15", agencyId: "", skills: "",
+  });
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-//     if (password != confirmPassword) {
-//       setToastIsOpen(true);
-//       setTimeout(() => {
-//       setToastIsOpen(false);
-//       }, 1000 * 3);
-//       setToastMessage("Senha e confirmação diferentes.");
-//       return;
-//     }
+  useEffect(() => {
+    getAgencies().then(setAgencies).catch(() => setAgencies([]));
+  }, []);
 
-//     const { data, status }= await authService.register(params);
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-//     if (status === 201) {
-//       router.push("/login?registred=true");
-//     } else {
-//       setToastIsOpen(true);
-//       setTimeout(() => {
-//       setToastIsOpen(false);
-//     }, 1000 * 3);
-//       setToastMessage(data.message);
-//     }
-//   };
-//     return (
-//       <>
-//         <Head>
-//           <title>Onebitflix - Registro</title>
-//           <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
-//           <script src="https://jsuites.net/v4/jsuites.js"></script>
-//         </Head>
-//         <main className={styles.main}>
-//           <HeaderGeneric logoUrl="/" btnUrl="/login" btnContent="Quero fazer login"/>
-//           <Container className="py-5">
-//             <p className={styles.formTitle}>Bem-vindo(a) ao OneBitFlix!</p>
-//             <Form className={styles.form} onSubmit={handleRegister}>
-//               <p className="text-center">
-//                 <strong>Bem-vindo(a) ao OneBitFlix!</strong>
-//               </p>
-//               <FormGroup>
-//                 <Label for="firstName" className={styles.label}>
-//                   NOME
-//                 </Label>
-//                 <Input
-//                   id="firstName"
-//                   name="firstName"
-//                   type="text"
-//                   placeholder="Qual o seu nome?"
-//                   required
-//                   maxLength={20}
-//                   className={styles.inputName}
-//                 />
-//               </FormGroup>
-//               <FormGroup>
-//                 <Label for="lastName" className={styles.label}>
-//                   SOBRENOME
-//                 </Label>
-//                 <Input
-//                   id="lastName"
-//                   name="lastName"
-//                   type="text"
-//                   placeholder="Qual o seu sobrenome?"
-//                   required
-//                   maxLength={20}
-//                   className={styles.inputName}
-//                 />
-//               </FormGroup>
-//               <FormGroup>
-//                 <Label for="phone" className={styles.label}>
-//                   WHATSAPP / TELEGRAM
-//                 </Label>
-//                 <Input
-//                   id="phone"
-//                   name="phone"
-//                   type="tel"
-//                   placeholder="(xx) 9xxxx-xxxx"
-//                   data-mask="[-]+55 (00) 00000-0000"
-//                   required
-//                   className={styles.input}
-//                 />
-//               </FormGroup>
-//               <FormGroup>
-//                 <Label for="email" className={styles.label}>
-//                   E-MAIL
-//                 </Label>
-//                 <Input
-//                   id="email"
-//                   name="email"
-//                   type="email"
-//                   placeholder="Digite o seu email"
-//                   required
-//                   className={styles.input}
-//                 />
-//               </FormGroup>
-//               <FormGroup>
-//                 <Label for="birth" className={styles.label}>
-//                   DATA DE NASCIMENTO
-//                 </Label>
-//                 <Input
-//                   id="birth"
-//                   name="birth"
-//                   type="date"
-//                   min="1930-01-01"
-//                   max="2023-12-31"
-//                   required
-//                   className={styles.input}
-//                 />
-//               </FormGroup>
-//               <FormGroup>
-//                 <Label for="password" className={styles.label}>
-//                   SENHA
-//                 </Label>
-//                 <Input
-//                   id="password"
-//                   name="password"
-//                   type="password"
-//                   placeholder="Digite a sua senha (Min: 6 | Max: 20)"
-//                   required
-//                   minLength={6}
-//                   maxLength={20}
-//                   className={styles.input}
-//                 />
-//               </FormGroup>
-//               <FormGroup>
-//                 <Label for="confirmPassword" className={styles.label}>
-//                   CONFIRME SUA SENHA
-//                 </Label>
-//                 <Input
-//                   id="confirmPassword"
-//                   name="confirmPassword"
-//                   type="password"
-//                   placeholder="Confirme a sua senha"
-//                   required
-//                   minLength={6}
-//                   maxLength={20}
-//                   className={styles.input}
-//                 />
-//               </FormGroup>
-//               <Button type="submit" outline className={styles.formBtn}>
-//                 CADASTRAR
-//               </Button>
-//             </Form>
-//             </Container>
-//             <Footer/>
-//             <ToastComponent color="bg-danger" isOpen={toastIsOpen} message={toastMessage}/>
-//         </main>
-//       </>
-//     );
-//   };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-// export default Register;
+    const payload: RegisterPayload = {
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      phone: form.phone || undefined,
+      role,
+      profile:
+        role === "freelancer"
+          ? { agencyId: form.agencyId || null, skills: form.skills || undefined }
+          : {
+              companyName: form.companyName,
+              cnpj: form.cnpj,
+              address: form.address,
+              commissionPercentage: role === "agency" ? Number(form.commissionPercentage) : undefined,
+            },
+    };
+
+    try {
+      const { user } = await authService.register(payload);
+      window.location.assign(ROLE_HOME[user.role] ?? "/");
+    } catch (err) {
+      setError(
+        axios.isAxiosError(err)
+          ? err.response?.data?.message ?? "Não foi possível cadastrar."
+          : "Não foi possível cadastrar."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isCompany = role === "supermarket" || role === "agency";
+
+  return (
+    <>
+      <Head><title>Criar conta | WorkFlow</title></Head>
+      <div className={s.page}>
+        <aside className={s.brand}>
+          <div className={s.brandInner}>
+            <div className={s.brandMark}><span>W</span> WorkFlow</div>
+            <h1 className={s.brandTitle}>Crie a sua conta</h1>
+            <p className={s.brandText}>
+              Comece em minutos. Escolha o seu perfil e tenha acesso à gestão completa de vagas,
+              equipes e pagamentos.
+            </p>
+            <ul className={s.brandList}>
+              <li><span className={s.check}>✓</span> Grátis para começar</li>
+              <li><span className={s.check}>✓</span> Sem cartão de crédito</li>
+              <li><span className={s.check}>✓</span> Configuração guiada</li>
+            </ul>
+          </div>
+        </aside>
+
+        <section className={s.formSide}>
+          <div className={s.card}>
+            <div className={s.mobileMark}><span>W</span> WorkFlow</div>
+            <h2 className={s.title}>Criar conta</h2>
+            <p className={s.subtitle}>Selecione o tipo de acesso.</p>
+
+            <div className={s.tabs}>
+              {ROLE_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={role === t.key ? s.tabActive : ""}
+                  onClick={() => setRole(t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <form className={`${s.form} ${s.scrollForm}`} onSubmit={handleSubmit}>
+              <div className={s.field}>
+                <label>Nome {role === "freelancer" ? "completo" : "do responsável"}</label>
+                <input value={form.name} onChange={(e) => set("name", e.target.value)} required />
+              </div>
+
+              <div className={s.field}>
+                <label>E-mail</label>
+                <input type="email" autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} required />
+              </div>
+
+              <div className={s.field}>
+                <label>Senha</label>
+                <div className={s.passwordWrap}>
+                  <input
+                    type={show ? "text" : "password"}
+                    autoComplete="new-password"
+                    minLength={4}
+                    value={form.password}
+                    onChange={(e) => set("password", e.target.value)}
+                    required
+                  />
+                  <button type="button" onClick={() => setShow((v) => !v)}>{show ? "Ocultar" : "Mostrar"}</button>
+                </div>
+              </div>
+
+              <div className={s.field}>
+                <label>Telefone</label>
+                <input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+              </div>
+
+              {isCompany && (
+                <>
+                  <div className={s.field}>
+                    <label>Nome da empresa</label>
+                    <input value={form.companyName} onChange={(e) => set("companyName", e.target.value)} required />
+                  </div>
+                  <div className={s.field}>
+                    <label>CNPJ</label>
+                    <input value={form.cnpj} onChange={(e) => set("cnpj", e.target.value)} required />
+                  </div>
+                  <div className={s.field}>
+                    <label>Endereço</label>
+                    <input value={form.address} onChange={(e) => set("address", e.target.value)} required />
+                  </div>
+                </>
+              )}
+
+              {role === "agency" && (
+                <div className={s.field}>
+                  <label>Comissão da agência (%)</label>
+                  <input type="number" min={0} max={100} step="0.5" value={form.commissionPercentage} onChange={(e) => set("commissionPercentage", e.target.value)} />
+                </div>
+              )}
+
+              {role === "freelancer" && (
+                <>
+                  <div className={s.field}>
+                    <label>Agência</label>
+                    <select value={form.agencyId} onChange={(e) => set("agencyId", e.target.value)}>
+                      <option value="">Sem agência (defina depois)</option>
+                      {agencies.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  </div>
+                  <div className={s.field}>
+                    <label>Habilidades</label>
+                    <textarea value={form.skills} onChange={(e) => set("skills", e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              {error && <p className={s.error}>{error}</p>}
+
+              <button className={s.submit} type="submit" disabled={loading}>
+                {loading ? "Enviando…" : "Criar conta"}
+              </button>
+            </form>
+
+            <div className={s.divider}>ou</div>
+            <p className={s.foot}>
+              Já tem uma conta? <Link href="/login" className={s.link}>Entrar</Link>
+            </p>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
