@@ -18,7 +18,7 @@ function ReportsPage() {
 
   return (
     <>
-      <Head><title>Relatório | Freelancer</title></Head>
+      <Head><title>Relatório | Colaborador</title></Head>
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>

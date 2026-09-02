@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import { getCategories, Category } from "@/src/services/categoryService";
+import { getBranches, Branch } from "@/src/services/branchService";
 import {
   getMyRates, saveRate, updateRate, deleteRate, AgencyCategoryRate,
 } from "@/src/services/agencyRateService";
@@ -12,34 +13,33 @@ import {
 function RatesPage() {
   const [rates, setRates] = useState<AgencyCategoryRate[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryId, setCategoryId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
   const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [r, c] = await Promise.all([getMyRates(), getCategories()]);
+      const [r, c, b] = await Promise.all([getMyRates(), getCategories(), getBranches()]);
       setRates(r);
       setCategories(c);
+      setBranches(b);
     } finally {
       setLoading(false);
     }
   };
   useEffect(() => { load().catch(() => {}); }, []);
 
-  const missing = useMemo(
-    () => categories.filter((c) => !rates.some((r) => r.categoryId === c.id)),
-    [categories, rates]
-  );
-
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
     try {
-      await saveRate({ categoryId, hourlyRate: Number(hourlyRate) });
+      await saveRate({ categoryId, branchId: branchId || null, hourlyRate: Number(hourlyRate) });
       setCategoryId("");
+      setBranchId("");
       setHourlyRate("");
       setMsg({ type: "success", text: "Valor/hora salvo." });
       await load();
@@ -85,7 +85,8 @@ function RatesPage() {
           <header className={panel.header}><h1>Tabela de valor/hora</h1></header>
           <p className={panel.muted}>
             O valor de cada vaga é calculado por <strong>valor/hora × horas trabalhadas</strong>.
-            O freelancer só consegue aceitar vagas de funções que estejam nesta tabela e ativas.
+            Cadastre um valor <strong>por loja</strong> ou um valor padrão (<em>Todas as lojas</em>) —
+            o específico da loja tem prioridade. O colaborador só aceita vagas de funções precificadas e ativas.
           </p>
 
           <form className={panel.card} onSubmit={add} style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -93,7 +94,14 @@ function RatesPage() {
               <label>Função</label>
               <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
                 <option value="">Selecione…</option>
-                {missing.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className={panel.filterField}>
+              <label>Loja</label>
+              <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+                <option value="">Todas as lojas (padrão)</option>
+                {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
             <div className={panel.filterField}>
@@ -108,11 +116,12 @@ function RatesPage() {
             <p>Carregando…</p>
           ) : (
             <table className={panel.table}>
-              <thead><tr><th>Função</th><th>Valor/hora</th><th>Situação</th><th>Ações</th></tr></thead>
+              <thead><tr><th>Função</th><th>Loja</th><th>Valor/hora</th><th>Situação</th><th>Ações</th></tr></thead>
               <tbody>
                 {rates.map((r) => (
                   <tr key={r.id}>
                     <td>{r.rateCategory?.name ?? categories.find((c) => c.id === r.categoryId)?.name ?? "—"}</td>
+                    <td>{r.rateBranch?.name ?? "Todas as lojas"}</td>
                     <td>
                       <input
                         type="number" min="0.01" step="0.01" defaultValue={Number(r.hourlyRate)}
@@ -127,7 +136,7 @@ function RatesPage() {
                     </td>
                   </tr>
                 ))}
-                {rates.length === 0 && <tr><td colSpan={4}>Nenhum valor/hora cadastrado.</td></tr>}
+                {rates.length === 0 && <tr><td colSpan={5}>Nenhum valor/hora cadastrado.</td></tr>}
               </tbody>
             </table>
           )}

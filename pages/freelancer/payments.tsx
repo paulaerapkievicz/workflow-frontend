@@ -45,7 +45,7 @@ function FreelancerPayments() {
 
   return (
     <>
-      <Head><title>Pagamentos | Freelancer</title></Head>
+      <Head><title>Pagamentos | Colaborador</title></Head>
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>

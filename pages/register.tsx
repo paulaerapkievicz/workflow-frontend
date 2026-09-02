@@ -11,7 +11,7 @@ type RoleKey = "supermarket" | "agency" | "freelancer";
 const ROLE_TABS: { key: RoleKey; label: string }[] = [
   { key: "supermarket", label: "Supermercado" },
   { key: "agency", label: "Agência" },
-  { key: "freelancer", label: "Freelancer" },
+  { key: "freelancer", label: "Colaborador" },
 ];
 
 const ROLE_HOME: Record<string, string> = {

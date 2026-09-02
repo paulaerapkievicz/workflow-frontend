@@ -55,7 +55,7 @@ export default function LoginPage() {
             <div className={s.brandMark}><span>W</span> WorkFlow</div>
             <h1 className={s.brandTitle}>Bem-vindo de volta</h1>
             <p className={s.brandText}>
-              A plataforma que conecta supermercados, agências e freelancers — do pedido de vagas
+              A plataforma que conecta supermercados, agências e colaboradores — do pedido de vagas
               ao pagamento, com controle em tempo real.
             </p>
             <ul className={s.brandList}>

@@ -6,6 +6,8 @@ export interface SideNavItem {
   href: string;
   label: string;
   icon: string;
+  /** Contador de pendências mostrado à direita do item. */
+  badge?: number;
 }
 
 interface Props {
@@ -33,6 +35,23 @@ export default function SideNav({ title, items }: Props) {
             >
               <span className={styles.icon} aria-hidden="true">{it.icon}</span>
               {it.label}
+              {it.badge ? (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    background: "var(--primary)",
+                    color: "#fff",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    lineHeight: "18px",
+                    minWidth: 18,
+                    textAlign: "center",
+                    padding: "0 5px",
+                  }}
+                >
+                  {it.badge}
+                </span>
+              ) : null}
             </Link>
           </li>
         ))}

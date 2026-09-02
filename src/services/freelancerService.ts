@@ -28,8 +28,11 @@ export const createFreelancer = async (freelancer: Omit<Freelancer, "id" | "crea
   return response.data;
 };
 
-// Atualizar freelancer
-export const updateFreelancer = async (id: string, data: Partial<Freelancer>): Promise<Freelancer> => {
+// Atualizar freelancer (campos de perfil — o backend ignora o resto)
+export const updateFreelancer = async (
+  id: string,
+  data: Partial<{ name: string; email: string; phone: string; skills: string }>
+): Promise<Freelancer> => {
   const response = await api.put(`/freelancers/${id}`, data);
   return response.data;
 };
@@ -39,8 +42,15 @@ export const deleteFreelancer = async (id: string): Promise<void> => {
   await api.delete(`/freelancers/${id}`);
 };
 
-// Listar categorias do freelancer
-export const getFreelancerCategories = async (id: string): Promise<unknown[]> => {
+export interface FreelancerCategoryRow {
+  id: string;
+  freelancerId: string;
+  categoryId: string;
+  category?: { id: string; name: string } | null;
+}
+
+// Listar categorias (funções) do freelancer
+export const getFreelancerCategories = async (id: string): Promise<FreelancerCategoryRow[]> => {
   const response = await api.get(`/freelancers/${id}/categories`);
   return response.data;
 };

@@ -1,3 +1,4 @@
+@use "sass:map";
 @use '../styles/variables' as *;
 
 .loginContainer {
@@ -5,7 +6,7 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: map-get($light-theme, background);
+  background: map.get($light-theme, background);
 }
 
 .loginBox {
@@ -22,7 +23,7 @@
 
 .subtitle {
   font-size: 16px;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
   margin-bottom: 20px;
 }
 

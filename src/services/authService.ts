@@ -10,9 +10,19 @@ export interface AuthUser {
   phone?: string | null;
 }
 
+export interface SupermarketMembership {
+  supermarketId: string;
+  branchId: string | null;
+  canSubmitOrders: boolean;
+  canApproveOrders: boolean;
+  isOwner: boolean;
+}
+
 export interface AuthProfile {
   id: string;
   name?: string;
+  /** Só para papel supermarket: permissões do usuário (dono ou gerente de loja). */
+  membership?: SupermarketMembership | null;
   [key: string]: unknown;
 }
 

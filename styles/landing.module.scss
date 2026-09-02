@@ -1,14 +1,15 @@
+@use "sass:map";
 @use "./variables" as *;
 
 .page {
   flex: 1;
-  background: map-get($light-theme, background);
-  color: map-get($light-theme, text);
+  background: map.get($light-theme, background);
+  color: map.get($light-theme, text);
   font-family: $font-base;
 
   body[data-theme="dark"] & {
-    background: map-get($dark-theme, background);
-    color: map-get($dark-theme, text);
+    background: map.get($dark-theme, background);
+    color: map.get($dark-theme, text);
   }
 }
 
@@ -86,11 +87,11 @@
 .lead {
   font-size: clamp(1rem, 1.6vw, 1.18rem);
   line-height: 1.6;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
   margin: 0 0 1.9rem;
   max-width: 34rem;
 
-  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
 }
 
 .actions {
@@ -183,8 +184,8 @@
   body[data-theme="dark"] & { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
 
   strong { font-weight: 700; }
-  span { color: map-get($light-theme, muted); font-size: 0.8rem; }
-  body[data-theme="dark"] & span { color: map-get($dark-theme, muted); }
+  span { color: map.get($light-theme, muted); font-size: 0.8rem; }
+  body[data-theme="dark"] & span { color: map.get($dark-theme, muted); }
 }
 
 .pill {
@@ -203,9 +204,9 @@
 }
 
 .sectionAlt {
-  background: map-get($light-theme, background-secondary);
+  background: map.get($light-theme, background-secondary);
 
-  body[data-theme="dark"] & { background: map-get($dark-theme, background-secondary); }
+  body[data-theme="dark"] & { background: map.get($dark-theme, background-secondary); }
 }
 
 .h2 {
@@ -218,13 +219,13 @@
 
 .sectionText {
   text-align: center;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
   max-width: 40rem;
   margin: 0 auto 2.75rem;
   font-size: 1.02rem;
   line-height: 1.6;
 
-  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
 }
 
 .cards {
@@ -236,7 +237,7 @@
 }
 
 .card {
-  background: map-get($light-theme, surface);
+  background: map.get($light-theme, surface);
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 16px;
   padding: 1.6rem;
@@ -245,7 +246,7 @@
   &:hover { transform: translateY(-4px); box-shadow: 0 24px 44px -24px rgba(30, 41, 99, 0.3); }
 
   body[data-theme="dark"] & {
-    background: map-get($dark-theme, surface);
+    background: map.get($dark-theme, surface);
     border-color: rgba(255, 255, 255, 0.08);
   }
 
@@ -261,8 +262,8 @@
   }
 
   h3 { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.5rem; }
-  p { color: map-get($light-theme, muted); line-height: 1.6; font-size: 0.95rem; margin: 0; }
-  body[data-theme="dark"] & p { color: map-get($dark-theme, muted); }
+  p { color: map.get($light-theme, muted); line-height: 1.6; font-size: 0.95rem; margin: 0; }
+  body[data-theme="dark"] & p { color: map.get($dark-theme, muted); }
 }
 
 .steps {
@@ -279,11 +280,11 @@
   position: relative;
   padding: 1.4rem;
   border-radius: 16px;
-  background: map-get($light-theme, surface);
+  background: map.get($light-theme, surface);
   border: 1px solid rgba(15, 23, 42, 0.08);
 
   body[data-theme="dark"] & {
-    background: map-get($dark-theme, surface);
+    background: map.get($dark-theme, surface);
     border-color: rgba(255, 255, 255, 0.08);
   }
 
@@ -302,8 +303,8 @@
   }
 
   h4 { font-size: 1rem; font-weight: 700; margin: 0 0 0.4rem; }
-  p { color: map-get($light-theme, muted); font-size: 0.9rem; line-height: 1.55; margin: 0; }
-  body[data-theme="dark"] & p { color: map-get($dark-theme, muted); }
+  p { color: map.get($light-theme, muted); font-size: 0.9rem; line-height: 1.55; margin: 0; }
+  body[data-theme="dark"] & p { color: map.get($dark-theme, muted); }
 }
 
 // ---------------- CTA band ----------------

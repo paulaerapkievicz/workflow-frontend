@@ -23,15 +23,15 @@ const AUDIENCES = [
   },
   {
     icon: "🎒",
-    title: "Freelancer",
+    title: "Colaborador",
     text: "Receba as vagas disponíveis, faça check-in no local com foto de comprovação e acompanhe tudo o que tem a receber.",
   },
 ];
 
 const STEPS = [
   { title: "Pedido de vagas", text: "O supermercado publica um pedido com as funções e a quantidade de atendentes." },
-  { title: "Agência precifica", text: "A agência define o valor/hora e a vaga fica disponível para os freelancers." },
-  { title: "Serviço no local", text: "O freelancer faz check-in por geolocalização, envia fotos e registra os turnos." },
+  { title: "Agência precifica", text: "A agência define o valor/hora e a vaga fica disponível para os colaboradores." },
+  { title: "Serviço no local", text: "O colaborador faz check-in por geolocalização, envia fotos e registra os turnos." },
   { title: "Fechamento mensal", text: "As horas trabalhadas viram uma fatura consolidada e o pagamento é feito no fechamento." },
 ];
 
@@ -45,7 +45,7 @@ export default function HomePage() {
         <title>WorkFlow — Gestão de vagas, equipes e pagamentos</title>
         <meta
           name="description"
-          content="WorkFlow conecta supermercados, agências e freelancers: pedidos de vagas em lote, check-in por geolocalização e fechamento mensal automático."
+          content="WorkFlow conecta supermercados, agências e colaboradores: pedidos de vagas em lote, check-in por geolocalização e fechamento mensal automático."
         />
         <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
       </Head>
@@ -60,7 +60,7 @@ export default function HomePage() {
                 Do <em>pedido de vagas</em> ao pagamento, tudo em um só lugar
               </h1>
               <p className={s.lead}>
-                O WorkFlow conecta supermercados, agências e freelancers com pedidos em lote,
+                O WorkFlow conecta supermercados, agências e colaboradores com pedidos em lote,
                 check-in por geolocalização e fechamento mensal automático.
               </p>
               <div className={s.actions}>

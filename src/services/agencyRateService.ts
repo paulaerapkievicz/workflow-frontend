@@ -4,11 +4,13 @@ export interface AgencyCategoryRate {
   id: string;
   agencyId: string;
   categoryId: string;
+  branchId?: string | null;
   hourlyRate: number;
   active: boolean;
   createdAt: string;
   updatedAt: string;
   rateCategory?: { id: string; name: string } | null;
+  rateBranch?: { id: string; name: string } | null;
 }
 
 export const getMyRates = async (): Promise<AgencyCategoryRate[]> =>
@@ -16,6 +18,7 @@ export const getMyRates = async (): Promise<AgencyCategoryRate[]> =>
 
 export const saveRate = async (payload: {
   categoryId: string;
+  branchId?: string | null;
   hourlyRate: number;
   active?: boolean;
 }): Promise<AgencyCategoryRate> => (await api.post("/agency/rates", payload)).data;

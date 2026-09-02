@@ -10,6 +10,7 @@ import FilterBar, { FilterFieldDef } from "@/src/components/FilterBar";
 import panel from "@/styles/panel.module.scss";
 import { getMyPayments, Payment, PAYMENT_STATUS_LABELS } from "@/src/services/paymentService";
 import { getJobs, reviewDelivery, Job } from "@/src/services/jobService";
+import { getAgencySettings } from "@/src/services/agencySettingsService";
 import {
   getMyWithdrawals, requestWithdrawal, Withdrawal, WITHDRAWAL_STATUS_LABELS,
 } from "@/src/services/withdrawalService";
@@ -30,17 +31,22 @@ function AgencyPayments() {
 
   const balance = Number((profile as { availableBalance?: number } | null)?.availableBalance ?? 0);
 
+  const [reviewEnabled, setReviewEnabled] = useState(false);
+
   const load = useCallback(async () => {
-    const [p, j, w] = await Promise.all([getMyPayments(), getJobs(), getMyWithdrawals()]);
+    const [p, j, w, s] = await Promise.all([
+      getMyPayments(), getJobs(), getMyWithdrawals(), getAgencySettings().catch(() => null),
+    ]);
     setPayments(p);
     setJobs(j);
     setWithdrawals(w);
+    setReviewEnabled(s?.reviewEnabled ?? false);
   }, []);
   useEffect(() => { load().catch(() => {}); }, [load]);
 
   const pendingReviews = useMemo(
-    () => jobs.filter((j) => j.status === "completed" && j.agencyReviewEnabled && !j.jobReview),
-    [jobs]
+    () => (reviewEnabled ? jobs.filter((j) => j.status === "completed" && !j.jobReview) : []),
+    [jobs, reviewEnabled]
   );
 
   const submitWithdrawal = async (e: React.FormEvent) => {
@@ -94,17 +100,17 @@ function AgencyPayments() {
 
   const filterFields: FilterFieldDef[] = [
     { key: "title", label: "Vaga", type: "text" },
-    { key: "freelancer", label: "Freelancer", type: "text" },
+    { key: "freelancer", label: "Colaborador", type: "text" },
     { key: "branch", label: "Filial", type: "text" },
     { key: "date", label: "Data", type: "date" },
   ];
 
   const columns: Column<Payment>[] = [
     { key: "title", label: "Vaga", render: (p) => p.paymentJob?.title ?? p.jobId.slice(0, 8) },
-    { key: "freelancer", label: "Freelancer", render: (p) => p.paymentFreelancer?.name ?? "—" },
+    { key: "freelancer", label: "Colaborador", render: (p) => p.paymentFreelancer?.name ?? "—" },
     { key: "gross", label: "Valor pago pelo mercado", render: (p) => `R$ ${Number(p.grossAmount ?? 0).toFixed(2)}`, defaultHidden: true },
     { key: "commission", label: "Comissão", render: (p) => `R$ ${Number(p.agencyAmount ?? 0).toFixed(2)}` },
-    { key: "freelancerAmount", label: "Valor do freelancer", render: (p) => `R$ ${Number(p.freelancerAmount ?? 0).toFixed(2)}` },
+    { key: "freelancerAmount", label: "Valor do colaborador", render: (p) => `R$ ${Number(p.freelancerAmount ?? 0).toFixed(2)}` },
     { key: "status", label: "Status", render: (p) => <span className={panel.badge}>{PAYMENT_STATUS_LABELS[p.status]}</span> },
     { key: "date", label: "Liberado em", render: (p) => (p.releasedAt ? new Date(p.releasedAt).toLocaleDateString("pt-BR") : "—") },
   ];
@@ -132,7 +138,7 @@ function AgencyPayments() {
             <>
               <h2 style={{ fontSize: "1.1rem" }}>Avaliações pendentes</h2>
               <table className={panel.table}>
-                <thead><tr><th>Vaga</th><th>Freelancer</th><th>Status</th><th>Ação</th></tr></thead>
+                <thead><tr><th>Vaga</th><th>Colaborador</th><th>Status</th><th>Ação</th></tr></thead>
                 <tbody>
                   {pendingReviews.map((j) => (
                     <tr key={j.id}>
@@ -147,7 +153,7 @@ function AgencyPayments() {
             </>
           )}
 
-          <h2 style={{ fontSize: "1.1rem" }}>Pagamentos dos freelancers</h2>
+          <h2 style={{ fontSize: "1.1rem" }}>Pagamentos dos colaboradores</h2>
           <FilterBar fields={filterFields} value={filter} onChange={setFilter} />
           <DataTable columns={columns} rows={rows} rowKey={(p) => p.id} storageKey="agency-payments" empty="Nenhum pagamento ainda." />
 

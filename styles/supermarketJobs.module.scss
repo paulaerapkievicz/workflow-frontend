@@ -1,3 +1,4 @@
+@use "sass:map";
 @use './variables' as *;
 
 .jobsContainer {
@@ -5,13 +6,13 @@
   min-height: 100vh;
 
   body[data-theme='light'] & {
-    background-color: map-get($light-theme, background);
-    color: map-get($light-theme, text);
+    background-color: map.get($light-theme, background);
+    color: map.get($light-theme, text);
   }
 
   body[data-theme='dark'] & {
-    background-color: map-get($dark-theme, background);
-    color: map-get($dark-theme, text);
+    background-color: map.get($dark-theme, background);
+    color: map.get($dark-theme, text);
   }
 }
 
@@ -68,13 +69,13 @@
 
     body[data-theme='dark'] & {
       background-color: rgba(255, 255, 255, 0.05);
-      color: map-get($dark-theme, text);
+      color: map.get($dark-theme, text);
       border-color: rgba(255, 255, 255, 0.1);
     }
 
     body[data-theme='light'] & {
       background-color: #fff;
-      color: map-get($light-theme, text);
+      color: map.get($light-theme, text);
     }
   }
 }
@@ -168,13 +169,13 @@
 
     body[data-theme='dark'] & {
       background-color: rgba(255, 255, 255, 0.05);
-      color: map-get($dark-theme, text);
+      color: map.get($dark-theme, text);
       border-color: rgba(255, 255, 255, 0.1);
     }
 
     body[data-theme='light'] & {
       background-color: #fff;
-      color: map-get($light-theme, text);
+      color: map.get($light-theme, text);
     }
   }
 }

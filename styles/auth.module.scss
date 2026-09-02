@@ -1,3 +1,4 @@
+@use "sass:map";
 @use "./variables" as *;
 
 // ---------------------------------------------------------------------------
@@ -8,12 +9,12 @@
   display: grid;
   grid-template-columns: 1.05fr 1fr;
   min-height: calc(100vh - 64px);
-  background: map-get($light-theme, background);
-  color: map-get($light-theme, text);
+  background: map.get($light-theme, background);
+  color: map.get($light-theme, text);
 
   body[data-theme="dark"] & {
-    background: map-get($dark-theme, background);
-    color: map-get($dark-theme, text);
+    background: map.get($dark-theme, background);
+    color: map.get($dark-theme, text);
   }
 
   @media (max-width: 900px) {
@@ -138,14 +139,14 @@
 .card {
   width: 100%;
   max-width: 400px;
-  background: map-get($light-theme, surface);
+  background: map.get($light-theme, surface);
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 18px;
   padding: 2.25rem;
   box-shadow: 0 20px 45px -20px rgba(15, 23, 42, 0.25);
 
   body[data-theme="dark"] & {
-    background: map-get($dark-theme, surface);
+    background: map.get($dark-theme, surface);
     border-color: rgba(255, 255, 255, 0.08);
     box-shadow: 0 20px 45px -20px rgba(0, 0, 0, 0.6);
   }
@@ -183,10 +184,10 @@
 
 .subtitle {
   font-size: 0.95rem;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
   margin: 0 0 1.75rem;
 
-  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
 }
 
 .form {
@@ -212,7 +213,7 @@
     padding: 0.7rem 0.85rem;
     font: inherit;
     font-size: 0.95rem;
-    color: map-get($light-theme, text);
+    color: map.get($light-theme, text);
     background: #fff;
     border: 1.5px solid #d7dce5;
     border-radius: 11px;
@@ -272,13 +273,13 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
   cursor: pointer;
   user-select: none;
 
   input { width: auto; }
 
-  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
 }
 
 .link {
@@ -337,7 +338,7 @@
   align-items: center;
   gap: 0.75rem;
   margin: 1.5rem 0 1.1rem;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
   font-size: 0.8rem;
 
   &::before,
@@ -349,7 +350,7 @@
   }
 
   body[data-theme="dark"] & {
-    color: map-get($dark-theme, muted);
+    color: map.get($dark-theme, muted);
     &::before, &::after { background: rgba(255, 255, 255, 0.12); }
   }
 }
@@ -357,10 +358,10 @@
 .foot {
   text-align: center;
   font-size: 0.9rem;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
   margin: 0;
 
-  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
 }
 
 // abas de perfil (cadastro)
@@ -370,7 +371,7 @@
   gap: 0.35rem;
   padding: 0.3rem;
   margin-bottom: 1.5rem;
-  background: map-get($light-theme, background-secondary);
+  background: map.get($light-theme, background-secondary);
   border-radius: 12px;
 
   button {
@@ -378,7 +379,7 @@
     font: inherit;
     font-size: 0.85rem;
     font-weight: 600;
-    color: map-get($light-theme, muted);
+    color: map.get($light-theme, muted);
     background: transparent;
     border: none;
     border-radius: 9px;

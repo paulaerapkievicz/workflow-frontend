@@ -1,3 +1,4 @@
+@use "sass:map";
 @use '../styles/variables' as *;
 
 .footer {
@@ -9,7 +10,7 @@
   font-size: 0.85rem;
 
   body[data-theme='dark'] & {
-    background-color: map-get($dark-theme, surface);
-    color: map-get($dark-theme, muted);
+    background-color: map.get($dark-theme, surface);
+    color: map.get($dark-theme, muted);
   }
 }

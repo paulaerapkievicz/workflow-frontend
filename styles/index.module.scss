@@ -1,7 +1,8 @@
+@use "sass:map";
 @use "./variables" as *;
 
 .main {
-  background-color: map-get($light-theme, background);
+  background-color: map.get($light-theme, background);
   min-height: 100vh;
   padding: 40px 20px;
   display: flex;
@@ -10,8 +11,8 @@
   font-family: $font-base;
 
   body[data-theme="dark"] & {
-    background-color: map-get($dark-theme, background);
-    color: map-get($dark-theme, text);
+    background-color: map.get($dark-theme, background);
+    color: map.get($dark-theme, text);
   }
 }
 
@@ -29,7 +30,7 @@
   p {
     margin-top: 16px;
     font-size: 1.2rem;
-    color: map-get($light-theme, muted);
+    color: map.get($light-theme, muted);
   }
 }
 
@@ -59,7 +60,7 @@
   p {
     font-size: 0.95rem;
     margin: 10px 0 20px;
-    color: map-get($light-theme, muted);
+    color: map.get($light-theme, muted);
   }
 
   &:hover {
@@ -77,6 +78,6 @@
   margin-top: 80px;
   padding: 20px;
   font-size: 0.85rem;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
   text-align: center;
 }

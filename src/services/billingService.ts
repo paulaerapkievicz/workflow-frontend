@@ -1,26 +1,43 @@
 import api from "@/src/services/api";
 
-export interface BillingCategoryLine {
+/** Uma vaga concluída — linha "crua" do faturamento (o front monta os cruzamentos). */
+export interface BillingJob {
+  jobId: string;
+  title: string;
+  completedAt: string | null;
+  referenceMonth: string | null;
+  branchId: string;
+  branchName: string;
   categoryId: string;
   categoryName: string;
-  count: number;
-  contractedHours: number;
-  workedHours: number;
+  shiftPeriod: string | null;
+  orderId: string | null;
+  orderCreatedAt: string | null;
+  freelancerName: string | null;
+  contractedMinutes: number;
+  workedMinutes: number;
   amount: number;
+  invoiceId: string | null;
 }
 
-export interface BillingMonth {
-  referenceMonth: string;
+export interface BillingInvoice {
+  id: string;
+  referenceMonth: string | null;
+  agencyName: string | null;
+  branchId: string | null;
+  branchName: string | null;
   totalJobs: number;
-  contractedHours: number;
-  workedHours: number;
+  contractedMinutes: number;
+  workedMinutes: number;
   totalAmount: number;
-  byCategory: BillingCategoryLine[];
-  invoices: { id: string; agencyName: string | null; totalAmount: number; status: string }[];
+  status: "pending" | "paid" | "canceled";
+  createdAt: string;
 }
 
 export interface BillingSummary {
-  months: BillingMonth[];
+  jobs: BillingJob[];
+  branches: { id: string; name: string }[];
+  invoices: BillingInvoice[];
   totals: {
     totalJobs: number;
     contractedHours: number;
@@ -35,6 +52,7 @@ export interface MonthlyClosing {
   id: string;
   supermarketId: string;
   agencyId: string | null;
+  branchId: string | null;
   type: "job" | "monthly";
   referenceMonth: string | null;
   periodStart: string | null;
@@ -47,11 +65,18 @@ export interface MonthlyClosing {
   createdAt: string;
   invoiceSupermarket?: { id: string; name: string } | null;
   invoiceAgency?: { id: string; name: string } | null;
+  invoiceBranch?: { id: string; name: string } | null;
   invoiceJobs?: { id: string; title: string; grossAmount?: number | null }[];
 }
 
 export interface ClosingPreview {
-  jobs: { id: string; title: string; grossAmount?: number | null; workedMinutes?: number | null }[];
+  jobs: {
+    id: string;
+    title: string;
+    grossAmount?: number | null;
+    workedMinutes?: number | null;
+    jobBranch?: { id: string; name: string } | null;
+  }[];
   totals: {
     referenceMonth: string;
     totalJobs: number;
@@ -93,15 +118,19 @@ export const getClosings = async (): Promise<MonthlyClosing[]> =>
 
 export const previewClosing = async (
   supermarketId: string,
-  referenceMonth: string
+  referenceMonth: string,
+  branchId?: string | null
 ): Promise<ClosingPreview> =>
-  (await api.get("/closings/preview", { params: { supermarketId, referenceMonth } })).data;
+  (await api.get("/closings/preview", {
+    params: { supermarketId, referenceMonth, ...(branchId ? { branchId } : {}) },
+  })).data;
 
 export const createClosing = async (
   supermarketId: string,
-  referenceMonth: string
+  referenceMonth: string,
+  branchId?: string | null
 ): Promise<MonthlyClosing> =>
-  (await api.post("/closings", { supermarketId, referenceMonth })).data;
+  (await api.post("/closings", { supermarketId, referenceMonth, ...(branchId ? { branchId } : {}) })).data;
 
 export const payClosing = async (id: string): Promise<MonthlyClosing> =>
   (await api.post(`/invoices/${id}/pay`)).data;
@@ -110,4 +139,13 @@ export const CLOSING_STATUS_LABELS: Record<MonthlyClosing["status"], string> = {
   pending: "A pagar",
   paid: "Paga",
   canceled: "Cancelada",
+};
+
+// ---- helpers de agregação para o faturamento ----
+export const hoursFromMin = (min: number) => Number((min / 60).toFixed(1));
+export const money = (v: number) => `R$ ${Number(v).toFixed(2)}`;
+export const monthName = (ref: string | null) => {
+  if (!ref) return "—";
+  const [y, m] = ref.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 };

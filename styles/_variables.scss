@@ -1,3 +1,4 @@
+@use "sass:map";
 // 🎨 Cores base extraídas do logo Workflow
 $primary-color: #4e6cff;
 $primary-dark: #2d4fe0;
@@ -47,7 +48,7 @@ $font-base: 'Inter', sans-serif;
 
 // 🧩 Mixin: Card
 @mixin card {
-  background: map-get($light-theme, surface);
+  background: map.get($light-theme, surface);
   padding: $padding-base;
   border-radius: $radius-base;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);

@@ -25,11 +25,11 @@ function Dashboard() {
 
   return (
     <>
-      <Head><title>Dashboard | Freelancer</title></Head>
+      <Head><title>Dashboard | Colaborador</title></Head>
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Painel do Freelancer</h1></header>
+          <header className={panel.header}><h1>Painel do Colaborador</h1></header>
           <div className={panel.cards}>
             <div className={panel.card}><h2>R$ {balance.toFixed(2)}</h2><p>Saldo disponível</p></div>
             <div className={panel.card}><h2>{active}</h2><p>Trabalhos ativos</p></div>

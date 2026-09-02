@@ -1,3 +1,4 @@
+@use "sass:map";
 @use "../styles/variables" as *;
 
 .header {
@@ -52,7 +53,7 @@
 }
 
 .navLink {
-  color: map-get($light-theme, text);
+  color: map.get($light-theme, text);
   font-weight: 600;
   font-size: 0.92rem;
   text-decoration: none;
@@ -109,9 +110,9 @@
 .hi {
   font-size: 0.9rem;
   font-weight: 600;
-  color: map-get($light-theme, muted);
+  color: map.get($light-theme, muted);
 
-  body[data-theme="dark"] & { color: map-get($dark-theme, muted); }
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
 
   @media (max-width: 640px) { display: none; }
 }
