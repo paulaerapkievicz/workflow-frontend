@@ -41,7 +41,7 @@ export function useAuth() {
   const logout = useCallback(() => {
     authService.logout();
     setState({ user: null, profile: null, role: null, loading: false, authenticated: false });
-    if (typeof window !== "undefined") window.location.href = "/";
+    if (typeof window !== "undefined") window.location.href = "/login";
   }, []);
 
   return { ...state, refresh, logout };

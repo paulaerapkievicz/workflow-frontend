@@ -8,17 +8,25 @@ import panel from "@/styles/panel.module.scss";
 import {
   getAgencyUniforms, shipUniform, reviewUniform, UNIFORM_STATUS_LABELS, UniformOrder,
 } from "@/src/services/onboardingService";
+import {
+  getPendingFreelancers, approveFreelancer, rejectFreelancer, PendingFreelancer,
+} from "@/src/services/agencyService";
 import { photoUrl } from "@/src/services/jobPhotoService";
 
 function OnboardingPage() {
   const [orders, setOrders] = useState<UniformOrder[]>([]);
+  const [pending, setPending] = useState<PendingFreelancer[]>([]);
   const [loading, setLoading] = useState(true);
   const [review, setReview] = useState<UniformOrder | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { setOrders(await getAgencyUniforms()); } finally { setLoading(false); }
+    try {
+      const [u, p] = await Promise.all([getAgencyUniforms(), getPendingFreelancers()]);
+      setOrders(u);
+      setPending(p);
+    } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -48,7 +56,36 @@ function OnboardingPage() {
             <p>Carregando…</p>
           ) : (
             <>
-              <h2 style={{ fontSize: "1.05rem" }}>Uniformes a enviar ({toShip.length})</h2>
+              <h2 style={{ fontSize: "1.05rem" }}>Cadastros pendentes ({pending.length})</h2>
+              <p className={panel.muted}>
+                Colaboradores que se autocadastraram e aguardam a sua aprovação para acessar a plataforma.
+              </p>
+              <table className={panel.table}>
+                <thead><tr><th>Nome</th><th>E-mail</th><th>Documento</th><th>Telefone</th><th>Ações</th></tr></thead>
+                <tbody>
+                  {pending.map((f) => (
+                    <tr key={f.id}>
+                      <td>{f.name}</td>
+                      <td>{f.email}</td>
+                      <td>{f.document ?? "—"}</td>
+                      <td>{f.phone ?? "—"}</td>
+                      <td>
+                        <button className={panel.primaryBtn} disabled={busy === f.id}
+                          onClick={() => act(f.id, () => approveFreelancer(f.id))}>
+                          Aprovar
+                        </button>{" "}
+                        <button className={panel.secondaryBtn} disabled={busy === f.id}
+                          onClick={() => { if (confirm(`Recusar o cadastro de ${f.name}? A conta será removida.`)) act(f.id, () => rejectFreelancer(f.id)); }}>
+                          Recusar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {pending.length === 0 && <tr><td colSpan={5} className={panel.muted}>Nenhum cadastro pendente.</td></tr>}
+                </tbody>
+              </table>
+
+              <h2 style={{ fontSize: "1.05rem", marginTop: "1.5rem" }}>Uniformes a enviar ({toShip.length})</h2>
               <table className={panel.table}>
                 <thead><tr><th>Colaborador</th><th>Tamanho</th><th>Valor</th><th>Ação</th></tr></thead>
                 <tbody>

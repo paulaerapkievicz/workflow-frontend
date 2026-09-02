@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import styles from "@/styles/Header.module.scss";
@@ -22,9 +21,9 @@ const Header = () => {
   return (
     <header className={styles.header}>
       <div className={styles.container}>
-        <Link href="/" className={styles.logo}>
-          <Image src="/logoWorkflow.png" alt="WorkFlow" width={30} height={30} priority />
-          <span className={styles.wordmark}>WorkFlow</span>
+        {/* Uma única imagem via background: tema claro = logo completo, tema escuro = só a marca "W". */}
+        <Link href="/" className={styles.logo} aria-label="WorkFlow — Gente certa, na hora certa">
+          <span className={styles.logoImg} role="img" aria-label="WorkFlow" />
         </Link>
 
         <nav className={styles.nav}>

@@ -16,6 +16,7 @@ function SettingsPage() {
     commissionPercentage: "10",
     onboardingRequired: false,
     uniformPrice: "0",
+    allowSelfRegistration: false,
   });
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -33,6 +34,7 @@ function SettingsPage() {
           commissionPercentage: String(s.commissionPercentage),
           onboardingRequired: s.onboardingRequired,
           uniformPrice: String(s.uniformPrice),
+          allowSelfRegistration: s.allowSelfRegistration,
         });
       })
       .catch(() => {})
@@ -52,6 +54,7 @@ function SettingsPage() {
         commissionPercentage: Number(form.commissionPercentage),
         onboardingRequired: form.onboardingRequired,
         uniformPrice: Number(form.uniformPrice),
+        allowSelfRegistration: form.allowSelfRegistration,
       });
       setSettings(s);
       setMsg({ type: "ok", text: "Configurações salvas." });
@@ -104,6 +107,16 @@ function SettingsPage() {
                 </label>
 
                 <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                <label className={panel.toggleRow}>
+                  <input type="checkbox" checked={form.allowSelfRegistration}
+                    onChange={(e) => setForm({ ...form, allowSelfRegistration: e.target.checked })} />
+                  Permitir que colaboradores se autocadastrem nesta agência
+                </label>
+                <span className={panel.muted}>
+                  Quando ligado, aparece um formulário simples de cadastro. Cada cadastro fica
+                  pendente até você aprovar em <strong>Cadastros pendentes</strong>.
+                </span>
+
                 <label className={panel.toggleRow}>
                   <input type="checkbox" checked={form.onboardingRequired}
                     onChange={(e) => setForm({ ...form, onboardingRequired: e.target.checked })} />

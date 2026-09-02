@@ -27,7 +27,7 @@ api.interceptors.response.use(
       localStorage.removeItem("role");
       localStorage.removeItem("userId");
       localStorage.removeItem("profileId");
-      if (!onAuthPage) window.location.href = "/";
+      if (!onAuthPage) window.location.href = "/login";
     }
     return Promise.reject(error);
   }

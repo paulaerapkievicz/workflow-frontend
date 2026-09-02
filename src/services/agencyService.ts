@@ -9,9 +9,29 @@ export interface Agency {
   ownerId: string;
   availableBalance: number;
   commissionPercentage: number;
+  allowSelfRegistration?: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PendingFreelancer {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  document?: string | null;
+  skills?: string | null;
+  createdAt: string;
+}
+
+export const getPendingFreelancers = async (): Promise<PendingFreelancer[]> =>
+  (await api.get("/agency/pending-freelancers")).data;
+
+export const approveFreelancer = async (id: string): Promise<unknown> =>
+  (await api.post(`/agency/freelancers/${id}/approve`)).data;
+
+export const rejectFreelancer = async (id: string): Promise<unknown> =>
+  (await api.post(`/agency/freelancers/${id}/reject`)).data;
 
 export interface AgencyFreelancer {
   id: string;

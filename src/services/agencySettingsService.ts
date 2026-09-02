@@ -13,6 +13,8 @@ export interface AgencySettings {
   onboardingRequired: boolean;
   /** Preço do kit uniforme cobrado do colaborador. */
   uniformPrice: number;
+  /** Permite que colaboradores se autocadastrem nesta agência (com aprovação depois). */
+  allowSelfRegistration: boolean;
 }
 
 export const getAgencySettings = async (): Promise<AgencySettings> =>

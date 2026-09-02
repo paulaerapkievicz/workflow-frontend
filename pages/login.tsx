@@ -6,6 +6,7 @@ import axios from "axios";
 import s from "@/styles/auth.module.scss";
 import { authService } from "@/src/services/authService";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useSelfRegistrationOpen } from "@/src/hooks/useSelfRegistrationOpen";
 
 const ROLE_HOME: Record<string, string> = {
   admin: "/",
@@ -17,6 +18,7 @@ const ROLE_HOME: Record<string, string> = {
 export default function LoginPage() {
   const router = useRouter();
   const { authenticated, role, loading: authLoading } = useAuth();
+  const registrationOpen = useSelfRegistrationOpen();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -118,10 +120,14 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className={s.divider}>ou</div>
-            <p className={s.foot}>
-              Ainda não tem conta? <Link href="/register" className={s.link}>Criar conta grátis</Link>
-            </p>
+            {registrationOpen && (
+              <>
+                <div className={s.divider}>ou</div>
+                <p className={s.foot}>
+                  Colaborador com convite da agência? <Link href="/register" className={s.link}>Criar conta</Link>
+                </p>
+              </>
+            )}
           </div>
         </section>
       </div>

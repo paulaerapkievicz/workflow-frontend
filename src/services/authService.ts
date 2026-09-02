@@ -44,6 +44,7 @@ export interface RegisterPayload {
     address?: string;
     commissionPercentage?: number;
     agencyId?: string | null;
+    document?: string;
     skills?: string;
   };
 }

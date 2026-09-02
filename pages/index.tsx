@@ -2,6 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import s from "@/styles/landing.module.scss";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useSelfRegistrationOpen } from "@/src/hooks/useSelfRegistrationOpen";
 
 const ROLE_HOME: Record<string, string> = {
   admin: "/",
@@ -37,6 +38,7 @@ const STEPS = [
 
 export default function HomePage() {
   const { authenticated, role } = useAuth();
+  const registrationOpen = useSelfRegistrationOpen();
   const panelHref = role ? ROLE_HOME[role] ?? "/" : "/login";
 
   return (
@@ -47,7 +49,7 @@ export default function HomePage() {
           name="description"
           content="WorkFlow conecta supermercados, agências e colaboradores: pedidos de vagas em lote, check-in por geolocalização e fechamento mensal automático."
         />
-        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+        <link rel="shortcut icon" href="/favicon.ico?v=3" type="image/x-icon" />
       </Head>
 
       <main className={s.page}>
@@ -68,8 +70,10 @@ export default function HomePage() {
                   <Link href={panelHref} className={s.btnPrimary}>Ir para o meu painel</Link>
                 ) : (
                   <>
-                    <Link href="/register" className={s.btnPrimary}>Criar conta grátis</Link>
-                    <Link href="/login" className={s.btnGhost}>Entrar</Link>
+                    <Link href="/login" className={s.btnPrimary}>Entrar</Link>
+                    {registrationOpen && (
+                      <Link href="/register" className={s.btnGhost}>Criar conta</Link>
+                    )}
                   </>
                 )}
               </div>
@@ -132,9 +136,13 @@ export default function HomePage() {
         <section className={`${s.wrap} ${s.ctaBand}`}>
           <div className={s.ctaInner}>
             <h2>Pronto para organizar a sua operação?</h2>
-            <p>Crie a sua conta gratuitamente e faça o primeiro pedido em minutos.</p>
-            <Link href={authenticated ? panelHref : "/register"} className={s.ctaBtn}>
-              {authenticated ? "Abrir o painel" : "Começar agora"}
+            <p>
+              {authenticated
+                ? "Acompanhe as suas vagas, equipes e pagamentos em um só lugar."
+                : "Acesse a sua conta para gerenciar vagas, equipes e pagamentos."}
+            </p>
+            <Link href={authenticated ? panelHref : "/login"} className={s.ctaBtn}>
+              {authenticated ? "Abrir o painel" : "Entrar"}
             </Link>
           </div>
         </section>
