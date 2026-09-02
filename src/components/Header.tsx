@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import styles from "@/styles/Header.module.scss";
 import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useSelfRegistrationOpen } from "@/src/hooks/useSelfRegistrationOpen";
 
 const ROLE_HOME: Record<string, string> = {
   admin: "/",
@@ -14,6 +15,7 @@ const ROLE_HOME: Record<string, string> = {
 const Header = () => {
   const router = useRouter();
   const { authenticated, role, user, loading, logout } = useAuth();
+  const registrationOpen = useSelfRegistrationOpen();
 
   // Nas telas internas (painéis) o cabeçalho lateral já dá o contexto — mantemos o topo enxuto.
   const onPanel = /^\/(supermarket|agency|freelancer|admin)(\/|$)/.test(router.pathname);
@@ -38,7 +40,9 @@ const Header = () => {
           ) : (
             <>
               <Link href="/login" className={styles.navLink}>Entrar</Link>
-              <Link href="/register" className={styles.cta}>Criar conta</Link>
+              {registrationOpen && (
+                <Link href="/register" className={styles.cta}>Criar conta</Link>
+              )}
             </>
           )}
           <span className={styles.themeWrap}><ThemeToggle /></span>
