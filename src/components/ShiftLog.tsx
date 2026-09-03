@@ -1,5 +1,6 @@
 import panel from "@/styles/panel.module.scss";
 import { JobShift, minutesToHours } from "@/src/services/jobService";
+import { fmtTime } from "@/src/lib/datetime";
 
 export const SHIFT_STATUS_LABELS: Record<string, string> = {
   pending: "Aguardando",
@@ -7,8 +8,6 @@ export const SHIFT_STATUS_LABELS: Record<string, string> = {
   done: "Concluído",
   missed: "Perdido",
 };
-
-const hhmm = (iso?: string | null) => (iso ? iso.slice(11, 16) : "—");
 
 /** Tabela de ponto de todos os turnos de uma vaga (check-in/out por turno). */
 export default function ShiftLog({ shifts }: { shifts?: JobShift[] | null }) {
@@ -26,9 +25,9 @@ export default function ShiftLog({ shifts }: { shifts?: JobShift[] | null }) {
           {rows.map((s, i) => (
             <tr key={s.id}>
               <td>{s.label || `Turno ${i + 1}`}</td>
-              <td>{s.startTime.slice(11, 16)}–{s.endTime.slice(11, 16)}</td>
-              <td>{hhmm(s.checkInAt)}</td>
-              <td>{hhmm(s.checkOutAt)}</td>
+              <td>{fmtTime(s.startTime)}–{fmtTime(s.endTime)}</td>
+              <td>{fmtTime(s.checkInAt)}</td>
+              <td>{fmtTime(s.checkOutAt)}</td>
               <td><span className={panel.badge}>{SHIFT_STATUS_LABELS[s.status ?? "pending"]}</span></td>
               <td>{minutesToHours(s.workedMinutes)}</td>
             </tr>

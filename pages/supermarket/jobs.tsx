@@ -20,6 +20,7 @@ import {
   shiftPeriodFromTime, ShiftInput, ShiftPeriod,
 } from "@/src/services/shifts";
 import { matchesFilter, RowFilter } from "@/src/lib/filterRows";
+import { fmtTime, fmtDate, isoDateBR } from "@/src/lib/datetime";
 
 function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -37,8 +38,7 @@ function JobsPage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   const shiftSortIndex = (p: ShiftPeriod) => SHIFT_PERIODS.findIndex((x) => x.value === p);
-  const hhmm = (iso: string) =>
-    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const hhmm = fmtTime;
 
   const load = async () => {
     setLoading(true);
@@ -68,7 +68,7 @@ function JobsPage() {
     setForm({
       title: job.title,
       categoryId: job.categoryId,
-      date: job.startTime.slice(0, 10),
+      date: isoDateBR(job.startTime),
       shifts,
     });
     setEditError(null);
@@ -155,7 +155,7 @@ function JobsPage() {
     { key: "title", label: "Título", render: (j) => j.title },
     { key: "branch", label: "Filial", render: (j) => j.jobBranch?.name ?? branchName(j.branchId) },
     { key: "category", label: "Função", render: (j) => j.jobCategory?.name ?? categoryName(j.categoryId) },
-    { key: "date", label: "Data", render: (j) => new Date(j.startTime).toLocaleDateString("pt-BR") },
+    { key: "date", label: "Data", render: (j) => fmtDate(j.startTime) },
     { key: "shift", label: "Turno", render: (j) => formatShiftPeriods(j) },
     { key: "hours", label: "Horário", render: (j) => formatShifts(j.shifts) },
     { key: "contracted", label: "Horas contratadas", render: (j) => minutesToHours(j.contractedMinutes), defaultHidden: true },

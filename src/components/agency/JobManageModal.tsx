@@ -10,8 +10,9 @@ import {
   shiftPeriodFromTime, ShiftInput, ShiftPeriod,
 } from "@/src/services/shifts";
 
-const hhmm = (iso: string) =>
-  new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false });
+import { fmtTime, isoDateBR } from "@/src/lib/datetime";
+
+const hhmm = fmtTime;
 const shiftSortIndex = (p: ShiftPeriod) => SHIFT_PERIODS.findIndex((x) => x.value === p);
 
 interface Props {
@@ -27,7 +28,7 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
   const pending = job.status === "pending";
   const [title, setTitle] = useState(job.title);
   const [categoryId, setCategoryId] = useState(job.categoryId);
-  const [date, setDate] = useState(job.startTime.slice(0, 10));
+  const [date, setDate] = useState(isoDateBR(job.startTime));
   const [shifts, setShifts] = useState<ShiftInput[]>(() => {
     const s = [...(job.shifts ?? [])]
       .sort((a, b) => a.position - b.position)

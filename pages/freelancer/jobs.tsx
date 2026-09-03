@@ -14,6 +14,7 @@ import { getJobPhotos, uploadJobPhoto, photoUrl, JobPhoto } from "@/src/services
 import { authService } from "@/src/services/authService";
 import { useAuth } from "@/src/hooks/useAuth";
 import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
+import { fmtTime, fmtDate } from "@/src/lib/datetime";
 
 const SHIFT_STATUS_LABELS: Record<string, string> = {
   pending: "Aguardando", in_progress: "Em andamento", done: "Concluído", missed: "Perdido",
@@ -180,7 +181,6 @@ function MyJobs() {
     }
   };
 
-  const hhmm = (iso?: string | null) => (iso ? iso.slice(11, 16) : "—");
   const currentShift = (j: Job) => sortShifts(j.shifts).find((s) => s.status === "in_progress");
   const nextPending = (j: Job) => sortShifts(j.shifts).find((s) => (s.status ?? "pending") === "pending");
   const allDone = (j: Job) => sortShifts(j.shifts).every((s) => s.status === "done");
@@ -236,7 +236,7 @@ function MyJobs() {
                           {j.jobBranch?.name}{j.jobBranch?.address ? ` — ${j.jobBranch.address}` : ""}
                         </p>
                         <p className={panel.muted}>
-                          {new Date(j.startTime).toLocaleDateString("pt-BR")} · {formatShiftPeriods(j)} · {formatShifts(j.shifts)}
+                          {fmtDate(j.startTime)} · {formatShiftPeriods(j)} · {formatShifts(j.shifts)}
                         </p>
                         {j.jobBranch?.address && (
                           <button className={panel.ghostBtn} style={{ marginTop: 4 }} onClick={() => setMapJobId(j.id)}>
@@ -266,9 +266,9 @@ function MyJobs() {
                             {shifts.map((s, i) => (
                               <tr key={s.id}>
                                 <td>{s.label || `Turno ${i + 1}`}</td>
-                                <td>{s.startTime.slice(11, 16)}–{s.endTime.slice(11, 16)}</td>
-                                <td>{hhmm(s.checkInAt)}</td>
-                                <td>{hhmm(s.checkOutAt)}</td>
+                                <td>{fmtTime(s.startTime)}–{fmtTime(s.endTime)}</td>
+                                <td>{fmtTime(s.checkInAt)}</td>
+                                <td>{fmtTime(s.checkOutAt)}</td>
                                 <td><span className={panel.badge}>{SHIFT_STATUS_LABELS[s.status ?? "pending"]}</span></td>
                                 <td>{minutesToHours(s.workedMinutes)}</td>
                               </tr>

@@ -4,6 +4,7 @@ import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import { getFreelancerReport, FreelancerReport } from "@/src/services/billingService";
+import { fmtDate } from "@/src/lib/datetime";
 
 const hrs = (h: number) => `${h.toFixed(1).replace(".", ",")} h`;
 const money = (v: number) => `R$ ${Number(v).toFixed(2)}`;
@@ -42,7 +43,7 @@ function ReportsPage() {
                 <tbody>
                   {report.items.map((i) => (
                     <tr key={i.jobId}>
-                      <td>{i.date ? new Date(i.date).toLocaleDateString("pt-BR") : "—"}</td>
+                      <td>{fmtDate(i.date)}</td>
                       <td>{i.title}</td>
                       <td>{i.categoryName ?? "—"}</td>
                       <td>{i.supermarketName ?? "—"}{i.branchName ? ` · ${i.branchName}` : ""}</td>

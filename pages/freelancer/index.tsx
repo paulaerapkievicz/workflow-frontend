@@ -9,6 +9,7 @@ import {
 } from "@/src/services/jobService";
 import { distanceInMeters, formatDistance } from "@/src/lib/distance";
 import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
+import { fmtDate } from "@/src/lib/datetime";
 
 function AvailableJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -173,7 +174,7 @@ function AvailableJobs() {
                         </td>
                         {me && <td>{d == null ? "—" : formatDistance(d)}</td>}
                         <td>{j.jobCategory?.name ?? "—"}</td>
-                        <td>{new Date(j.startTime).toLocaleDateString("pt-BR")}</td>
+                        <td>{fmtDate(j.startTime)}</td>
                         <td>{formatShiftPeriods(j)}</td>
                         <td>{formatShifts(j.shifts)}</td>
                         <td>{minutesToHours(j.contractedMinutes)}</td>

@@ -1,4 +1,5 @@
 // Filtro genérico client-side para as tabelas de Vagas e Pagamentos.
+import { isoDateBR } from "@/src/lib/datetime";
 
 export interface RowFilter {
   status?: string;
@@ -26,7 +27,7 @@ export function matchesFilter(row: FilterableRow, f: RowFilter): boolean {
   if (f.branch && !norm(row.branchName).includes(norm(f.branch))) return false;
   if (f.title && !norm(row.title).includes(norm(f.title))) return false;
   if (f.category && !norm(row.categoryName).includes(norm(f.category))) return false;
-  if (f.date && (row.date ?? "").slice(0, 10) !== f.date) return false;
+  if (f.date && isoDateBR(row.date) !== f.date) return false;
   return true;
 }
 

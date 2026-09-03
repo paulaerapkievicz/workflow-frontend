@@ -43,9 +43,15 @@ export const makeShiftInput = (period: ShiftPeriod): ShiftInput => {
   return { shiftPeriod: period, startTime: min, endTime: max };
 };
 
-/** Deduz o turno a partir da hora de início (as janelas dos turnos não se sobrepõem). */
+/** Deduz o turno a partir da hora de início, sempre no fuso de Brasília. */
 export const shiftPeriodFromTime = (iso: string): ShiftPeriod => {
-  const h = new Date(iso).getHours();
+  const hhmm = new Date(iso).toLocaleTimeString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const h = Number(hhmm.slice(0, 2));
   if (h < 6) return "madrugada";
   if (h < 12) return "manha";
   if (h < 18) return "tarde";

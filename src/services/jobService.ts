@@ -1,6 +1,7 @@
 import api from "@/src/services/api";
 import { shiftLabel } from "@/src/services/shifts";
 import type { ShiftInput, ShiftPeriod } from "@/src/services/shifts";
+import { fmtTime } from "@/src/lib/datetime";
 
 export type JobStatus = "pending" | "accepted" | "in_progress" | "completed" | "canceled";
 
@@ -199,11 +200,9 @@ export const STATUS_LABELS: Record<JobStatus, string> = {
 
 export const formatShifts = (shifts?: JobShift[] | null): string => {
   if (!shifts?.length) return "—";
-  const hhmm = (iso: string) =>
-    new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   return [...shifts]
     .sort((a, b) => a.position - b.position)
-    .map((s) => `${hhmm(s.startTime)}–${hhmm(s.endTime)}`)
+    .map((s) => `${fmtTime(s.startTime)}–${fmtTime(s.endTime)}`)
     .join(", ");
 };
 
