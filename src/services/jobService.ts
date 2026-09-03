@@ -42,6 +42,9 @@ export interface Job {
   contractedMinutes?: number | null;
   workedMinutes?: number | null;
   completedAt?: string | null;
+  /** Vaga concluída com hora extra acima da tolerância — pagamento aguardando liberação da agência. */
+  settlementHold?: boolean;
+  settlementApprovedAt?: string | null;
   orderId?: string | null;
   /** Overrides de configuração por vaga — null = usa o padrão da agência. */
   checkinRadius?: number | null;
@@ -130,6 +133,14 @@ export const releaseJob = async (id: string, reason?: string): Promise<Job> =>
 
 export const registerNoShow = async (id: string, reason: string): Promise<Job> =>
   (await api.post(`/jobs/${id}/no-show`, { reason })).data;
+
+/** Vagas concluídas da rede com pagamento retido por hora extra. */
+export const getPendingSettlementJobs = async (): Promise<Job[]> =>
+  (await api.get("/agency/pending-settlement")).data;
+
+/** Agência libera o pagamento de uma vaga retida (opcionalmente só o tempo contratado). */
+export const releaseJobPayment = async (id: string, capToContracted = false): Promise<Job> =>
+  (await api.post(`/jobs/${id}/release-payment`, { capToContracted })).data;
 
 export const reviewDelivery = async (
   id: string,

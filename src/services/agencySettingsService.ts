@@ -2,7 +2,6 @@ import api from "@/src/services/api";
 
 export interface AgencySettings {
   id: string;
-  commissionPercentage: number;
   /** Raio máximo (m) do endereço da filial para aceitar o check-in. */
   checkinRadius: number;
   /** Antecedência mínima (min) para o freelancer cancelar sozinho. */

@@ -11,6 +11,7 @@ import {
   updateFreelancer,
   getFreelancerCategories,
   addCategoryToFreelancer,
+  setFreelancerCategoryRate,
   removeCategoryFromFreelancer,
 } from "@/src/services/freelancerService";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -21,6 +22,8 @@ function FreelancersPage() {
   const [list, setList] = useState<AgencyFreelancer[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [catsByFreelancer, setCatsByFreelancer] = useState<Record<string, string[]>>({});
+  // valor/hora que o colaborador recebe por função: { [freelancerId]: { [categoryId]: "18.00" } }
+  const [rateByFreelancer, setRateByFreelancer] = useState<Record<string, Record<string, string>>>({});
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", skills: "" });
   const [error, setError] = useState<string | null>(null);
@@ -38,13 +41,16 @@ function FreelancersPage() {
       fl.map(async (f) => {
         try {
           const rows = await getFreelancerCategories(f.id);
-          return [f.id, rows.map((r) => r.categoryId)] as const;
+          const rateMap: Record<string, string> = {};
+          rows.forEach((r) => { rateMap[r.categoryId] = r.hourlyRate != null ? String(r.hourlyRate) : ""; });
+          return [f.id, rows.map((r) => r.categoryId), rateMap] as const;
         } catch {
-          return [f.id, [] as string[]] as const;
+          return [f.id, [] as string[], {} as Record<string, string>] as const;
         }
       })
     );
-    setCatsByFreelancer(Object.fromEntries(entries));
+    setCatsByFreelancer(Object.fromEntries(entries.map((e) => [e[0], e[1]])));
+    setRateByFreelancer(Object.fromEntries(entries.map((e) => [e[0], e[2]])));
   }, [agencyId]);
 
   useEffect(() => { load().catch(() => {}); }, [load]);
@@ -96,7 +102,27 @@ function FreelancersPage() {
     }
   };
 
+  const setRateInput = (freelancerId: string, categoryId: string, value: string) =>
+    setRateByFreelancer((cur) => ({
+      ...cur,
+      [freelancerId]: { ...(cur[freelancerId] ?? {}), [categoryId]: value },
+    }));
+
+  const commitRate = async (freelancerId: string, categoryId: string, value: string) => {
+    const num = Number(value);
+    if (!value || !Number.isFinite(num) || num <= 0) return;
+    try {
+      await setFreelancerCategoryRate(freelancerId, categoryId, num);
+    } catch (err) {
+      alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+      await load();
+    }
+  };
+
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
+
+  const missingRate = (freelancerId: string) =>
+    (catsByFreelancer[freelancerId] ?? []).some((cid) => !Number(rateByFreelancer[freelancerId]?.[cid]));
 
   return (
     <>
@@ -111,7 +137,8 @@ function FreelancersPage() {
             </button>
           </header>
           <p className={panel.muted}>
-            As funções (tags) definem quais vagas o colaborador enxerga — sem função marcada, ele não vê vagas.
+            As funções definem quais vagas o colaborador enxerga. Para cada função é preciso definir
+            o <strong>valor/hora que ele recebe</strong> — sem valor, ele não vê nem aceita vagas dessa função.
           </p>
 
           <table className={panel.table}>
@@ -126,9 +153,21 @@ function FreelancersPage() {
                     {(catsByFreelancer[f.id] ?? []).length === 0 ? (
                       <span className={panel.muted}>nenhuma</span>
                     ) : (
-                      (catsByFreelancer[f.id] ?? []).map((cid) => (
-                        <span key={cid} className={panel.badge} style={{ marginRight: 4 }}>{categoryName(cid)}</span>
-                      ))
+                      <>
+                        {(catsByFreelancer[f.id] ?? []).map((cid) => {
+                          const rate = Number(rateByFreelancer[f.id]?.[cid]);
+                          return (
+                            <span key={cid} className={panel.badge} style={{ marginRight: 4 }}>
+                              {categoryName(cid)}{rate > 0 ? ` · R$ ${rate.toFixed(2)}/h` : " · sem valor"}
+                            </span>
+                          );
+                        })}
+                        {missingRate(f.id) && (
+                          <div className={panel.error} style={{ fontSize: "0.8rem", marginTop: 4 }}>
+                            Defina o valor/hora das funções sem valor.
+                          </div>
+                        )}
+                      </>
                     )}
                   </td>
                   <td>R$ {Number(f.availableBalance ?? 0).toFixed(2)}</td>
@@ -172,18 +211,28 @@ function FreelancersPage() {
             <label>Habilidades</label>
             <textarea value={editForm.skills} onChange={(e) => setEditForm({ ...editForm, skills: e.target.value })} />
 
-            <label>Funções que o colaborador exerce</label>
-            <div className={panel.shiftRow} style={{ flexWrap: "wrap" }}>
-              {categories.map((c) => (
-                <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={(catsByFreelancer[editId] ?? []).includes(c.id)}
-                    onChange={() => toggleCategory(editId, c.id)}
-                  />
-                  {c.name}
-                </label>
-              ))}
+            <label>Funções que o colaborador exerce e o valor/hora que ele recebe</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {categories.map((c) => {
+                const checked = (catsByFreelancer[editId] ?? []).includes(c.id);
+                return (
+                  <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", minWidth: 160 }}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleCategory(editId, c.id)} />
+                      {c.name}
+                    </label>
+                    {checked && (
+                      <input
+                        type="number" min="0.01" step="0.01" placeholder="R$/h"
+                        style={{ width: 110 }}
+                        value={rateByFreelancer[editId]?.[c.id] ?? ""}
+                        onChange={(e) => setRateInput(editId, c.id, e.target.value)}
+                        onBlur={(e) => commitRate(editId, c.id, e.target.value)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {editError && <p className={panel.error}>{editError}</p>}

@@ -11,14 +11,26 @@ import {
 import {
   getBranches, createBranch, updateBranch, deleteBranch, geocodeAddress, branchHasLocation, Branch,
 } from "@/src/services/branchService";
+import { getCategories, Category } from "@/src/services/categoryService";
+import {
+  getSupermarketRates, saveSupermarketRate, updateSupermarketRate, deleteSupermarketRate,
+  SupermarketCategoryRate,
+} from "@/src/services/supermarketRateService";
 
 const emptyMarket = { id: "", name: "", cnpj: "", address: "", phone: "", email: "", password: "" };
 const emptyBranch = { id: "", name: "", address: "", phone: "" };
+const emptyRate = { categoryId: "", branchId: "", hourlyRate: "" };
 
 function SupermarketsPage() {
   const [markets, setMarkets] = useState<Supermarket[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [ratesOf, setRatesOf] = useState<Supermarket | null>(null);
+  const [rates, setRates] = useState<SupermarketCategoryRate[]>([]);
+  const [rateForm, setRateForm] = useState({ ...emptyRate });
+  const [rateMsg, setRateMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const [marketModal, setMarketModal] = useState(false);
   const [marketForm, setMarketForm] = useState({ ...emptyMarket });
@@ -34,9 +46,10 @@ function SupermarketsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [m, b] = await Promise.all([getSupermarkets(), getBranches()]);
+      const [m, b, c] = await Promise.all([getSupermarkets(), getBranches(), getCategories()]);
       setMarkets(m);
       setBranches(b);
+      setCategories(c);
     } finally {
       setLoading(false);
     }
@@ -117,6 +130,57 @@ function SupermarketsPage() {
     catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
   };
 
+  const openRates = async (m: Supermarket) => {
+    setRatesOf(m);
+    setRateForm({ ...emptyRate });
+    setRateMsg(null);
+    setRates([]);
+    try { setRates(await getSupermarketRates(m.id)); } catch { /* vazio */ }
+  };
+
+  const reloadRates = async () => {
+    if (!ratesOf) return;
+    try { setRates(await getSupermarketRates(ratesOf.id)); } catch { /* vazio */ }
+  };
+
+  const addRate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ratesOf) return;
+    setRateMsg(null);
+    try {
+      await saveSupermarketRate(ratesOf.id, {
+        categoryId: rateForm.categoryId,
+        branchId: rateForm.branchId || null,
+        hourlyRate: Number(rateForm.hourlyRate),
+      });
+      setRateForm({ ...emptyRate });
+      setRateMsg({ type: "ok", text: "Valor/hora salvo." });
+      await reloadRates();
+    } catch (err) {
+      setRateMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
+    }
+  };
+
+  const changeRate = async (r: SupermarketCategoryRate, value: string) => {
+    if (!ratesOf || Number(value) === Number(r.hourlyRate)) return;
+    try { await updateSupermarketRate(ratesOf.id, r.id, { hourlyRate: Number(value) }); await reloadRates(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+  };
+
+  const toggleRate = async (r: SupermarketCategoryRate) => {
+    if (!ratesOf) return;
+    try { await updateSupermarketRate(ratesOf.id, r.id, { active: !r.active }); await reloadRates(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+  };
+
+  const removeRate = async (r: SupermarketCategoryRate) => {
+    if (!ratesOf || !confirm("Remover este valor/hora?")) return;
+    try { await deleteSupermarketRate(ratesOf.id, r.id); await reloadRates(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+  };
+
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "—";
+
   return (
     <>
       <Head><title>Supermercados | Agência</title></Head>
@@ -147,6 +211,7 @@ function SupermarketsPage() {
                       <td>{branchesForMarket(m.id).length}</td>
                       <td>
                         <button className={panel.ghostBtn} onClick={() => setBranchesOf(m)}>Filiais</button>
+                        <button className={panel.ghostBtn} onClick={() => openRates(m)}>Valores/hora</button>
                         <button className={panel.ghostBtn} onClick={() => openEditMarket(m)}>Editar</button>
                       </td>
                     </tr>
@@ -186,6 +251,68 @@ function SupermarketsPage() {
             >
               Salvar
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {ratesOf && (
+        <Modal title={`Valores/hora — ${ratesOf.name}`} onClose={() => setRatesOf(null)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              Valor que a agência cobra deste supermercado por <strong>função</strong>, por hora
+              trabalhada. Deixe a loja em <em>Todas as lojas</em> para o valor padrão da rede, ou
+              escolha uma filial para uma tarifa específica (tem prioridade sobre o padrão).
+            </p>
+            <form onSubmit={addRate} style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div className={panel.filterField}>
+                <label>Função</label>
+                <select value={rateForm.categoryId} onChange={(e) => setRateForm({ ...rateForm, categoryId: e.target.value })} required>
+                  <option value="">Selecione…</option>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className={panel.filterField}>
+                <label>Loja</label>
+                <select value={rateForm.branchId} onChange={(e) => setRateForm({ ...rateForm, branchId: e.target.value })}>
+                  <option value="">Todas as lojas (padrão)</option>
+                  {branchesForMarket(ratesOf.id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div className={panel.filterField}>
+                <label>Valor/hora (R$)</label>
+                <input type="number" min="0.01" step="0.01" value={rateForm.hourlyRate}
+                  onChange={(e) => setRateForm({ ...rateForm, hourlyRate: e.target.value })} required />
+              </div>
+              <button className={panel.primaryBtn} type="submit" disabled={!rateForm.categoryId || !rateForm.hourlyRate}>
+                Adicionar
+              </button>
+              {rateMsg && <p className={rateMsg.type === "ok" ? panel.success : panel.error} style={{ width: "100%" }}>{rateMsg.text}</p>}
+            </form>
+
+            <div style={{ overflowX: "auto" }}>
+              <table className={panel.table}>
+                <thead><tr><th>Função</th><th>Loja</th><th>Valor/hora</th><th>Situação</th><th>Ações</th></tr></thead>
+                <tbody>
+                  {rates.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.rateCategory?.name ?? categoryName(r.categoryId)}</td>
+                      <td>{r.rateBranch?.name ?? "Todas as lojas"}</td>
+                      <td>
+                        <input type="number" min="0.01" step="0.01" defaultValue={Number(r.hourlyRate)}
+                          style={{ width: 100 }}
+                          onBlur={(e) => changeRate(r, e.target.value)} />
+                      </td>
+                      <td><span className={panel.badge}>{r.active ? "Ativa" : "Inativa"}</span></td>
+                      <td>
+                        <button className={panel.ghostBtn} onClick={() => toggleRate(r)}>{r.active ? "Desativar" : "Ativar"}</button>
+                        <button className={panel.secondaryBtn} onClick={() => removeRate(r)}>Remover</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {rates.length === 0 && <tr><td colSpan={5} className={panel.muted}>Nenhum valor/hora cadastrado.</td></tr>}
+                </tbody>
+              </table>
+            </div>
           </div>
         </Modal>
       )}

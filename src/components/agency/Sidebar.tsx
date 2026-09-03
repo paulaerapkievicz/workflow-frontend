@@ -11,7 +11,6 @@ export default function AgencySidebar() {
         { href: "/agency/freelancers", label: "Colaboradores", icon: "👥" },
         { href: "/agency/onboarding", label: "Onboarding", icon: "📝", badge: uniformsToShip + selfiesToReview + registrationsToApprove },
         { href: "/agency/supermarkets", label: "Supermercados", icon: "🏬" },
-        { href: "/agency/rates", label: "Valores/hora", icon: "🏷️" },
         { href: "/agency/orders", label: "Pedidos", icon: "🛒" },
         { href: "/agency/live", label: "Ao vivo", icon: "🟢" },
         { href: "/agency/closings", label: "Fechamentos", icon: "📅" },

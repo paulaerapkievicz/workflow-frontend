@@ -249,6 +249,11 @@ function MyJobs() {
                         {(j.status === "completed" || isCanceled) && j.grossAmount != null && (
                           <p className={panel.muted}>Valor: R$ {Number(j.grossAmount).toFixed(2)}</p>
                         )}
+                        {j.status === "completed" && j.settlementHold && (
+                          <p className={panel.muted}>
+                            Pagamento em análise pela agência (horas acima do turno contratado).
+                          </p>
+                        )}
                       </div>
                     </div>
 

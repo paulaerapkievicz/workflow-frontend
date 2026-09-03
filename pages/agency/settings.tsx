@@ -13,7 +13,6 @@ function SettingsPage() {
     cancellationWindowMinutes: "30",
     requireCheckoutPhoto: true,
     reviewEnabled: false,
-    commissionPercentage: "10",
     onboardingRequired: false,
     uniformPrice: "0",
     allowSelfRegistration: false,
@@ -31,7 +30,6 @@ function SettingsPage() {
           cancellationWindowMinutes: String(s.cancellationWindowMinutes),
           requireCheckoutPhoto: s.requireCheckoutPhoto,
           reviewEnabled: s.reviewEnabled,
-          commissionPercentage: String(s.commissionPercentage),
           onboardingRequired: s.onboardingRequired,
           uniformPrice: String(s.uniformPrice),
           allowSelfRegistration: s.allowSelfRegistration,
@@ -51,7 +49,6 @@ function SettingsPage() {
         cancellationWindowMinutes: Number(form.cancellationWindowMinutes),
         requireCheckoutPhoto: form.requireCheckoutPhoto,
         reviewEnabled: form.reviewEnabled,
-        commissionPercentage: Number(form.commissionPercentage),
         onboardingRequired: form.onboardingRequired,
         uniformPrice: Number(form.uniformPrice),
         allowSelfRegistration: form.allowSelfRegistration,
@@ -90,10 +87,6 @@ function SettingsPage() {
                 <input type="number" min={0} max={1440} step={5} value={form.cancellationWindowMinutes}
                   onChange={(e) => setForm({ ...form, cancellationWindowMinutes: e.target.value })} />
                 <span className={panel.muted}>Depois desse prazo, só a agência libera/repassa a vaga.</span>
-
-                <label>Comissão da agência (%)</label>
-                <input type="number" min={0} max={100} step={0.5} value={form.commissionPercentage}
-                  onChange={(e) => setForm({ ...form, commissionPercentage: e.target.value })} />
 
                 <label className={panel.toggleRow}>
                   <input type="checkbox" checked={form.requireCheckoutPhoto}

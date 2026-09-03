@@ -46,6 +46,8 @@ export interface FreelancerCategoryRow {
   id: string;
   freelancerId: string;
   categoryId: string;
+  /** Valor/hora que o colaborador recebe nessa função (null = ainda não precificada). */
+  hourlyRate?: number | string | null;
   category?: { id: string; name: string } | null;
 }
 
@@ -55,9 +57,23 @@ export const getFreelancerCategories = async (id: string): Promise<FreelancerCat
   return response.data;
 };
 
-// Adicionar categoria ao freelancer
-export const addCategoryToFreelancer = async (freelancerId: string, categoryId: string): Promise<unknown> => {
-  const response = await api.post(`/freelancers/${freelancerId}/categories`, { categoryId });
+// Adicionar categoria (função) ao freelancer — com o valor/hora que ele recebe nela
+export const addCategoryToFreelancer = async (
+  freelancerId: string,
+  categoryId: string,
+  hourlyRate?: number
+): Promise<unknown> => {
+  const response = await api.post(`/freelancers/${freelancerId}/categories`, { categoryId, hourlyRate });
+  return response.data;
+};
+
+// Atualizar só o valor/hora de uma função já marcada
+export const setFreelancerCategoryRate = async (
+  freelancerId: string,
+  categoryId: string,
+  hourlyRate: number
+): Promise<unknown> => {
+  const response = await api.put(`/freelancers/${freelancerId}/categories/${categoryId}`, { hourlyRate });
   return response.data;
 };
 
