@@ -23,6 +23,10 @@ if (backendUrl) {
 
 const nextConfig: NextConfig = {
   images: { remotePatterns },
+  // Esconde o selo do Next (círculo "N" no canto) no modo de desenvolvimento —
+  // não deve aparecer em telas mostradas a clientes. O overlay de erro do Next só
+  // existe em `next dev`; para demos, rode a build de produção (`npm run build && npm run start`).
+  devIndicators: false,
 };
 
 export default nextConfig;

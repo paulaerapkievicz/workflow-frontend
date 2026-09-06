@@ -68,36 +68,40 @@ function FreelancerPayments() {
           </div>
 
           <h2 style={{ fontSize: "1.1rem" }}>Meus recebíveis</h2>
-          <table className={panel.table}>
-            <thead><tr><th>Vaga</th><th>Filial</th><th>Meu valor</th><th>Status</th><th>Liberado em</th></tr></thead>
-            <tbody>
-              {payments.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.paymentJob?.title ?? p.jobId.slice(0, 8)}</td>
-                  <td>{p.paymentJob?.jobBranch?.name ?? "—"}</td>
-                  <td>R$ {Number(p.freelancerAmount ?? 0).toFixed(2)}</td>
-                  <td><span className={panel.badge}>{PAYMENT_STATUS_LABELS[p.status]}</span></td>
-                  <td>{p.releasedAt ? new Date(p.releasedAt).toLocaleDateString("pt-BR") : "—"}</td>
-                </tr>
-              ))}
-              {payments.length === 0 && <tr><td colSpan={5}>Nada ainda.</td></tr>}
-            </tbody>
-          </table>
+          <div style={{ overflowX: "auto" }}>
+            <table className={panel.table}>
+              <thead><tr><th>Vaga</th><th>Filial</th><th>Meu valor</th><th>Status</th><th>Liberado em</th></tr></thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.paymentJob?.title ?? p.jobId.slice(0, 8)}</td>
+                    <td>{p.paymentJob?.jobBranch?.name ?? "—"}</td>
+                    <td>R$ {Number(p.freelancerAmount ?? 0).toFixed(2)}</td>
+                    <td><span className={panel.badge}>{PAYMENT_STATUS_LABELS[p.status]}</span></td>
+                    <td>{p.releasedAt ? new Date(p.releasedAt).toLocaleDateString("pt-BR") : "—"}</td>
+                  </tr>
+                ))}
+                {payments.length === 0 && <tr><td colSpan={5}>Nada ainda.</td></tr>}
+              </tbody>
+            </table>
+          </div>
 
           <h2 style={{ fontSize: "1.1rem" }}>Meus saques</h2>
-          <table className={panel.table}>
-            <thead><tr><th>Data</th><th>Valor</th><th>Status</th></tr></thead>
-            <tbody>
-              {withdrawals.map((w) => (
-                <tr key={w.id}>
-                  <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
-                  <td>R$ {Number(w.amount).toFixed(2)}</td>
-                  <td><span className={panel.badge}>{WITHDRAWAL_STATUS_LABELS[w.status]}</span></td>
-                </tr>
-              ))}
-              {withdrawals.length === 0 && <tr><td colSpan={3}>Nenhum saque solicitado.</td></tr>}
-            </tbody>
-          </table>
+          <div style={{ overflowX: "auto" }}>
+            <table className={panel.table}>
+              <thead><tr><th>Data</th><th>Valor</th><th>Status</th></tr></thead>
+              <tbody>
+                {withdrawals.map((w) => (
+                  <tr key={w.id}>
+                    <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
+                    <td>R$ {Number(w.amount).toFixed(2)}</td>
+                    <td><span className={panel.badge}>{WITHDRAWAL_STATUS_LABELS[w.status]}</span></td>
+                  </tr>
+                ))}
+                {withdrawals.length === 0 && <tr><td colSpan={3}>Nenhum saque solicitado.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </section>
       </main>
     </>

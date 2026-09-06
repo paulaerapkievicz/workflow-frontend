@@ -5,7 +5,7 @@ import Sidebar from "@/src/components/supermarket/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import {
-  getBillingSummary, payClosing, BillingSummary, BillingJob,
+  getBillingSummary, payClosing, syncClosingPayment, downloadClosingPdf, BillingSummary, BillingJob,
   hoursFromMin, money, monthName, CLOSING_STATUS_LABELS,
 } from "@/src/services/billingService";
 import { shiftLabel } from "@/src/services/shifts";
@@ -33,18 +33,37 @@ function BillingPage() {
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
 
   const [branchId, setBranchId] = useState("");
   const [month, setMonth] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [orderId, setOrderId] = useState("");
+  const [payMsg, setPayMsg] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     try { setSummary(await getBillingSummary()); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load().catch(() => {}); }, []);
+
+  useEffect(() => {
+    (async () => {
+      // De volta do checkout do Mercado Pago: confirma as faturas que já têm pagamento iniciado.
+      if (typeof window !== "undefined" && /[?&]fatura=/.test(window.location.search)) {
+        try {
+          const s = await getBillingSummary();
+          await Promise.all(
+            (s.invoices ?? [])
+              .filter((i) => i.status === "pending" && i.paymentRef)
+              .map((i) => syncClosingPayment(i.id).catch(() => {}))
+          );
+        } catch { /* ignora */ }
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      await load().catch(() => {});
+    })();
+  }, []);
 
   const jobs = useMemo(() => summary?.jobs ?? [], [summary]);
 
@@ -88,9 +107,44 @@ function BillingPage() {
 
   const pay = async (id: string) => {
     setBusy(id);
-    try { await payClosing(id); await load(); }
-    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
-    finally { setBusy(null); }
+    setPayMsg(null);
+    try {
+      const inv = await payClosing(id);
+      if (inv.paymentUrl) {
+        window.open(inv.paymentUrl, "_blank", "noopener");
+        setPayMsg(
+          "Abrimos o pagamento do Mercado Pago numa nova aba. Depois de pagar, volte aqui e clique em “Já paguei — atualizar”."
+        );
+      }
+      await load();
+    } catch (err) {
+      alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const syncPay = async (id: string) => {
+    setBusy(id);
+    setPayMsg(null);
+    try {
+      const inv = await syncClosingPayment(id);
+      if (inv.status !== "paid") {
+        setPayMsg("Ainda não recebemos a confirmação do pagamento. Se você já pagou, aguarde alguns instantes e tente de novo.");
+      }
+      await load();
+    } catch (err) {
+      alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const baixarPdf = async (id: string, referenceMonth: string | null) => {
+    setPdfBusyId(id);
+    try { await downloadClosingPdf(id, referenceMonth); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao baixar PDF." : "Erro ao baixar PDF."); }
+    finally { setPdfBusyId(null); }
   };
 
   const clearFilters = () => { setBranchId(""); setMonth(""); setCategoryId(""); setOrderId(""); };
@@ -157,6 +211,7 @@ function BillingPage() {
               />
 
               <h2 style={{ fontSize: "1.1rem", marginTop: "1.5rem" }}>Fechamentos mensais</h2>
+              {payMsg && <p className={panel.muted} style={{ marginBottom: "0.5rem" }}>{payMsg}</p>}
               <div style={{ overflowX: "auto" }}>
                 <table className={panel.table}>
                   <thead><tr><th>Mês</th><th>Agência</th><th>Escopo</th><th>Vagas</th><th>Horas trab.</th><th>Valor</th><th>Status</th><th></th></tr></thead>
@@ -170,11 +225,26 @@ function BillingPage() {
                         <td>{hrs(hoursFromMin(c.workedMinutes))}</td>
                         <td>{money(c.totalAmount)}</td>
                         <td><span className={panel.badge}>{CLOSING_STATUS_LABELS[c.status]}</span></td>
-                        <td>{c.status === "pending" && (
-                          <button className={panel.primaryBtn} disabled={busy === c.id} onClick={() => pay(c.id)}>
-                            {busy === c.id ? "…" : "Pagar fatura"}
+                        <td>
+                          {c.status === "pending" && !c.paymentUrl && (
+                            <button className={panel.primaryBtn} disabled={busy === c.id} onClick={() => pay(c.id)}>
+                              {busy === c.id ? "…" : "Pagar fatura"}
+                            </button>
+                          )}
+                          {c.status === "pending" && c.paymentUrl && (
+                            <>
+                              <a className={panel.primaryBtn} href={c.paymentUrl} target="_blank" rel="noopener noreferrer">
+                                Abrir pagamento
+                              </a>
+                              <button className={panel.secondaryBtn} disabled={busy === c.id} onClick={() => syncPay(c.id)}>
+                                {busy === c.id ? "…" : "Já paguei — atualizar"}
+                              </button>
+                            </>
+                          )}
+                          <button className={panel.ghostBtn} disabled={pdfBusyId === c.id} onClick={() => baixarPdf(c.id, c.referenceMonth)}>
+                            {pdfBusyId === c.id ? "Baixando…" : "Baixar PDF"}
                           </button>
-                        )}</td>
+                        </td>
                       </tr>
                     ))}
                     {invoices.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum fechamento recebido.</td></tr>}

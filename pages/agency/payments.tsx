@@ -27,6 +27,8 @@ function AgencyPayments() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [heldMsg, setHeldMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [releasingId, setReleasingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<RowFilter>({});
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [rv, setRv] = useState({ rating: 5, comment: "", approved: true });
@@ -51,11 +53,21 @@ function AgencyPayments() {
   const releaseHeld = async (job: Job, capToContracted: boolean) => {
     const label = capToContracted ? "pagar só o tempo contratado" : "pagar as horas trabalhadas";
     if (!confirm(`Liberar o pagamento da vaga "${job.title}" (${label})?`)) return;
+    setHeldMsg(null);
+    setReleasingId(job.id);
     try {
       await releaseJobPayment(job.id, capToContracted);
       await Promise.all([load(), refresh()]);
+      setHeldMsg({ type: "success", text: `Pagamento da vaga "${job.title}" liberado.` });
     } catch (err) {
-      alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+      setHeldMsg({
+        type: "error",
+        text: axios.isAxiosError(err)
+          ? err.response?.data?.message ?? "Não foi possível liberar o pagamento."
+          : "Não foi possível liberar o pagamento.",
+      });
+    } finally {
+      setReleasingId(null);
     }
   };
   useEffect(() => { load().catch(() => {}); }, [load]);
@@ -150,55 +162,72 @@ function AgencyPayments() {
             </form>
           </div>
 
-          {heldJobs.length > 0 && (
+          {(heldJobs.length > 0 || heldMsg) && (
             <>
               <h2 style={{ fontSize: "1.1rem" }}>Pagamentos aguardando liberação (hora extra)</h2>
               <p className={panel.muted}>
                 Vagas concluídas com mais de 15 min acima do turno contratado. O pagamento ao
                 colaborador só é liberado depois da sua aprovação.
               </p>
-              <table className={panel.table}>
-                <thead>
-                  <tr><th>Vaga</th><th>Colaborador</th><th>Contratado</th><th>Trabalhado</th><th>Ações</th></tr>
-                </thead>
-                <tbody>
-                  {heldJobs.map((j) => (
-                    <tr key={j.id}>
-                      <td>{j.title}</td>
-                      <td>{j.assignedFreelancer?.name ?? "—"}</td>
-                      <td>{minutesToHours(j.contractedMinutes)}</td>
-                      <td>{minutesToHours(j.workedMinutes)}</td>
-                      <td>
-                        <button className={panel.primaryBtn} onClick={() => releaseHeld(j, false)}>
-                          Pagar horas trabalhadas
-                        </button>
-                        <button className={panel.ghostBtn} onClick={() => releaseHeld(j, true)}>
-                          Pagar só o contratado
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {heldMsg && (
+                <p className={heldMsg.type === "error" ? panel.error : panel.success}>{heldMsg.text}</p>
+              )}
+              {heldJobs.length > 0 && (
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead>
+                    <tr><th>Vaga</th><th>Colaborador</th><th>Contratado</th><th>Trabalhado</th><th>Ações</th></tr>
+                  </thead>
+                  <tbody>
+                    {heldJobs.map((j) => (
+                      <tr key={j.id}>
+                        <td>{j.title}</td>
+                        <td>{j.assignedFreelancer?.name ?? "—"}</td>
+                        <td>{minutesToHours(j.contractedMinutes)}</td>
+                        <td>{minutesToHours(j.workedMinutes)}</td>
+                        <td>
+                          <button
+                            className={panel.primaryBtn}
+                            disabled={releasingId === j.id}
+                            onClick={() => releaseHeld(j, false)}
+                          >
+                            Pagar horas trabalhadas
+                          </button>
+                          <button
+                            className={panel.ghostBtn}
+                            disabled={releasingId === j.id}
+                            onClick={() => releaseHeld(j, true)}
+                          >
+                            Pagar só o contratado
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              )}
             </>
           )}
 
           {pendingReviews.length > 0 && (
             <>
               <h2 style={{ fontSize: "1.1rem" }}>Avaliações pendentes</h2>
-              <table className={panel.table}>
-                <thead><tr><th>Vaga</th><th>Colaborador</th><th>Status</th><th>Ação</th></tr></thead>
-                <tbody>
-                  {pendingReviews.map((j) => (
-                    <tr key={j.id}>
-                      <td>{j.title}</td>
-                      <td>{j.assignedFreelancer?.name ?? "—"}</td>
-                      <td><StatusBadge status={j.status} /></td>
-                      <td><button className={panel.primaryBtn} onClick={() => openReview(j)}>Avaliar entrega</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead><tr><th>Vaga</th><th>Colaborador</th><th>Status</th><th>Ação</th></tr></thead>
+                  <tbody>
+                    {pendingReviews.map((j) => (
+                      <tr key={j.id}>
+                        <td>{j.title}</td>
+                        <td>{j.assignedFreelancer?.name ?? "—"}</td>
+                        <td><StatusBadge status={j.status} /></td>
+                        <td><button className={panel.primaryBtn} onClick={() => openReview(j)}>Avaliar entrega</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
 
@@ -207,19 +236,21 @@ function AgencyPayments() {
           <DataTable columns={columns} rows={rows} rowKey={(p) => p.id} storageKey="agency-payments" empty="Nenhum pagamento ainda." />
 
           <h2 style={{ fontSize: "1.1rem" }}>Meus saques</h2>
-          <table className={panel.table}>
-            <thead><tr><th>Data</th><th>Valor</th><th>Status</th></tr></thead>
-            <tbody>
-              {withdrawals.map((w) => (
-                <tr key={w.id}>
-                  <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
-                  <td>R$ {Number(w.amount).toFixed(2)}</td>
-                  <td><span className={panel.badge}>{WITHDRAWAL_STATUS_LABELS[w.status]}</span></td>
-                </tr>
-              ))}
-              {withdrawals.length === 0 && <tr><td colSpan={3}>Nenhum saque solicitado.</td></tr>}
-            </tbody>
-          </table>
+          <div style={{ overflowX: "auto" }}>
+            <table className={panel.table}>
+              <thead><tr><th>Data</th><th>Valor</th><th>Status</th></tr></thead>
+              <tbody>
+                {withdrawals.map((w) => (
+                  <tr key={w.id}>
+                    <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
+                    <td>R$ {Number(w.amount).toFixed(2)}</td>
+                    <td><span className={panel.badge}>{WITHDRAWAL_STATUS_LABELS[w.status]}</span></td>
+                  </tr>
+                ))}
+                {withdrawals.length === 0 && <tr><td colSpan={3}>Nenhum saque solicitado.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </section>
       </main>
 

@@ -5,6 +5,7 @@ import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import { getLiveJobs, Job } from "@/src/services/jobService";
 import ShiftLog from "@/src/components/ShiftLog";
+import FreelancerChip from "@/src/components/FreelancerChip";
 
 const elapsed = (since: string) => {
   const min = Math.max(0, Math.round((Date.now() - new Date(since).getTime()) / 60000));
@@ -61,7 +62,7 @@ function LivePage() {
                   <div key={j.id} className={panel.card}>
                     <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
                       <div>
-                        <strong>{j.assignedFreelancer?.name ?? "—"}</strong>
+                        <FreelancerChip freelancer={j.assignedFreelancer} />
                         <p className={panel.muted}>
                           {j.title} · {j.jobSupermarket?.name ?? "—"}{j.jobBranch?.name ? ` · ${j.jobBranch.name}` : ""}
                         </p>

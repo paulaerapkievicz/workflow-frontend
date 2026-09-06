@@ -59,7 +59,8 @@ export default function RegisterPage() {
       <div className={s.page}>
         <aside className={s.brand}>
           <div className={s.brandInner}>
-            <div className={s.brandMark}><span>W</span> WorkFlow</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <div className={s.brandMark}><img src="/logo-white.png" alt="WorkFlow" /></div>
             <h1 className={s.brandTitle}>Cadastro de colaborador</h1>
             <p className={s.brandText}>
               Preencha os seus dados. A sua agência recebe o cadastro e aprova o seu acesso.
@@ -74,7 +75,8 @@ export default function RegisterPage() {
 
         <section className={s.formSide}>
           <div className={s.card}>
-            <div className={s.mobileMark}><span>W</span> WorkFlow</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <div className={s.mobileMark}><img src="/logo-white.png" alt="WorkFlow" /></div>
 
             {done ? (
               <>

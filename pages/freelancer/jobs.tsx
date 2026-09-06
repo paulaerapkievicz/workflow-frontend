@@ -7,8 +7,9 @@ import RequireAuth from "@/src/components/RequireAuth";
 import StatusBadge from "@/src/components/StatusBadge";
 import panel from "@/styles/panel.module.scss";
 import {
-  getJobs, checkIn, checkOut, withdrawJob, readGeolocation, canFreelancerCancel,
-  mapUrl, mapEmbedUrl, Job, JobShift, formatShifts, formatShiftPeriods, minutesToHours,
+  getJobs, checkIn, checkOut, startBreak, endBreak, withdrawJob, readGeolocation, canFreelancerCancel,
+  hasOpenBreak, mapUrl, mapEmbedUrl, Job, JobShift, formatShifts,
+  formatShiftPeriods, minutesToHours,
 } from "@/src/services/jobService";
 import { getJobPhotos, uploadJobPhoto, photoUrl, JobPhoto } from "@/src/services/jobPhotoService";
 import { authService } from "@/src/services/authService";
@@ -45,6 +46,7 @@ const STATUS_ORDER: Record<string, number> = {
 interface AffiliatedAgency {
   cancellationWindowMinutes?: number;
   requireCheckoutPhoto?: boolean;
+  breaksEnabled?: boolean;
 }
 
 function MyJobs() {
@@ -53,6 +55,7 @@ function MyJobs() {
   const agency = ((profile as { affiliatedAgency?: AffiliatedAgency } | null)?.affiliatedAgency) ?? {};
   const cancelWindow = agency.cancellationWindowMinutes ?? 30;
   const requirePhoto = agency.requireCheckoutPhoto ?? true;
+  const breaksAllowed = (j: Job) => j.breaksEnabled ?? agency.breaksEnabled ?? false;
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [period, setPeriod] = useState<Period>("semana");
@@ -132,6 +135,29 @@ function MyJobs() {
     try {
       await withdrawJob(jobId);
       setBanner({ type: "success", text: "Vaga cancelada. Ela voltou para o pool." });
+      await load();
+    } catch (err) {
+      setBanner({ type: "error", text: errText(err) });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const giveUp = async (jobId: string) => {
+    if (
+      !confirm(
+        "Desistir da vaga agora? O turno atual será encerrado com as horas já trabalhadas (que você recebe normalmente) e o restante da vaga volta para o pool, para outro colaborador terminar."
+      )
+    )
+      return;
+    setBanner(null);
+    setBusy(jobId);
+    try {
+      await withdrawJob(jobId);
+      setBanner({
+        type: "success",
+        text: "Você saiu da vaga. As horas trabalhadas foram registradas e o restante voltou para o pool.",
+      });
       await load();
     } catch (err) {
       setBanner({ type: "error", text: errText(err) });
@@ -268,7 +294,7 @@ function MyJobs() {
                         <table className={panel.table} style={{ marginTop: "0.5rem" }}>
                           <thead><tr><th>Turno</th><th>Horário</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Trabalhado</th></tr></thead>
                           <tbody>
-                            {shifts.map((s, i) => (
+                            {shifts.flatMap((s, i) => [
                               <tr key={s.id}>
                                 <td>{s.label || `Turno ${i + 1}`}</td>
                                 <td>{fmtTime(s.startTime)}–{fmtTime(s.endTime)}</td>
@@ -276,8 +302,19 @@ function MyJobs() {
                                 <td>{fmtTime(s.checkOutAt)}</td>
                                 <td><span className={panel.badge}>{SHIFT_STATUS_LABELS[s.status ?? "pending"]}</span></td>
                                 <td>{minutesToHours(s.workedMinutes)}</td>
-                              </tr>
-                            ))}
+                              </tr>,
+                              ...(s.breaks ?? []).map((b) => (
+                                <tr key={b.id} className={panel.muted}>
+                                  <td style={{ paddingLeft: "1.5rem" }}>↳ pausa</td>
+                                  <td colSpan={2}>{fmtTime(b.startAt)} → {b.endAt ? fmtTime(b.endAt) : "em aberto"}</td>
+                                  <td colSpan={3}>
+                                    {b.endAt
+                                      ? `− ${minutesToHours(Math.round((new Date(b.endAt).getTime() - new Date(b.startAt).getTime()) / 60000))}`
+                                      : "em pausa"}
+                                  </td>
+                                </tr>
+                              )),
+                            ])}
                           </tbody>
                         </table>
                       </div>
@@ -325,14 +362,38 @@ function MyJobs() {
                         )
                       )}
 
+                      {j.status === "in_progress" && cur && breaksAllowed(j) && (
+                        hasOpenBreak(j.shifts) ? (
+                          <button
+                            className={panel.secondaryBtn}
+                            disabled={busy === j.id}
+                            onClick={() => geoAction(j.id, (geo) => endBreak(j.id, geo))}
+                          >
+                            {busy === j.id ? "Localizando…" : "Retomar ponto"}
+                          </button>
+                        ) : (
+                          <button
+                            className={panel.secondaryBtn}
+                            disabled={busy === j.id}
+                            onClick={() => geoAction(j.id, (geo) => startBreak(j.id, geo))}
+                          >
+                            {busy === j.id ? "Localizando…" : "Pausar ponto"}
+                          </button>
+                        )
+                      )}
+
                       {j.status === "in_progress" && cur && (
-                        <button
-                          className={panel.primaryBtn}
-                          disabled={busy === j.id}
-                          onClick={() => geoAction(j.id, (geo) => checkOut(j.id, geo))}
-                        >
-                          {busy === j.id ? "Localizando…" : "Check-out"}
-                        </button>
+                        hasOpenBreak(j.shifts) ? (
+                          <span className={panel.muted}>Retome o ponto antes de finalizar o turno.</span>
+                        ) : (
+                          <button
+                            className={panel.primaryBtn}
+                            disabled={busy === j.id}
+                            onClick={() => geoAction(j.id, (geo) => checkOut(j.id, geo))}
+                          >
+                            {busy === j.id ? "Localizando…" : "Check-out"}
+                          </button>
+                        )
                       )}
 
                       {j.status === "in_progress" && !cur && allDone(j) && (
@@ -347,6 +408,12 @@ function MyJobs() {
                         ) : (
                           <span className={panel.muted}>Fora do prazo — peça o cancelamento à agência.</span>
                         )
+                      )}
+
+                      {j.status === "in_progress" && !hasOpenBreak(j.shifts) && (
+                        <button className={panel.secondaryBtn} disabled={busy === j.id} onClick={() => giveUp(j.id)}>
+                          Desistir no meio do turno
+                        </button>
                       )}
 
                       {(isCanceled || ["accepted", "in_progress", "completed"].includes(j.status)) && (

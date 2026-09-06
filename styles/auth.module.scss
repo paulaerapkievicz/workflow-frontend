@@ -9,7 +9,9 @@
   display: grid;
   grid-template-columns: 1.05fr 1fr;
   min-height: calc(100vh - 64px);
-  background: map.get($light-theme, background);
+  // Tom de azul bem suave no lado do formulário — combina com o painel da marca e
+  // dá mais contraste pro logo (versão branca) exibido no card.
+  background: #e9edfb;
   color: map.get($light-theme, text);
 
   body[data-theme="dark"] & {
@@ -60,22 +62,20 @@
 }
 
 .brandMark {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: -0.01em;
-  margin-bottom: 2rem;
+  display: block;
+  margin-bottom: 2.25rem;
 
-  span {
-    display: inline-grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.16);
-    backdrop-filter: blur(4px);
+  img {
+    display: block;
+    height: 72px;
+    width: auto;
+    max-width: 100%;
+    // logo-dark.png (texto claro) sobre o gradiente azul/roxo — sombra leve pra destacar do fundo.
+    filter: drop-shadow(0 3px 10px rgba(15, 23, 42, 0.35));
+  }
+
+  @media (max-width: 900px) {
+    img { height: 56px; }
   }
 }
 
@@ -163,15 +163,20 @@
   display: none;
 
   @media (max-width: 900px) {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-weight: 800;
-    font-size: 1.1rem;
-    color: $primary-dark;
+    display: inline-block;
     margin-bottom: 1.5rem;
+    // Chip azul da marca — o logo branco fica bem contrastante sobre ele.
+    background: linear-gradient(135deg, $primary-dark, $primary-color);
+    padding: 0.7rem 1.05rem;
+    border-radius: 14px;
+    box-shadow: 0 14px 30px -18px rgba(45, 79, 224, 0.7);
 
-    body[data-theme="dark"] & { color: #fff; }
+    img {
+      display: block;
+      height: 34px;
+      width: auto;
+      max-width: 100%;
+    }
   }
 }
 

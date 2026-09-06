@@ -6,6 +6,7 @@ export interface AgencyPendingCounts {
   selfiesToReview: number;
   contractsPending: number;
   registrationsToApprove: number;
+  branchesToApprove: number;
 }
 
 export interface SupermarketPendingCounts {
@@ -19,6 +20,7 @@ export function usePendingCounts(role: "agency" | "supermarket") {
     selfiesToReview: 0,
     contractsPending: 0,
     registrationsToApprove: 0,
+    branchesToApprove: 0,
     ordersToApprove: 0,
   });
 

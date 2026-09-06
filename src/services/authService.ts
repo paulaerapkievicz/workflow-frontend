@@ -38,8 +38,11 @@ export interface RegisterPayload {
   password: string;
   phone?: string;
   role: Exclude<Role, "admin">;
+  /** Convite gerado pela agência — quando presente, o backend usa o papel/agência do convite. */
+  inviteToken?: string;
   profile?: {
     companyName?: string;
+    legalName?: string;
     cnpj?: string;
     address?: string;
     commissionPercentage?: number;

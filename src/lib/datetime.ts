@@ -44,3 +44,27 @@ export const isoDateBR = (v?: string | Date | null): string => {
 /** Janela "HH:MM–HH:MM". */
 export const fmtWindow = (start?: string | Date | null, end?: string | Date | null): string =>
   `${fmtTime(start)}–${fmtTime(end)}`;
+
+/** ISO → "AAAA-MM-DDTHH:MM" no fuso de Brasília (para <input type="datetime-local">). */
+export const isoToLocalInput = (v?: string | Date | null): string => {
+  if (!v) return "";
+  const d = new Date(v);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const g = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const hh = g("hour") === "24" ? "00" : g("hour");
+  return `${g("year")}-${g("month")}-${g("day")}T${hh}:${g("minute")}`;
+};
+
+/** "AAAA-MM-DDTHH:MM" (horário de Brasília) → ISO UTC. */
+export const localInputToISO = (v: string): string => {
+  if (!v) return "";
+  return new Date(`${v}:00-03:00`).toISOString();
+};

@@ -143,6 +143,20 @@
   &:hover { background: var(--primary-soft); border-color: var(--primary); }
 }
 
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover { color: var(--primary-dark); }
+}
+
 // ----- Tabelas -----
 .table {
   width: 100%;
@@ -424,4 +438,36 @@ body[data-theme='dark'] {
 @media (max-width: 860px) {
   .container { flex-direction: column; }
   .content { padding: 1.25rem; }
+}
+
+// Ajustes pra tela de celular (iPhone SE ~375px até iPhone padrão ~430px).
+@media (max-width: 480px) {
+  .content { padding: 0.85rem; gap: 1.1rem; }
+
+  .header {
+    padding-bottom: 1rem;
+    h1 { font-size: 1.25rem; }
+  }
+
+  .cards { grid-template-columns: 1fr; }
+
+  .card { padding: 1.1rem; }
+
+  // Cada filtro ocupa a linha inteira em vez de espremer vários por linha.
+  .filterBar { padding: 0.75rem; gap: 0.6rem; }
+  .filterField {
+    flex: 1 1 100%;
+    input, select { min-width: 0; width: 100%; }
+  }
+
+  .tableToolbar { flex-wrap: wrap; }
+
+  .table {
+    font-size: 0.82rem;
+    th, td { padding: 0.6rem 0.7rem; }
+  }
+
+  .form {
+    input, select, textarea { font-size: 16px; } // evita zoom automático do iOS ao focar
+  }
 }

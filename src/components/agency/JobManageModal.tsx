@@ -2,18 +2,20 @@ import { useState } from "react";
 import axios from "axios";
 import Modal from "@/src/components/common/Modal";
 import panel from "@/styles/panel.module.scss";
-import { Job, updateJobAsAgency } from "@/src/services/jobService";
+import {
+  Job, JobShift, updateJobAsAgency, correctJobTimesheet, TimesheetShiftPatch,
+} from "@/src/services/jobService";
 import { Category } from "@/src/services/categoryService";
 import { AgencySettings } from "@/src/services/agencySettingsService";
 import {
-  SHIFT_PERIODS, shiftLabel, shiftTimeRange, makeShiftInput, validateShiftInput,
-  shiftPeriodFromTime, ShiftInput, ShiftPeriod,
+  shiftFromWindow, newShift, validateShifts, toShiftPayload, ShiftInput,
 } from "@/src/services/shifts";
+import ShiftsField from "@/src/components/ShiftsField";
+import { fmtTime, isoDateBR, isoToLocalInput, localInputToISO } from "@/src/lib/datetime";
 
-import { fmtTime, isoDateBR } from "@/src/lib/datetime";
-
-const hhmm = fmtTime;
-const shiftSortIndex = (p: ShiftPeriod) => SHIFT_PERIODS.findIndex((x) => x.value === p);
+const SHIFT_STATUS: Record<string, string> = {
+  pending: "Aguardando", in_progress: "Em andamento", done: "Concluído", missed: "Perdido",
+};
 
 interface Props {
   job: Job;
@@ -23,64 +25,82 @@ interface Props {
   onSaved: () => void;
 }
 
-/** A agência gerencia a vaga: função/turno/título (enquanto pendente) + overrides de configuração. */
+/** Estado editável de uma linha de correção de ponto. */
+interface TimesheetRow {
+  shift: JobShift;
+  startLocal: string;
+  endLocal: string;
+  checkInLocal: string;
+  checkOutLocal: string;
+  breaks: { startLocal: string; endLocal: string }[];
+}
+
 export default function JobManageModal({ job, categories, settings, onClose, onSaved }: Props) {
   const pending = job.status === "pending";
+  const canReshape = pending || job.status === "accepted";
+  const canFixTimesheet = ["accepted", "in_progress", "completed"].includes(job.status);
+  const alreadySettled = job.status === "completed" && !!job.jobPayment;
+
+  const [tab, setTab] = useState<"config" | "timesheet">(canReshape ? "config" : "timesheet");
+
   const [title, setTitle] = useState(job.title);
   const [categoryId, setCategoryId] = useState(job.categoryId);
   const [date, setDate] = useState(isoDateBR(job.startTime));
   const [shifts, setShifts] = useState<ShiftInput[]>(() => {
     const s = [...(job.shifts ?? [])]
       .sort((a, b) => a.position - b.position)
-      .map((x) => ({
-        shiftPeriod: shiftPeriodFromTime(x.startTime),
-        startTime: hhmm(x.startTime),
-        endTime: hhmm(x.endTime),
-      }));
-    return s.length ? s : [makeShiftInput((job.shiftPeriod as ShiftPeriod) ?? "manha")];
+      .map((x) => shiftFromWindow(fmtTime(x.startTime), fmtTime(x.endTime)));
+    return s.length ? s : [newShift()];
   });
 
   const [checkinRadius, setCheckinRadius] = useState(job.checkinRadius?.toString() ?? "");
   const [cancelWindow, setCancelWindow] = useState(job.cancellationWindowMinutes?.toString() ?? "");
-  const [reqPhoto, setReqPhoto] = useState<"" | "sim" | "nao">(
-    job.requireCheckoutPhoto == null ? "" : job.requireCheckoutPhoto ? "sim" : "nao"
+  const triState = (v: boolean | null | undefined): "" | "sim" | "nao" =>
+    v == null ? "" : v ? "sim" : "nao";
+  const [reqPhoto, setReqPhoto] = useState(triState(job.requireCheckoutPhoto));
+  const [reviewEnabled, setReviewEnabled] = useState(triState(job.reviewEnabled));
+  const [breaks, setBreaks] = useState(triState(job.breaksEnabled));
+
+  const [rows, setRows] = useState<TimesheetRow[]>(() =>
+    [...(job.shifts ?? [])]
+      .sort((a, b) => a.position - b.position)
+      .map((s) => ({
+        shift: s,
+        startLocal: isoToLocalInput(s.startTime),
+        endLocal: isoToLocalInput(s.endTime),
+        checkInLocal: isoToLocalInput(s.checkInAt),
+        checkOutLocal: isoToLocalInput(s.checkOutAt),
+        breaks: (s.breaks ?? []).map((b) => ({
+          startLocal: isoToLocalInput(b.startAt),
+          endLocal: isoToLocalInput(b.endAt),
+        })),
+      }))
   );
-  const [reviewEnabled, setReviewEnabled] = useState<"" | "sim" | "nao">(
-    job.reviewEnabled == null ? "" : job.reviewEnabled ? "sim" : "nao"
-  );
+  const [tsReason, setTsReason] = useState("");
+
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const toggleShift = (period: ShiftPeriod) =>
-    setShifts((cur) => {
-      const has = cur.some((s) => s.shiftPeriod === period);
-      return has
-        ? cur.filter((s) => s.shiftPeriod !== period)
-        : [...cur, makeShiftInput(period)].sort(
-            (a, b) => shiftSortIndex(a.shiftPeriod) - shiftSortIndex(b.shiftPeriod)
-          );
-    });
-  const updateShiftTime = (period: ShiftPeriod, patch: Partial<ShiftInput>) =>
-    setShifts((cur) => cur.map((s) => (s.shiftPeriod === period ? { ...s, ...patch } : s)));
+  const configPayload = () => ({
+    checkinRadius: checkinRadius === "" ? null : Number(checkinRadius),
+    cancellationWindowMinutes: cancelWindow === "" ? null : Number(cancelWindow),
+    requireCheckoutPhoto: reqPhoto === "" ? null : reqPhoto === "sim",
+    reviewEnabled: reviewEnabled === "" ? null : reviewEnabled === "sim",
+    breaksEnabled: breaks === "" ? null : breaks === "sim",
+  });
 
-  const save = async () => {
+  const saveConfig = async () => {
     setError(null);
-    const payload: Record<string, unknown> = {
-      checkinRadius: checkinRadius === "" ? null : Number(checkinRadius),
-      cancellationWindowMinutes: cancelWindow === "" ? null : Number(cancelWindow),
-      requireCheckoutPhoto: reqPhoto === "" ? null : reqPhoto === "sim",
-      reviewEnabled: reviewEnabled === "" ? null : reviewEnabled === "sim",
-    };
-    if (pending) {
-      if (!shifts.length) return setError("Selecione ao menos um turno.");
-      for (const s of shifts) {
-        const err = validateShiftInput(s);
-        if (err) return setError(`${shiftLabel(s.shiftPeriod)}: ${err}`);
+    const payload: Record<string, unknown> = configPayload();
+    if (canReshape) {
+      const shiftError = validateShifts(shifts);
+      if (shiftError) return setError(shiftError);
+      if (pending) {
+        payload.title = title.trim() || undefined;
+        payload.categoryId = categoryId;
       }
-      payload.title = title.trim() || undefined;
-      payload.categoryId = categoryId;
       payload.date = date;
-      payload.shifts = shifts;
+      payload.shifts = shifts.map(toShiftPayload);
     }
     setSaving(true);
     try {
@@ -94,87 +114,229 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
     }
   };
 
+  const updateRow = (i: number, p: Partial<TimesheetRow>) =>
+    setRows((cur) => cur.map((r, idx) => (idx === i ? { ...r, ...p } : r)));
+  const updateBreak = (ri: number, bi: number, p: Partial<{ startLocal: string; endLocal: string }>) =>
+    setRows((cur) =>
+      cur.map((r, idx) =>
+        idx === ri ? { ...r, breaks: r.breaks.map((b, j) => (j === bi ? { ...b, ...p } : b)) } : r
+      )
+    );
+  const addBreak = (ri: number) =>
+    updateRow(ri, { breaks: [...rows[ri].breaks, { startLocal: "", endLocal: "" }] });
+  const removeBreak = (ri: number, bi: number) =>
+    updateRow(ri, { breaks: rows[ri].breaks.filter((_, j) => j !== bi) });
+
+  const saveTimesheet = async () => {
+    setError(null);
+    const patches: TimesheetShiftPatch[] = [];
+    for (const r of rows) {
+      if (r.shift.status === "pending") {
+        const changed =
+          r.startLocal !== isoToLocalInput(r.shift.startTime) ||
+          r.endLocal !== isoToLocalInput(r.shift.endTime);
+        if (changed) {
+          if (!r.startLocal || !r.endLocal) return setError(`${r.shift.label}: informe início e fim do turno.`);
+          patches.push({
+            shiftId: r.shift.id,
+            startTime: localInputToISO(r.startLocal),
+            endTime: localInputToISO(r.endLocal),
+          });
+        }
+      } else {
+        const patch: TimesheetShiftPatch = { shiftId: r.shift.id };
+        if (r.checkInLocal !== isoToLocalInput(r.shift.checkInAt)) patch.checkInAt = localInputToISO(r.checkInLocal);
+        if (r.checkOutLocal !== isoToLocalInput(r.shift.checkOutAt)) patch.checkOutAt = localInputToISO(r.checkOutLocal);
+        const origBreaks = (r.shift.breaks ?? []).map((b) => ({
+          startLocal: isoToLocalInput(b.startAt),
+          endLocal: isoToLocalInput(b.endAt),
+        }));
+        const breaksChanged = JSON.stringify(origBreaks) !== JSON.stringify(r.breaks);
+        if (breaksChanged) {
+          for (const b of r.breaks) {
+            if (!b.startLocal || !b.endLocal) return setError(`${r.shift.label}: cada pausa precisa de início e fim.`);
+          }
+          patch.breaks = r.breaks.map((b) => ({
+            startAt: localInputToISO(b.startLocal),
+            endAt: localInputToISO(b.endLocal),
+          }));
+        }
+        if (patch.checkInAt || patch.checkOutAt || patch.breaks) patches.push(patch);
+      }
+    }
+    if (!patches.length) return setError("Nenhuma alteração de horário/ponto para salvar.");
+    setSaving(true);
+    try {
+      await correctJobTimesheet(job.id, { reason: tsReason || undefined, shifts: patches });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao corrigir." : "Erro ao corrigir.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Modal title={`Gerenciar vaga — ${job.title}`} onClose={onClose}>
       <div className={panel.form}>
-        {pending ? (
-          <>
-            <label>Função</label>
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <label>Título</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} />
-            <label>Data</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            <label>Turnos da vaga (um ou mais)</label>
-            <div className={panel.shiftRow}>
-              {SHIFT_PERIODS.map((p) => (
-                <label key={p.value} style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={shifts.some((s) => s.shiftPeriod === p.value)}
-                    onChange={() => toggleShift(p.value)}
-                  />
-                  {p.label}
-                </label>
-              ))}
-            </div>
-            {shifts.map((s) => {
-              const range = shiftTimeRange(s.shiftPeriod);
-              return (
-                <div key={s.shiftPeriod} className={panel.shiftRow}>
-                  <span style={{ minWidth: 72, fontWeight: 600 }}>{shiftLabel(s.shiftPeriod)}</span>
-                  <div style={{ flex: 1 }}>
-                    <label>Início</label>
-                    <input type="time" value={s.startTime} min={range.min} max={range.max}
-                      onChange={(e) => updateShiftTime(s.shiftPeriod, { startTime: e.target.value })} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label>Fim</label>
-                    <input type="time" value={s.endTime} min={range.min} max={range.max}
-                      onChange={(e) => updateShiftTime(s.shiftPeriod, { endTime: e.target.value })} />
-                  </div>
-                </div>
-              );
-            })}
-            <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-          </>
-        ) : (
-          <p className={panel.muted}>Vaga já aceita — só a configuração operacional pode ser ajustada.</p>
+        {canReshape && canFixTimesheet && (
+          <div className={panel.filterBar} style={{ marginBottom: 4 }}>
+            <button type="button" className={tab === "config" ? panel.primaryBtn : panel.ghostBtn}
+              onClick={() => setTab("config")}>Turno e configuração</button>
+            <button type="button" className={tab === "timesheet" ? panel.primaryBtn : panel.ghostBtn}
+              onClick={() => setTab("timesheet")}>Corrigir horário e ponto</button>
+          </div>
         )}
 
-        <strong>Configuração desta vaga</strong>
-        <p className={panel.muted}>Deixe “Padrão” / em branco para usar a configuração geral da agência.</p>
+        {tab === "config" && (
+          <>
+            {pending && (
+              <>
+                <label>Função</label>
+                <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <label>Título</label>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} />
+              </>
+            )}
 
-        <label>Raio de check-in (m){settings ? ` — padrão ${settings.checkinRadius}` : ""}</label>
-        <input type="number" min={20} max={5000} value={checkinRadius}
-          placeholder={settings ? String(settings.checkinRadius) : "padrão"}
-          onChange={(e) => setCheckinRadius(e.target.value)} />
+            {canReshape ? (
+              <>
+                <label>Data</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <label>Turnos da vaga</label>
+                <ShiftsField value={shifts} onChange={setShifts} />
+                {job.status === "accepted" && (
+                  <p className={panel.muted}>
+                    A vaga já foi aceita — remarcar o horário revalida a agenda do colaborador.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className={panel.muted}>
+                Turno e função só mudam com a vaga disponível. Use “Corrigir horário e ponto” para ajustes.
+              </p>
+            )}
 
-        <label>Prazo de cancelamento (min){settings ? ` — padrão ${settings.cancellationWindowMinutes}` : ""}</label>
-        <input type="number" min={0} max={10080} value={cancelWindow}
-          placeholder={settings ? String(settings.cancellationWindowMinutes) : "padrão"}
-          onChange={(e) => setCancelWindow(e.target.value)} />
+            <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+            <strong>Configuração desta vaga</strong>
+            <p className={panel.muted}>Deixe “Padrão” / em branco para usar a configuração geral da agência.</p>
 
-        <label>Foto no check-out</label>
-        <select value={reqPhoto} onChange={(e) => setReqPhoto(e.target.value as "" | "sim" | "nao")}>
-          <option value="">Padrão{settings ? ` (${settings.requireCheckoutPhoto ? "exige" : "não exige"})` : ""}</option>
-          <option value="sim">Exigir</option>
-          <option value="nao">Não exigir</option>
-        </select>
+            <label>Raio de check-in (m){settings ? ` — padrão ${settings.checkinRadius}` : ""}</label>
+            <input type="number" min={20} max={5000} value={checkinRadius}
+              placeholder={settings ? String(settings.checkinRadius) : "padrão"}
+              onChange={(e) => setCheckinRadius(e.target.value)} />
 
-        <label>Avaliação de entrega</label>
-        <select value={reviewEnabled} onChange={(e) => setReviewEnabled(e.target.value as "" | "sim" | "nao")}>
-          <option value="">Padrão{settings ? ` (${settings.reviewEnabled ? "ativa" : "inativa"})` : ""}</option>
-          <option value="sim">Ativar</option>
-          <option value="nao">Desativar</option>
-        </select>
+            <label>Prazo de cancelamento (min){settings ? ` — padrão ${settings.cancellationWindowMinutes}` : ""}</label>
+            <input type="number" min={0} max={10080} value={cancelWindow}
+              placeholder={settings ? String(settings.cancellationWindowMinutes) : "padrão"}
+              onChange={(e) => setCancelWindow(e.target.value)} />
 
-        {error && <p className={panel.error}>{error}</p>}
-        <button className={panel.primaryBtn} onClick={save} disabled={saving}>
-          {saving ? "Salvando…" : "Salvar"}
-        </button>
+            <label>Foto no check-out</label>
+            <select value={reqPhoto} onChange={(e) => setReqPhoto(e.target.value as "" | "sim" | "nao")}>
+              <option value="">Padrão{settings ? ` (${settings.requireCheckoutPhoto ? "exige" : "não exige"})` : ""}</option>
+              <option value="sim">Exigir</option>
+              <option value="nao">Não exigir</option>
+            </select>
+
+            <label>Avaliação de entrega</label>
+            <select value={reviewEnabled} onChange={(e) => setReviewEnabled(e.target.value as "" | "sim" | "nao")}>
+              <option value="">Padrão{settings ? ` (${settings.reviewEnabled ? "ativa" : "inativa"})` : ""}</option>
+              <option value="sim">Ativar</option>
+              <option value="nao">Desativar</option>
+            </select>
+
+            <label>Pausa/intervalo no ponto</label>
+            <select value={breaks} onChange={(e) => setBreaks(e.target.value as "" | "sim" | "nao")}>
+              <option value="">Padrão{settings ? ` (${settings.breaksEnabled ? "permite" : "não permite"})` : ""}</option>
+              <option value="sim">Permitir</option>
+              <option value="nao">Não permitir</option>
+            </select>
+
+            {error && <p className={panel.error}>{error}</p>}
+            <button className={panel.primaryBtn} onClick={saveConfig} disabled={saving}>
+              {saving ? "Salvando…" : "Salvar"}
+            </button>
+          </>
+        )}
+
+        {tab === "timesheet" && (
+          <>
+            <p className={panel.muted}>
+              Ajuste o horário de turnos ainda não iniciados ou corrija o check-in/check-out e as
+              pausas dos turnos já trabalhados.
+            </p>
+            {alreadySettled && (
+              <p className={panel.error}>
+                Esta vaga já foi paga — a correção vai reajustar o pagamento e os saldos do
+                colaborador e da agência pela diferença.
+              </p>
+            )}
+            {rows.map((r, i) => (
+              <div key={r.shift.id} className={panel.card} style={{ padding: "0.75rem" }}>
+                <strong>
+                  {r.shift.label || `Turno ${i + 1}`}{" "}
+                  <span className={panel.badge}>{SHIFT_STATUS[r.shift.status ?? "pending"]}</span>
+                </strong>
+                {r.shift.status === "pending" ? (
+                  <div className={panel.shiftRow} style={{ marginTop: 6 }}>
+                    <div>
+                      <label>Início</label>
+                      <input type="datetime-local" value={r.startLocal}
+                        onChange={(e) => updateRow(i, { startLocal: e.target.value })} />
+                    </div>
+                    <div>
+                      <label>Fim</label>
+                      <input type="datetime-local" value={r.endLocal}
+                        onChange={(e) => updateRow(i, { endLocal: e.target.value })} />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className={panel.shiftRow} style={{ marginTop: 6 }}>
+                      <div>
+                        <label>Check-in</label>
+                        <input type="datetime-local" value={r.checkInLocal}
+                          onChange={(e) => updateRow(i, { checkInLocal: e.target.value })} />
+                      </div>
+                      <div>
+                        <label>Check-out</label>
+                        <input type="datetime-local" value={r.checkOutLocal}
+                          onChange={(e) => updateRow(i, { checkOutLocal: e.target.value })} />
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                      <label className={panel.muted}>Pausas</label>
+                      {r.breaks.map((b, bi) => (
+                        <div key={bi} className={panel.shiftRow}>
+                          <input type="datetime-local" value={b.startLocal}
+                            onChange={(e) => updateBreak(i, bi, { startLocal: e.target.value })} />
+                          <input type="datetime-local" value={b.endLocal}
+                            onChange={(e) => updateBreak(i, bi, { endLocal: e.target.value })} />
+                          <button type="button" className={panel.secondaryBtn} onClick={() => removeBreak(i, bi)}>
+                            Remover
+                          </button>
+                        </div>
+                      ))}
+                      <button type="button" className={panel.ghostBtn} onClick={() => addBreak(i)}>
+                        + Pausa
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+            <label>Motivo da correção</label>
+            <input value={tsReason} onChange={(e) => setTsReason(e.target.value)}
+              placeholder="ex.: colaborador esqueceu de bater o ponto" />
+            {error && <p className={panel.error}>{error}</p>}
+            <button className={panel.primaryBtn} onClick={saveTimesheet} disabled={saving}>
+              {saving ? "Salvando…" : "Salvar correção"}
+            </button>
+          </>
+        )}
       </div>
     </Modal>
   );

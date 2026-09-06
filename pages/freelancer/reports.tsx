@@ -36,25 +36,27 @@ function ReportsPage() {
                 <div className={panel.card}><h2>{money(report.totals.availableBalance)}</h2><p>Saldo na carteira</p></div>
               </div>
 
-              <table className={panel.table} style={{ marginTop: "1rem" }}>
-                <thead>
-                  <tr><th>Data</th><th>Vaga</th><th>Função</th><th>Local</th><th>Horas contr.</th><th>Horas trab.</th><th>Valor recebido</th></tr>
-                </thead>
-                <tbody>
-                  {report.items.map((i) => (
-                    <tr key={i.jobId}>
-                      <td>{fmtDate(i.date)}</td>
-                      <td>{i.title}</td>
-                      <td>{i.categoryName ?? "—"}</td>
-                      <td>{i.supermarketName ?? "—"}{i.branchName ? ` · ${i.branchName}` : ""}</td>
-                      <td>{hrs(i.contractedHours)}</td>
-                      <td>{hrs(i.workedHours)}</td>
-                      <td>{money(i.amount)}</td>
-                    </tr>
-                  ))}
-                  {report.items.length === 0 && <tr><td colSpan={7}>Nenhum trabalho concluído ainda.</td></tr>}
-                </tbody>
-              </table>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table} style={{ marginTop: "1rem" }}>
+                  <thead>
+                    <tr><th>Data</th><th>Vaga</th><th>Função</th><th>Local</th><th>Horas contr.</th><th>Horas trab.</th><th>Valor recebido</th></tr>
+                  </thead>
+                  <tbody>
+                    {report.items.map((i) => (
+                      <tr key={i.jobId}>
+                        <td>{fmtDate(i.date)}</td>
+                        <td>{i.title}</td>
+                        <td>{i.categoryName ?? "—"}</td>
+                        <td>{i.supermarketName ?? "—"}{i.branchName ? ` · ${i.branchName}` : ""}</td>
+                        <td>{hrs(i.contractedHours)}</td>
+                        <td>{hrs(i.workedHours)}</td>
+                        <td>{money(i.amount)}</td>
+                      </tr>
+                    ))}
+                    {report.items.length === 0 && <tr><td colSpan={7}>Nenhum trabalho concluído ainda.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </section>

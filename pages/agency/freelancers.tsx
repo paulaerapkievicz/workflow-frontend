@@ -6,6 +6,7 @@ import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import { getMyFreelancers, addFreelancer, AgencyFreelancer } from "@/src/services/agencyService";
+import { createInvite } from "@/src/services/inviteService";
 import { getCategories, Category } from "@/src/services/categoryService";
 import {
   updateFreelancer,
@@ -31,6 +32,30 @@ function FreelancersPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", skills: "" });
   const [editError, setEditError] = useState<string | null>(null);
+  const [catMsg, setCatMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const [inviteModal, setInviteModal] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
+  const openInviteFreelancer = async () => {
+    setInviteError(null);
+    setInviteCopied(false);
+    setInviteLink(null);
+    setInviteModal(true);
+    try {
+      const { token } = await createInvite("freelancer");
+      setInviteLink(`${window.location.origin}/invite/${token}`);
+    } catch (err) {
+      setInviteError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao gerar convite." : "Erro ao gerar convite.");
+    }
+  };
+
+  const copyInviteLink = async () => {
+    if (!inviteLink) return;
+    try { await navigator.clipboard.writeText(inviteLink); setInviteCopied(true); } catch { /* ignore */ }
+  };
 
   const load = useCallback(async () => {
     if (!agencyId) return;
@@ -71,6 +96,7 @@ function FreelancersPage() {
 
   const openEdit = (f: AgencyFreelancer) => {
     setEditError(null);
+    setCatMsg(null);
     setEditForm({ name: f.name, email: f.email, phone: f.phone ?? "", skills: f.skills ?? "" });
     setEditId(f.id);
   };
@@ -87,34 +113,57 @@ function FreelancersPage() {
     }
   };
 
-  const toggleCategory = async (freelancerId: string, categoryId: string) => {
-    const has = (catsByFreelancer[freelancerId] ?? []).includes(categoryId);
-    // Atualização otimista.
-    setCatsByFreelancer((cur) => {
-      const list = cur[freelancerId] ?? [];
-      return { ...cur, [freelancerId]: has ? list.filter((c) => c !== categoryId) : [...list, categoryId] };
-    });
-    try {
-      if (has) await removeCategoryFromFreelancer(freelancerId, categoryId);
-      else await addCategoryToFreelancer(freelancerId, categoryId);
-    } catch {
-      await load();
-    }
-  };
-
   const setRateInput = (freelancerId: string, categoryId: string, value: string) =>
     setRateByFreelancer((cur) => ({
       ...cur,
       [freelancerId]: { ...(cur[freelancerId] ?? {}), [categoryId]: value },
     }));
 
-  const commitRate = async (freelancerId: string, categoryId: string, value: string) => {
+  // Adiciona a função já com o valor/hora — sem valor não salva (o colaborador não veria a vaga).
+  const addCategory = async (freelancerId: string, categoryId: string, value: string) => {
+    setCatMsg(null);
     const num = Number(value);
-    if (!value || !Number.isFinite(num) || num <= 0) return;
+    if (!value || !Number.isFinite(num) || num <= 0) {
+      setCatMsg({ type: "err", text: "Informe o valor/hora antes de adicionar a função." });
+      return;
+    }
+    try {
+      await addCategoryToFreelancer(freelancerId, categoryId, num);
+      await load();
+      setCatMsg({
+        type: "ok",
+        text: `Função adicionada a R$ ${num.toFixed(2)}/h. O colaborador já enxerga vagas dessa função — desde que o supermercado também tenha o valor/hora da função cadastrado.`,
+      });
+    } catch (err) {
+      setCatMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
+    }
+  };
+
+  const removeCategory = async (freelancerId: string, categoryId: string) => {
+    setCatMsg(null);
+    try {
+      await removeCategoryFromFreelancer(freelancerId, categoryId);
+      await load();
+    } catch (err) {
+      setCatMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
+    }
+  };
+
+  const commitRate = async (freelancerId: string, categoryId: string, value: string) => {
+    setCatMsg(null);
+    const num = Number(value);
+    if (!value || !Number.isFinite(num) || num <= 0) {
+      setCatMsg({ type: "err", text: "O valor/hora não pode ficar em branco. Informe um número maior que zero." });
+      // devolve o valor salvo
+      await load();
+      return;
+    }
+    if (num === Number(rateByFreelancer[freelancerId]?.[categoryId])) return;
     try {
       await setFreelancerCategoryRate(freelancerId, categoryId, num);
+      setCatMsg({ type: "ok", text: `Valor/hora atualizado para R$ ${num.toFixed(2)}/h.` });
     } catch (err) {
-      alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+      setCatMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
       await load();
     }
   };
@@ -132,15 +181,19 @@ function FreelancersPage() {
         <section className={panel.content}>
           <header className={panel.header}>
             <h1>Colaboradores da agência</h1>
-            <button className={panel.primaryBtn} onClick={() => { setError(null); setOpen(true); }}>
-              Adicionar colaborador
-            </button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button className={panel.ghostBtn} onClick={openInviteFreelancer}>Convidar colaborador</button>
+              <button className={panel.primaryBtn} onClick={() => { setError(null); setOpen(true); }}>
+                Adicionar colaborador
+              </button>
+            </div>
           </header>
           <p className={panel.muted}>
             As funções definem quais vagas o colaborador enxerga. Para cada função é preciso definir
             o <strong>valor/hora que ele recebe</strong> — sem valor, ele não vê nem aceita vagas dessa função.
           </p>
 
+          <div style={{ overflowX: "auto" }}>
           <table className={panel.table}>
             <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Funções</th><th>Saldo</th><th>Ações</th></tr></thead>
             <tbody>
@@ -177,8 +230,31 @@ function FreelancersPage() {
               {list.length === 0 && <tr><td colSpan={6}>Nenhum colaborador cadastrado.</td></tr>}
             </tbody>
           </table>
+          </div>
         </section>
       </main>
+
+      {inviteModal && (
+        <Modal title="Convidar colaborador" onClose={() => setInviteModal(false)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              Envie este link pro colaborador (WhatsApp, e-mail…). Ao preencher o cadastro, ele já
+              nasce vinculado à sua agência e aprovado — sem etapa de aprovação depois. Você define o
+              valor/hora dele por função separadamente, aqui na tela.
+            </p>
+            {inviteError && <p className={panel.error}>{inviteError}</p>}
+            {!inviteError && !inviteLink && <p>Gerando link…</p>}
+            {inviteLink && (
+              <>
+                <input readOnly value={inviteLink} onFocus={(e) => e.target.select()} />
+                <button className={panel.primaryBtn} onClick={copyInviteLink}>
+                  {inviteCopied ? "Copiado!" : "Copiar link"}
+                </button>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {open && (
         <Modal title="Adicionar colaborador" onClose={() => setOpen(false)}>
@@ -212,28 +288,42 @@ function FreelancersPage() {
             <textarea value={editForm.skills} onChange={(e) => setEditForm({ ...editForm, skills: e.target.value })} />
 
             <label>Funções que o colaborador exerce e o valor/hora que ele recebe</label>
+            <p className={panel.muted} style={{ fontSize: "0.8rem", margin: 0 }}>
+              Toda função precisa de um valor/hora para ser salva — sem ele o colaborador não vê nem aceita vagas dessa função.
+            </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {categories.map((c) => {
-                const checked = (catsByFreelancer[editId] ?? []).includes(c.id);
+                const added = (catsByFreelancer[editId] ?? []).includes(c.id);
+                const rateValue = rateByFreelancer[editId]?.[c.id] ?? "";
                 return (
                   <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", minWidth: 160 }}>
-                      <input type="checkbox" checked={checked} onChange={() => toggleCategory(editId, c.id)} />
-                      {c.name}
-                    </label>
-                    {checked && (
-                      <input
-                        type="number" min="0.01" step="0.01" placeholder="R$/h"
-                        style={{ width: 110 }}
-                        value={rateByFreelancer[editId]?.[c.id] ?? ""}
-                        onChange={(e) => setRateInput(editId, c.id, e.target.value)}
-                        onBlur={(e) => commitRate(editId, c.id, e.target.value)}
-                      />
+                    <span style={{ minWidth: 160 }}>{c.name}</span>
+                    <input
+                      type="number" min="0.01" step="0.01" placeholder="R$/h"
+                      style={{ width: 110 }}
+                      value={rateValue}
+                      onChange={(e) => setRateInput(editId, c.id, e.target.value)}
+                      onBlur={added ? (e) => commitRate(editId, c.id, e.target.value) : undefined}
+                    />
+                    {added ? (
+                      <button type="button" className={panel.secondaryBtn} onClick={() => removeCategory(editId, c.id)}>
+                        Remover
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={panel.ghostBtn}
+                        disabled={!(Number(rateValue) > 0)}
+                        onClick={() => addCategory(editId, c.id, rateValue)}
+                      >
+                        Adicionar
+                      </button>
                     )}
                   </div>
                 );
               })}
             </div>
+            {catMsg && <p className={catMsg.type === "ok" ? panel.success : panel.error}>{catMsg.text}</p>}
 
             {editError && <p className={panel.error}>{editError}</p>}
             <button className={panel.primaryBtn} onClick={saveEdit}>Salvar</button>

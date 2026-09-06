@@ -9,8 +9,9 @@ import {
   getSupermarkets, createSupermarketAsAgency, updateSupermarket, Supermarket,
 } from "@/src/services/supermarketService";
 import {
-  getBranches, createBranch, updateBranch, deleteBranch, geocodeAddress, branchHasLocation, Branch,
+  getBranches, createBranch, updateBranch, deleteBranch, geocodeAddress, branchHasLocation, approveBranch, Branch,
 } from "@/src/services/branchService";
+import { createInvite } from "@/src/services/inviteService";
 import { getCategories, Category } from "@/src/services/categoryService";
 import {
   getSupermarketRates, saveSupermarketRate, updateSupermarketRate, deleteSupermarketRate,
@@ -35,6 +36,11 @@ function SupermarketsPage() {
   const [marketModal, setMarketModal] = useState(false);
   const [marketForm, setMarketForm] = useState({ ...emptyMarket });
   const [marketError, setMarketError] = useState<string | null>(null);
+
+  const [inviteModal, setInviteModal] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const [branchesOf, setBranchesOf] = useState<Supermarket | null>(null);
   const [branchModal, setBranchModal] = useState(false);
@@ -62,6 +68,24 @@ function SupermarketsPage() {
   );
 
   const openNewMarket = () => { setMarketForm({ ...emptyMarket }); setMarketError(null); setMarketModal(true); };
+
+  const openInviteMarket = async () => {
+    setInviteError(null);
+    setInviteCopied(false);
+    setInviteLink(null);
+    setInviteModal(true);
+    try {
+      const { token } = await createInvite("supermarket");
+      setInviteLink(`${window.location.origin}/invite/${token}`);
+    } catch (err) {
+      setInviteError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao gerar convite." : "Erro ao gerar convite.");
+    }
+  };
+
+  const copyInviteLink = async () => {
+    if (!inviteLink) return;
+    try { await navigator.clipboard.writeText(inviteLink); setInviteCopied(true); } catch { /* ignore */ }
+  };
   const openEditMarket = (m: Supermarket) => {
     setMarketForm({ id: m.id, name: m.name, cnpj: m.cnpj, address: m.address ?? "", phone: m.phone ?? "", email: "", password: "" });
     setMarketError(null);
@@ -130,6 +154,11 @@ function SupermarketsPage() {
     catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
   };
 
+  const approveBranchAttendance = async (id: string) => {
+    try { await approveBranch(id); await load(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+  };
+
   const openRates = async (m: Supermarket) => {
     setRatesOf(m);
     setRateForm({ ...emptyRate });
@@ -183,13 +212,16 @@ function SupermarketsPage() {
 
   return (
     <>
-      <Head><title>Supermercados | Agência</title></Head>
+      <Head><title>Gestão de Clientes | Agência</title></Head>
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
           <header className={panel.header}>
-            <h1>Supermercados</h1>
-            <button className={panel.primaryBtn} onClick={openNewMarket}>Novo supermercado</button>
+            <h1>Gestão de Clientes</h1>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button className={panel.ghostBtn} onClick={openInviteMarket}>Convidar supermercado</button>
+              <button className={panel.primaryBtn} onClick={openNewMarket}>Novo supermercado</button>
+            </div>
           </header>
           <p className={panel.muted}>
             A agência cadastra os supermercados e as filiais de cada um. O acesso do supermercado é
@@ -208,7 +240,14 @@ function SupermarketsPage() {
                       <td>{m.name}</td>
                       <td>{m.cnpj}</td>
                       <td>{m.owner?.email ?? "—"}</td>
-                      <td>{branchesForMarket(m.id).length}</td>
+                      <td>
+                        {branchesForMarket(m.id).length}
+                        {branchesForMarket(m.id).some((b) => b.serviceStatus === "pending") && (
+                          <span className={`${panel.badge} ${panel.badgePending}`} style={{ marginLeft: 6 }}>
+                            aguardando aprovação
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <button className={panel.ghostBtn} onClick={() => setBranchesOf(m)}>Filiais</button>
                         <button className={panel.ghostBtn} onClick={() => openRates(m)}>Valores/hora</button>
@@ -223,6 +262,28 @@ function SupermarketsPage() {
           )}
         </section>
       </main>
+
+      {inviteModal && (
+        <Modal title="Convidar supermercado" onClose={() => setInviteModal(false)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              Envie este link pro supermercado (WhatsApp, e-mail…). Ao preencher o cadastro, ele já
+              nasce vinculado à sua agência — sem etapa de aprovação depois. Nenhum valor/preço aparece
+              nesse formulário, só cadastro básico.
+            </p>
+            {inviteError && <p className={panel.error}>{inviteError}</p>}
+            {!inviteError && !inviteLink && <p>Gerando link…</p>}
+            {inviteLink && (
+              <>
+                <input readOnly value={inviteLink} onFocus={(e) => e.target.select()} />
+                <button className={panel.primaryBtn} onClick={copyInviteLink}>
+                  {inviteCopied ? "Copiado!" : "Copiar link"}
+                </button>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {marketModal && (
         <Modal title={marketForm.id ? "Editar supermercado" : "Novo supermercado"} onClose={() => setMarketModal(false)}>
@@ -323,7 +384,7 @@ function SupermarketsPage() {
             <button className={panel.primaryBtn} onClick={openNewBranch}>Nova filial</button>
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
-                <thead><tr><th>Nome</th><th>Endereço</th><th>Localização</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nome</th><th>Endereço</th><th>Localização</th><th>Atendimento</th><th>Ações</th></tr></thead>
                 <tbody>
                   {branchesForMarket(branchesOf.id).map((b) => (
                     <tr key={b.id}>
@@ -335,13 +396,21 @@ function SupermarketsPage() {
                           : <span className={`${panel.badge} ${panel.badgePending}`}>não localizada</span>}
                       </td>
                       <td>
+                        {b.serviceStatus === "approved"
+                          ? <span className={`${panel.badge} ${panel.badgeDone}`}>Aprovada</span>
+                          : <span className={`${panel.badge} ${panel.badgePending}`}>Pendente</span>}
+                      </td>
+                      <td>
+                        {b.serviceStatus === "pending" && (
+                          <button className={panel.primaryBtn} onClick={() => approveBranchAttendance(b.id)}>Aprovar atendimento</button>
+                        )}
                         <button className={panel.ghostBtn} onClick={() => openEditBranch(b)}>Editar</button>
                         <button className={panel.secondaryBtn} onClick={() => removeBranch(b.id)}>Excluir</button>
                       </td>
                     </tr>
                   ))}
                   {branchesForMarket(branchesOf.id).length === 0 && (
-                    <tr><td colSpan={4} className={panel.muted}>Nenhuma filial.</td></tr>
+                    <tr><td colSpan={5} className={panel.muted}>Nenhuma filial.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -359,7 +428,7 @@ function SupermarketsPage() {
             <input
               value={branchForm.address}
               onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
-              placeholder="Rua, número - bairro, cidade/UF"
+              placeholder="Ex.: Rua Dirceu Sander, 719, Passo Fundo RS"
             />
             <button type="button" className={panel.ghostBtn} onClick={testGeocode} disabled={geoBusy || !branchForm.address.trim()}>
               {geoBusy ? "Buscando…" : "Buscar localização pelo endereço"}

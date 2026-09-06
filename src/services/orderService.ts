@@ -1,12 +1,13 @@
 import api from "@/src/services/api";
 import type { Job } from "@/src/services/jobService";
-import type { ShiftInput, ShiftPeriod } from "@/src/services/shifts";
+import { toShiftPayload, type ShiftInput, type ShiftPeriod } from "@/src/services/shifts";
 
 export type OrderStatus = "open" | "in_progress" | "completed" | "canceled";
 export type OrderApprovalStatus = "approved" | "pending_approval" | "rejected";
 
 export interface OrderItemShift {
   shiftPeriod?: ShiftPeriod | null;
+  nominalPeriod?: ShiftPeriod | null;
   startTime: string;
   endTime: string;
   label?: string | null;
@@ -52,7 +53,13 @@ export interface OrderItemInput {
   date: string; // YYYY-MM-DD
   shifts: ShiftInput[];
   title?: string;
+  /** Libera a pausa/intervalo no ponto nesta vaga. undefined = usa o padrão da agência. */
+  breaksEnabled?: boolean;
 }
+
+/** Converte os itens do carrinho para o formato que a API espera (turnos sem `id` de cliente). */
+const toItemPayload = (items: OrderItemInput[]) =>
+  items.map((it) => ({ ...it, shifts: it.shifts.map(toShiftPayload) }));
 
 export interface CreateOrderInput {
   /** Legado — cada item carrega a própria filial. */
@@ -65,11 +72,11 @@ export const getOrders = async (): Promise<Order[]> => (await api.get("/orders")
 export const getOrder = async (id: string): Promise<Order> => (await api.get(`/orders/${id}`)).data;
 
 export const createOrder = async (input: CreateOrderInput): Promise<Order> =>
-  (await api.post("/orders", input)).data;
+  (await api.post("/orders", { ...input, items: toItemPayload(input.items) })).data;
 
 /** Adiciona novas vagas a um pedido já enviado. */
 export const addOrderItems = async (orderId: string, items: OrderItemInput[]): Promise<Order> =>
-  (await api.post(`/orders/${orderId}/items`, { items })).data;
+  (await api.post(`/orders/${orderId}/items`, { items: toItemPayload(items) })).data;
 
 export const cancelOrder = async (id: string): Promise<Order> =>
   (await api.post(`/orders/${id}/cancel`)).data;

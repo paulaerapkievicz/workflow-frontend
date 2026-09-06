@@ -10,6 +10,8 @@ export interface Branch {
   geocodedAt?: string | null;
   geocodeQuery?: string | null;
   supermarketId: string;
+  /** approved = pode receber pedidos; pending = aguardando a agência aprovar o atendimento. */
+  serviceStatus: "approved" | "pending";
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +48,10 @@ export const updateBranch = async (id: string, branch: Partial<BranchInput>): Pr
 export const deleteBranch = async (id: string): Promise<void> => {
   await api.delete(`/branches/${id}`);
 };
+
+/** Agência aprova o atendimento de uma filial cadastrada pelo próprio supermercado. */
+export const approveBranch = async (id: string): Promise<Branch> =>
+  (await api.post(`/branches/${id}/approve`)).data;
 
 /** Busca as coordenadas de um endereço (prévia, não salva). */
 export const geocodeAddress = async (address: string): Promise<GeocodeResult> =>

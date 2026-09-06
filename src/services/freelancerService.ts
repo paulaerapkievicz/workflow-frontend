@@ -42,6 +42,27 @@ export const deleteFreelancer = async (id: string): Promise<void> => {
   await api.delete(`/freelancers/${id}`);
 };
 
+export interface JobFreelancerProfile {
+  name: string;
+  phone: string | null;
+  document: string | null;
+  profilePhotoUrl: string | null;
+}
+
+// Perfil do colaborador alocado numa vaga (visível pro supermercado dono da vaga)
+export const getJobFreelancerProfile = async (jobId: string): Promise<JobFreelancerProfile> =>
+  (await api.get(`/jobs/${jobId}/freelancer-profile`)).data;
+
+// O próprio colaborador envia/atualiza sua foto de perfil
+export const uploadMyProfilePhoto = async (file: File): Promise<Freelancer> => {
+  const form = new FormData();
+  form.append("photo", file);
+  const { data } = await api.post("/freelancer/profile-photo", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+
 export interface FreelancerCategoryRow {
   id: string;
   freelancerId: string;

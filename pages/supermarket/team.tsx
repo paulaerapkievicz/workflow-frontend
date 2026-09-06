@@ -87,37 +87,39 @@ function TeamPage() {
           {!isOwner ? (
             <p className={panel.muted}>Somente o responsável pela rede gerencia a equipe.</p>
           ) : (
-            <table className={panel.table}>
-              <thead><tr><th>Nome</th><th>E-mail</th><th>Loja</th><th>Solicita</th><th>Aprova</th><th>Ações</th></tr></thead>
-              <tbody>
-                {members.map((m) => (
-                  <tr key={m.id}>
-                    <td>{m.memberUser?.name ?? "—"}{m.isOwner && <span className={panel.badge} style={{ marginLeft: 6 }}>dono</span>}</td>
-                    <td>{m.memberUser?.email ?? "—"}</td>
-                    <td>
-                      {m.isOwner ? "Rede toda" : (
-                        <select value={m.branchId ?? ""} onChange={(e) => patch(m, { branchId: e.target.value || null })}>
-                          <option value="">Rede toda</option>
-                          {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </select>
-                      )}
-                    </td>
-                    <td>
-                      <input type="checkbox" disabled={m.isOwner} checked={m.canSubmitOrders}
-                        onChange={(e) => patch(m, { canSubmitOrders: e.target.checked })} />
-                    </td>
-                    <td>
-                      <input type="checkbox" disabled={m.isOwner} checked={m.canApproveOrders}
-                        onChange={(e) => patch(m, { canApproveOrders: e.target.checked })} />
-                    </td>
-                    <td>
-                      {!m.isOwner && <button className={panel.secondaryBtn} onClick={() => remove(m)}>Remover</button>}
-                    </td>
-                  </tr>
-                ))}
-                {members.length === 0 && <tr><td colSpan={6}>Nenhum membro.</td></tr>}
-              </tbody>
-            </table>
+            <div style={{ overflowX: "auto" }}>
+              <table className={panel.table}>
+                <thead><tr><th>Nome</th><th>E-mail</th><th>Loja</th><th>Solicita</th><th>Aprova</th><th>Ações</th></tr></thead>
+                <tbody>
+                  {members.map((m) => (
+                    <tr key={m.id}>
+                      <td>{m.memberUser?.name ?? "—"}{m.isOwner && <span className={panel.badge} style={{ marginLeft: 6 }}>dono</span>}</td>
+                      <td>{m.memberUser?.email ?? "—"}</td>
+                      <td>
+                        {m.isOwner ? "Rede toda" : (
+                          <select value={m.branchId ?? ""} onChange={(e) => patch(m, { branchId: e.target.value || null })}>
+                            <option value="">Rede toda</option>
+                            {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                          </select>
+                        )}
+                      </td>
+                      <td>
+                        <input type="checkbox" disabled={m.isOwner} checked={m.canSubmitOrders}
+                          onChange={(e) => patch(m, { canSubmitOrders: e.target.checked })} />
+                      </td>
+                      <td>
+                        <input type="checkbox" disabled={m.isOwner} checked={m.canApproveOrders}
+                          onChange={(e) => patch(m, { canApproveOrders: e.target.checked })} />
+                      </td>
+                      <td>
+                        {!m.isOwner && <button className={panel.secondaryBtn} onClick={() => remove(m)}>Remover</button>}
+                      </td>
+                    </tr>
+                  ))}
+                  {members.length === 0 && <tr><td colSpan={6}>Nenhum membro.</td></tr>}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </main>
