@@ -7,6 +7,14 @@ export type JobStatus = "pending" | "accepted" | "in_progress" | "completed" | "
 
 export type JobShiftStatus = "pending" | "in_progress" | "done" | "missed";
 
+export interface JobShiftBreak {
+  id: string;
+  jobShiftId: string;
+  startAt: string;
+  endAt?: string | null;
+  startedBy?: "freelancer" | "agency";
+}
+
 export interface JobShift {
   id: string;
   jobId: string;
@@ -14,10 +22,13 @@ export interface JobShift {
   startTime: string;
   endTime: string;
   label?: string | null;
+  /** Período nominal (manhã/tarde/noite/madrugada) — só rótulo. */
+  nominalPeriod?: string | null;
   status?: JobShiftStatus;
   checkInAt?: string | null;
   checkOutAt?: string | null;
   workedMinutes?: number | null;
+  breaks?: JobShiftBreak[];
 }
 
 export interface Geo {
@@ -51,6 +62,7 @@ export interface Job {
   cancellationWindowMinutes?: number | null;
   requireCheckoutPhoto?: boolean | null;
   reviewEnabled?: boolean | null;
+  breaksEnabled?: boolean | null;
   /** @deprecated agora é configuração da agência */
   photosRequired?: boolean;
   /** @deprecated agora é configuração da agência */
@@ -61,7 +73,13 @@ export interface Job {
   jobBranch?: { id: string; name: string; address?: string; latitude?: number | null; longitude?: number | null } | null;
   jobCategory?: { id: string; name: string } | null;
   jobSupermarket?: { id: string; name: string } | null;
-  assignedFreelancer?: { id: string; name: string } | null;
+  assignedFreelancer?: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    document?: string | null;
+    profilePhotoUrl?: string | null;
+  } | null;
   jobPhotos?: { id: string; url: string; caption?: string | null }[];
   jobLogs?: {
     id: string;
@@ -76,13 +94,20 @@ export interface Job {
   jobReview?: { id: string; rating: number; comment?: string | null; approved?: boolean | null } | null;
 }
 
+/** Turno enviado para a API (janela livre + período nominal). */
+export interface ShiftPayload {
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  nominalPeriod?: ShiftPeriod | null;
+}
+
 /** Edição de uma vaga ainda disponível (não aceita). */
 export interface UpdateJobInput {
   title?: string;
   categoryId?: string;
   date?: string; // YYYY-MM-DD
-  /** Um ou mais turnos da vaga (formato novo). */
-  shifts?: ShiftInput[];
+  /** Um ou mais turnos da vaga. */
+  shifts?: (ShiftPayload | ShiftInput)[];
   /** @deprecated use `shifts` — mantido para compatibilidade. */
   shiftPeriod?: ShiftPeriod;
   /** @deprecated use `shifts`. */
@@ -104,6 +129,7 @@ export interface JobConfigInput {
   cancellationWindowMinutes?: number | null;
   requireCheckoutPhoto?: boolean | null;
   reviewEnabled?: boolean | null;
+  breaksEnabled?: boolean | null;
 }
 
 /** Agência edita a vaga: função/turno/título (pendente) + overrides de configuração. */
@@ -134,6 +160,14 @@ export const releaseJob = async (id: string, reason?: string): Promise<Job> =>
 export const registerNoShow = async (id: string, reason: string): Promise<Job> =>
   (await api.post(`/jobs/${id}/no-show`, { reason })).data;
 
+/** Agência encerra o turno em andamento no lugar do colaborador (sem exigir foto/geofence dele). */
+export const forceCheckoutJob = async (id: string, reason: string): Promise<Job> =>
+  (await api.post(`/jobs/${id}/force-checkout`, { reason })).data;
+
+/** Agência troca o colaborador alocado na vaga. */
+export const reassignJob = async (id: string, freelancerId: string, reason?: string): Promise<Job> =>
+  (await api.post(`/jobs/${id}/reassign`, { freelancerId, reason })).data;
+
 /** Vagas concluídas da rede com pagamento retido por hora extra. */
 export const getPendingSettlementJobs = async (): Promise<Job[]> =>
   (await api.get("/agency/pending-settlement")).data;
@@ -153,6 +187,49 @@ export const checkIn = async (id: string, geo: Geo) =>
   (await api.post(`/jobs/${id}/logs/checkin`, geo)).data;
 export const checkOut = async (id: string, geo: Geo) =>
   (await api.post(`/jobs/${id}/logs/checkout`, geo)).data;
+
+/** Freelancer pausa / retoma o ponto (intervalo escolhido por ele). */
+export const startBreak = async (id: string, geo: Geo) =>
+  (await api.post(`/jobs/${id}/logs/break-start`, geo)).data;
+export const endBreak = async (id: string, geo: Geo) =>
+  (await api.post(`/jobs/${id}/logs/break-end`, geo)).data;
+
+/** Agência pausa / retoma o ponto no lugar do colaborador. */
+export const agencyStartBreak = async (id: string) =>
+  (await api.post(`/agency/jobs/${id}/break-start`)).data;
+export const agencyEndBreak = async (id: string) =>
+  (await api.post(`/agency/jobs/${id}/break-end`)).data;
+
+/** Correção manual de horário/ponto pela agência. */
+export interface TimesheetShiftPatch {
+  shiftId: string;
+  startTime?: string; // ISO — turno ainda pendente
+  endTime?: string; // ISO
+  checkInAt?: string; // ISO — turno iniciado
+  checkOutAt?: string; // ISO
+  breaks?: { startAt: string; endAt: string }[];
+}
+export const correctJobTimesheet = async (
+  id: string,
+  payload: { reason?: string; shifts: TimesheetShiftPatch[] }
+): Promise<Job> => (await api.put(`/agency/jobs/${id}/timesheet`, payload)).data;
+
+/** Duração total de pausa (minutos) dos turnos de uma vaga. */
+export const totalBreakMinutes = (shifts?: JobShift[] | null): number =>
+  (shifts ?? []).reduce(
+    (acc, s) =>
+      acc +
+      (s.breaks ?? []).reduce(
+        (a, b) =>
+          b.endAt ? a + Math.round((new Date(b.endAt).getTime() - new Date(b.startAt).getTime()) / 60000) : a,
+        0
+      ),
+    0
+  );
+
+/** Há uma pausa aberta (sem fim) em algum turno da vaga? */
+export const hasOpenBreak = (shifts?: JobShift[] | null): boolean =>
+  (shifts ?? []).some((s) => (s.breaks ?? []).some((b) => !b.endAt));
 
 /** Vagas em andamento da rede da agência (tempo real). */
 export const getLiveJobs = async (): Promise<Job[]> => (await api.get("/jobs/live")).data;

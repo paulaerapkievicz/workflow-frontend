@@ -22,7 +22,7 @@ export default function ShiftLog({ shifts }: { shifts?: JobShift[] | null }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((s, i) => (
+          {rows.flatMap((s, i) => [
             <tr key={s.id}>
               <td>{s.label || `Turno ${i + 1}`}</td>
               <td>{fmtTime(s.startTime)}–{fmtTime(s.endTime)}</td>
@@ -30,8 +30,15 @@ export default function ShiftLog({ shifts }: { shifts?: JobShift[] | null }) {
               <td>{fmtTime(s.checkOutAt)}</td>
               <td><span className={panel.badge}>{SHIFT_STATUS_LABELS[s.status ?? "pending"]}</span></td>
               <td>{minutesToHours(s.workedMinutes)}</td>
-            </tr>
-          ))}
+            </tr>,
+            ...(s.breaks ?? []).map((b) => (
+              <tr key={b.id} style={{ opacity: 0.7 }}>
+                <td style={{ paddingLeft: "1.5rem" }}>↳ pausa</td>
+                <td colSpan={4}>{fmtTime(b.startAt)} → {b.endAt ? fmtTime(b.endAt) : "em aberto"}</td>
+                <td>—</td>
+              </tr>
+            )),
+          ])}
         </tbody>
       </table>
     </div>

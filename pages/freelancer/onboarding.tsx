@@ -9,6 +9,7 @@ import {
   submitUniformSelfie, syncUniformPayment, SHIRT_SIZES, UNIFORM_STATUS_LABELS, UniformOrder,
 } from "@/src/services/onboardingService";
 import { photoUrl } from "@/src/services/jobPhotoService";
+import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
 import { useAuth } from "@/src/hooks/useAuth";
 
 type Field = { key: string; label: string; type?: "text" | "date" | "number"; required?: boolean };
@@ -68,7 +69,7 @@ const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
 const REQUIRED_KEYS = ALL_FIELDS.filter((f) => f.required).map((f) => f.key).concat("shirtSize");
 
 function OnboardingPage() {
-  const { refresh } = useAuth();
+  const { profile, refresh } = useAuth();
   const [values, setValues] = useState<Record<string, string>>({});
   const [contractDone, setContractDone] = useState(false);
   const [uniform, setUniform] = useState<UniformOrder | null>(null);
@@ -79,6 +80,9 @@ function OnboardingPage() {
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [uniformErr, setUniformErr] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [profilePhotoErr, setProfilePhotoErr] = useState<string | null>(null);
+  const profilePhotoUrl = (profile?.profilePhotoUrl as string | null | undefined) ?? null;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,6 +146,23 @@ function OnboardingPage() {
     try { await fn(); await load(); await refresh(); }
     catch (err) { setMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." }); }
     finally { setBusy(false); }
+  };
+
+  const sendProfilePhoto = async () => {
+    if (!profilePhoto) return;
+    setProfilePhotoErr(null);
+    setBusy(true);
+    try {
+      await uploadMyProfilePhoto(profilePhoto);
+      setProfilePhoto(null);
+      await refresh();
+    } catch (err) {
+      setProfilePhotoErr(
+        axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao enviar foto." : "Erro ao enviar foto."
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
   const buyUniform = async () => {
@@ -315,6 +336,28 @@ function OnboardingPage() {
                     {uniform.status === "approved" && <p className={panel.success}>Uniforme aprovado — você já pode aceitar vagas!</p>}
                   </div>
                 )}
+              </div>
+
+              <div className={panel.card} style={{ marginTop: "1rem" }}>
+                <strong>3. Foto de perfil</strong>
+                <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
+                  Essa foto é mostrada ao supermercado quando você aceita uma vaga, para identificação de quem vai atender.
+                </p>
+                {profilePhotoErr && <p className={panel.error}>{profilePhotoErr}</p>}
+                {profilePhotoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photoUrl(profilePhotoUrl)}
+                    alt="Foto de perfil"
+                    style={{ width: 120, height: 120, objectFit: "cover", borderRadius: "50%", marginTop: "0.5rem" }}
+                  />
+                )}
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.5rem" }}>
+                  <input type="file" accept="image/*" onChange={(e) => setProfilePhoto(e.target.files?.[0] ?? null)} />
+                  <button className={panel.primaryBtn} disabled={busy || !profilePhoto} onClick={sendProfilePhoto}>
+                    {busy ? "Enviando…" : profilePhotoUrl ? "Trocar foto" : "Enviar foto"}
+                  </button>
+                </div>
               </div>
             </>
           )}

@@ -7,7 +7,7 @@ import panel from "@/styles/panel.module.scss";
 import { getOrders } from "@/src/services/orderService";
 import { getBranches, Branch } from "@/src/services/branchService";
 import {
-  getClosings, previewClosing, createClosing, MonthlyClosing, ClosingPreview,
+  getClosings, previewClosing, createClosing, downloadClosingPdf, MonthlyClosing, ClosingPreview,
   CLOSING_STATUS_LABELS, monthName, money,
 } from "@/src/services/billingService";
 
@@ -28,6 +28,7 @@ function ClosingsPage() {
   const [preview, setPreview] = useState<ClosingPreview | null>(null);
   const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
 
   const load = async () => {
     const [orders, br, c] = await Promise.all([getOrders(), getBranches(), getClosings()]);
@@ -79,6 +80,13 @@ function ClosingsPage() {
   const scopeLabel = branchId
     ? myBranches.find((b) => b.id === branchId)?.name ?? "filial"
     : "toda a matriz (todas as filiais)";
+
+  const baixarPdf = async (c: MonthlyClosing) => {
+    setPdfBusyId(c.id);
+    try { await downloadClosingPdf(c.id, c.referenceMonth); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao baixar PDF." : "Erro ao baixar PDF."); }
+    finally { setPdfBusyId(null); }
+  };
 
   return (
     <>
@@ -148,7 +156,7 @@ function ClosingsPage() {
           <h2 style={{ fontSize: "1.1rem", marginTop: "1.5rem" }}>Fechamentos gerados</h2>
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
-              <thead><tr><th>Mês</th><th>Supermercado</th><th>Escopo</th><th>Vagas</th><th>Horas trab.</th><th>Valor</th><th>Status</th></tr></thead>
+              <thead><tr><th>Mês</th><th>Supermercado</th><th>Escopo</th><th>Vagas</th><th>Horas trab.</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody>
                 {closings.map((c) => (
                   <tr key={c.id}>
@@ -159,9 +167,14 @@ function ClosingsPage() {
                     <td>{hrs(c.workedMinutes)}</td>
                     <td>{money(c.totalAmount)}</td>
                     <td><span className={panel.badge}>{CLOSING_STATUS_LABELS[c.status]}</span></td>
+                    <td>
+                      <button className={panel.ghostBtn} disabled={pdfBusyId === c.id} onClick={() => baixarPdf(c)}>
+                        {pdfBusyId === c.id ? "Baixando…" : "Baixar PDF"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
-                {closings.length === 0 && <tr><td colSpan={7} className={panel.muted}>Nenhum fechamento ainda.</td></tr>}
+                {closings.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum fechamento ainda.</td></tr>}
               </tbody>
             </table>
           </div>

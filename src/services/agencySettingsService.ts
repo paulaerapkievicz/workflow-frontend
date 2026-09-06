@@ -8,6 +8,8 @@ export interface AgencySettings {
   cancellationWindowMinutes: number;
   requireCheckoutPhoto: boolean;
   reviewEnabled: boolean;
+  /** Libera o recurso de pausa/intervalo no ponto (pode ser sobrescrito por vaga). */
+  breaksEnabled: boolean;
   /** Exige onboarding (perfil contratual + uniforme aprovado) antes de aceitar vagas. */
   onboardingRequired: boolean;
   /** Preço do kit uniforme cobrado do colaborador. */

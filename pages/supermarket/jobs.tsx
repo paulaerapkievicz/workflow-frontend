@@ -14,11 +14,15 @@ import {
 } from "@/src/services/jobService";
 import { getBranches, Branch } from "@/src/services/branchService";
 import { getCategories, Category } from "@/src/services/categoryService";
+import { getSupermarketRates, SupermarketCategoryRate } from "@/src/services/supermarketRateService";
 import { getJobPhotos, photoUrl, JobPhoto } from "@/src/services/jobPhotoService";
+import { getJobFreelancerProfile, JobFreelancerProfile } from "@/src/services/freelancerService";
+import { authService } from "@/src/services/authService";
 import {
-  SHIFT_PERIODS, shiftLabel, shiftTimeRange, makeShiftInput, validateShiftInput,
-  shiftPeriodFromTime, ShiftInput, ShiftPeriod,
+  shiftFromWindow, newShift, validateShifts, toShiftPayload, ShiftInput,
 } from "@/src/services/shifts";
+import ShiftsField from "@/src/components/ShiftsField";
+import FreelancerChip, { FreelancerProfileBody } from "@/src/components/FreelancerChip";
 import { matchesFilter, RowFilter } from "@/src/lib/filterRows";
 import { fmtTime, fmtDate, isoDateBR } from "@/src/lib/datetime";
 
@@ -26,8 +30,12 @@ function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [rates, setRates] = useState<SupermarketCategoryRate[]>([]);
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [photoJob, setPhotoJob] = useState<Job | null>(null);
+  const [profileJob, setProfileJob] = useState<Job | null>(null);
+  const [profile, setProfile] = useState<JobFreelancerProfile | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<RowFilter>({});
 
@@ -37,16 +45,19 @@ function JobsPage() {
   });
   const [editError, setEditError] = useState<string | null>(null);
 
-  const shiftSortIndex = (p: ShiftPeriod) => SHIFT_PERIODS.findIndex((x) => x.value === p);
   const hhmm = fmtTime;
 
   const load = async () => {
     setLoading(true);
     try {
-      const [j, b, c] = await Promise.all([getJobs(), getBranches(), getCategories()]);
+      const supermarketId = authService.getProfileId() ?? "";
+      const [j, b, c, r] = await Promise.all([
+        getJobs(), getBranches(), getCategories(), getSupermarketRates(supermarketId),
+      ]);
       setJobs(j);
       setBranches(b);
       setCategories(c);
+      setRates(r);
     } finally {
       setLoading(false);
     }
@@ -56,15 +67,20 @@ function JobsPage() {
   const branchName = (id: string) => branches.find((b) => b.id === id)?.name ?? "—";
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "—";
 
+  // Mesma regra do backend: só vale trocar para uma função com valor/hora já configurado
+  // para esta filial (padrão da rede ou específico dela) — senão a vaga não aparece pra ninguém.
+  const isCategoryPriced = (categoryId: string, branchId: string) =>
+    rates.some((r) => r.categoryId === categoryId && r.active && (r.branchId == null || r.branchId === branchId));
+  const unpricedWarning = (categoryId: string, branchId: string) =>
+    categoryId && branchId && !isCategoryPriced(categoryId, branchId)
+      ? `A função "${categoryName(categoryId)}" ainda não tem valor/hora configurado para ${branchName(branchId)}. Peça para a agência configurar em Supermercados → "Valores/hora" antes de trocar a função da vaga.`
+      : null;
+
   const openEdit = (job: Job) => {
     const shifts: ShiftInput[] = [...(job.shifts ?? [])]
       .sort((a, b) => a.position - b.position)
-      .map((s) => ({
-        shiftPeriod: shiftPeriodFromTime(s.startTime),
-        startTime: hhmm(s.startTime),
-        endTime: hhmm(s.endTime),
-      }));
-    if (!shifts.length) shifts.push(makeShiftInput((job.shiftPeriod as ShiftPeriod) ?? "manha"));
+      .map((s) => shiftFromWindow(hhmm(s.startTime), hhmm(s.endTime)));
+    if (!shifts.length) shifts.push(newShift());
     setForm({
       title: job.title,
       categoryId: job.categoryId,
@@ -75,37 +91,19 @@ function JobsPage() {
     setEditJob(job);
   };
 
-  const toggleShift = (period: ShiftPeriod) =>
-    setForm((f) => {
-      const has = f.shifts.some((s) => s.shiftPeriod === period);
-      const shifts = has
-        ? f.shifts.filter((s) => s.shiftPeriod !== period)
-        : [...f.shifts, makeShiftInput(period)].sort(
-            (a, b) => shiftSortIndex(a.shiftPeriod) - shiftSortIndex(b.shiftPeriod)
-          );
-      return { ...f, shifts };
-    });
-
-  const updateShiftTime = (period: ShiftPeriod, patch: Partial<ShiftInput>) =>
-    setForm((f) => ({
-      ...f,
-      shifts: f.shifts.map((s) => (s.shiftPeriod === period ? { ...s, ...patch } : s)),
-    }));
-
   const saveEdit = async () => {
     if (!editJob) return;
     setEditError(null);
-    if (!form.shifts.length) return setEditError("Selecione ao menos um turno.");
-    for (const s of form.shifts) {
-      const err = validateShiftInput(s);
-      if (err) return setEditError(`${shiftLabel(s.shiftPeriod)}: ${err}`);
-    }
+    const shiftError = validateShifts(form.shifts);
+    if (shiftError) return setEditError(shiftError);
+    const rateWarning = unpricedWarning(form.categoryId, editJob.branchId);
+    if (rateWarning) return setEditError(rateWarning);
     try {
       await updateJob(editJob.id, {
         title: form.title.trim() || undefined,
         categoryId: form.categoryId,
         date: form.date,
-        shifts: form.shifts,
+        shifts: form.shifts.map(toShiftPayload),
       });
       setEditJob(null);
       await load();
@@ -122,6 +120,17 @@ function JobsPage() {
   const openPhotos = async (job: Job) => {
     setPhotoJob(job);
     try { setPhotos(await getJobPhotos(job.id)); } catch { setPhotos([]); }
+  };
+
+  const openProfile = async (job: Job) => {
+    setProfileJob(job);
+    setProfile(null);
+    setProfileError(null);
+    try {
+      setProfile(await getJobFreelancerProfile(job.id));
+    } catch (err) {
+      setProfileError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao carregar perfil." : "Erro ao carregar perfil.");
+    }
   };
 
   const rows = useMemo(
@@ -160,7 +169,11 @@ function JobsPage() {
     { key: "hours", label: "Horário", render: (j) => formatShifts(j.shifts) },
     { key: "contracted", label: "Horas contratadas", render: (j) => minutesToHours(j.contractedMinutes), defaultHidden: true },
     { key: "worked", label: "Horas trabalhadas", render: (j) => minutesToHours(j.workedMinutes), defaultHidden: true },
-    { key: "freelancer", label: "Colaborador", render: (j) => j.assignedFreelancer?.name ?? "—" },
+    {
+      key: "freelancer",
+      label: "Colaborador",
+      render: (j) => <FreelancerChip freelancer={j.assignedFreelancer} onClick={() => openProfile(j)} />,
+    },
     { key: "status", label: "Status", render: (j) => <StatusBadge status={j.status} /> },
     {
       key: "actions",
@@ -208,45 +221,32 @@ function JobsPage() {
           <div className={panel.form}>
             <label>Função</label>
             <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}{editJob && !isCategoryPriced(c.id, editJob.branchId) ? " ⚠ sem valor/hora nesta filial" : ""}
+                </option>
+              ))}
             </select>
             <label>Título (descrição da vaga)</label>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             <label>Data</label>
             <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-            <label>Turnos da vaga (um ou mais)</label>
-            <div className={panel.shiftRow}>
-              {SHIFT_PERIODS.map((p) => (
-                <label key={p.value} style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={form.shifts.some((s) => s.shiftPeriod === p.value)}
-                    onChange={() => toggleShift(p.value)}
-                  />
-                  {p.label}
-                </label>
-              ))}
-            </div>
-            {form.shifts.map((s) => {
-              const range = shiftTimeRange(s.shiftPeriod);
-              return (
-                <div key={s.shiftPeriod} className={panel.shiftRow}>
-                  <span style={{ minWidth: 72, fontWeight: 600 }}>{shiftLabel(s.shiftPeriod)}</span>
-                  <div style={{ flex: 1 }}>
-                    <label>Início</label>
-                    <input type="time" value={s.startTime} min={range.min} max={range.max}
-                      onChange={(e) => updateShiftTime(s.shiftPeriod, { startTime: e.target.value })} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label>Fim</label>
-                    <input type="time" value={s.endTime} min={range.min} max={range.max}
-                      onChange={(e) => updateShiftTime(s.shiftPeriod, { endTime: e.target.value })} />
-                  </div>
-                </div>
-              );
-            })}
+            <label>Turnos da vaga (horário livre — um ou mais)</label>
+            <ShiftsField
+              value={form.shifts}
+              onChange={(shifts) => setForm((f) => ({ ...f, shifts }))}
+            />
+            {editJob && unpricedWarning(form.categoryId, editJob.branchId) && (
+              <p className={panel.error}>{unpricedWarning(form.categoryId, editJob.branchId)}</p>
+            )}
             {editError && <p className={panel.error}>{editError}</p>}
-            <button className={panel.primaryBtn} onClick={saveEdit}>Salvar</button>
+            <button
+              className={panel.primaryBtn}
+              onClick={saveEdit}
+              disabled={!!editJob && !!unpricedWarning(form.categoryId, editJob.branchId)}
+            >
+              Salvar
+            </button>
           </div>
         </Modal>
       )}
@@ -265,6 +265,18 @@ function JobsPage() {
                 </figure>
               ))}
             </div>
+          )}
+        </Modal>
+      )}
+
+      {profileJob && (
+        <Modal title={`Colaborador — ${profileJob.title}`} onClose={() => setProfileJob(null)}>
+          {profileError ? (
+            <p className={panel.error}>{profileError}</p>
+          ) : !profile ? (
+            <p>Carregando…</p>
+          ) : (
+            <FreelancerProfileBody {...profile} />
           )}
         </Modal>
       )}

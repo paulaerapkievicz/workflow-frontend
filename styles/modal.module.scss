@@ -75,3 +75,8 @@
   .modalHeader { padding: 1rem; }
   .modalBody { padding: 1rem; }
 }
+
+@media (max-width: 480px) {
+  .modalBackdrop { padding: 8px; }
+  .modalHeader h2 { font-size: 1.05rem; }
+}

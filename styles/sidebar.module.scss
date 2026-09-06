@@ -95,3 +95,12 @@
     .icon { display: none; }
   }
 }
+
+@media (max-width: 480px) {
+  .sidebar { padding: 0.5rem 0.6rem; gap: 0.25rem; }
+
+  .link {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.84rem;
+  }
+}

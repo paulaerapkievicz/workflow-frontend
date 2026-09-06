@@ -1,0 +1,92 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 100%;
+  padding: 0.2rem 0.55rem 0.2rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: left;
+  cursor: default;
+}
+
+.clickable {
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--primary-soft, rgba(78, 108, 255, 0.12));
+    border-color: var(--border-strong, var(--border));
+    box-shadow: 0 6px 16px -12px var(--shadow-strong, rgba(0, 0, 0, 0.4));
+    outline: none;
+  }
+}
+
+.avatar {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--border);
+}
+
+.initials {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark, var(--primary)));
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ---- modal de perfil ---- */
+.profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.profilePhoto {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
+
+.profileName {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0.3rem 0 0;
+}
+
+.profileRow {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}

@@ -13,6 +13,7 @@ function SettingsPage() {
     cancellationWindowMinutes: "30",
     requireCheckoutPhoto: true,
     reviewEnabled: false,
+    breaksEnabled: false,
     onboardingRequired: false,
     uniformPrice: "0",
     allowSelfRegistration: false,
@@ -30,6 +31,7 @@ function SettingsPage() {
           cancellationWindowMinutes: String(s.cancellationWindowMinutes),
           requireCheckoutPhoto: s.requireCheckoutPhoto,
           reviewEnabled: s.reviewEnabled,
+          breaksEnabled: s.breaksEnabled,
           onboardingRequired: s.onboardingRequired,
           uniformPrice: String(s.uniformPrice),
           allowSelfRegistration: s.allowSelfRegistration,
@@ -49,6 +51,7 @@ function SettingsPage() {
         cancellationWindowMinutes: Number(form.cancellationWindowMinutes),
         requireCheckoutPhoto: form.requireCheckoutPhoto,
         reviewEnabled: form.reviewEnabled,
+        breaksEnabled: form.breaksEnabled,
         onboardingRequired: form.onboardingRequired,
         uniformPrice: Number(form.uniformPrice),
         allowSelfRegistration: form.allowSelfRegistration,
@@ -98,6 +101,15 @@ function SettingsPage() {
                     onChange={(e) => setForm({ ...form, reviewEnabled: e.target.checked })} />
                   Avaliar a entrega dos colaboradores após a conclusão
                 </label>
+                <label className={panel.toggleRow}>
+                  <input type="checkbox" checked={form.breaksEnabled}
+                    onChange={(e) => setForm({ ...form, breaksEnabled: e.target.checked })} />
+                  Permitir pausa/intervalo no ponto (pausar e retomar sem abandonar a vaga)
+                </label>
+                <span className={panel.muted}>
+                  O tempo de pausa não conta como hora trabalhada. Pode ser liberado ou bloqueado
+                  por vaga no lançamento do pedido.
+                </span>
 
                 <hr style={{ width: "100%", borderColor: "var(--border)" }} />
                 <label className={panel.toggleRow}>

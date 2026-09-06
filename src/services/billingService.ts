@@ -31,6 +31,9 @@ export interface BillingInvoice {
   workedMinutes: number;
   totalAmount: number;
   status: "pending" | "paid" | "canceled";
+  paymentUrl?: string | null;
+  paymentRef?: string | null;
+  paidAt?: string | null;
   createdAt: string;
 }
 
@@ -62,6 +65,10 @@ export interface MonthlyClosing {
   workedMinutes: number | null;
   totalAmount: number;
   status: "pending" | "paid" | "canceled";
+  /** Link de pagamento do gateway (Mercado Pago) — presente quando o pagamento foi iniciado. */
+  paymentUrl?: string | null;
+  paymentRef?: string | null;
+  paidAt?: string | null;
   createdAt: string;
   invoiceSupermarket?: { id: string; name: string } | null;
   invoiceAgency?: { id: string; name: string } | null;
@@ -134,6 +141,23 @@ export const createClosing = async (
 
 export const payClosing = async (id: string): Promise<MonthlyClosing> =>
   (await api.post(`/invoices/${id}/pay`)).data;
+
+/** Confirma o pagamento da fatura consultando o gateway (usado ao voltar do checkout). */
+export const syncClosingPayment = async (id: string): Promise<MonthlyClosing> =>
+  (await api.post(`/invoices/${id}/sync-payment`)).data;
+
+// Baixa o PDF do fechamento e aciona o download no navegador.
+export const downloadClosingPdf = async (id: string, referenceMonth?: string | null): Promise<void> => {
+  const response = await api.get(`/closings/${id}/pdf`, { responseType: "blob" });
+  const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `fechamento-${referenceMonth ?? id}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
 
 export const CLOSING_STATUS_LABELS: Record<MonthlyClosing["status"], string> = {
   pending: "A pagar",

@@ -1,0 +1,80 @@
+import { photoUrl } from "@/src/services/jobPhotoService";
+import styles from "@/styles/freelancerChip.module.scss";
+
+export interface FreelancerChipData {
+  name?: string | null;
+  profilePhotoUrl?: string | null;
+}
+
+interface Props {
+  freelancer?: FreelancerChipData | null;
+  /** Se passado, o chip vira um botão com hover e chama isto ao clicar. */
+  onClick?: () => void;
+  /** Texto quando não há colaborador alocado. */
+  emptyLabel?: string;
+}
+
+const initialsOf = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+
+/** Colaborador alocado numa vaga: avatar + nome, com estilo consistente em todo o sistema. */
+export default function FreelancerChip({ freelancer, onClick, emptyLabel = "—" }: Props) {
+  if (!freelancer?.name) return <span className={styles.empty}>{emptyLabel}</span>;
+
+  const { name, profilePhotoUrl } = freelancer;
+  const inner = (
+    <>
+      {profilePhotoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className={styles.avatar} src={photoUrl(profilePhotoUrl)} alt="" />
+      ) : (
+        <span className={styles.initials} aria-hidden>
+          {initialsOf(name)}
+        </span>
+      )}
+      <span className={styles.name}>{name}</span>
+    </>
+  );
+
+  if (!onClick) return <span className={styles.chip}>{inner}</span>;
+
+  return (
+    <button type="button" className={`${styles.chip} ${styles.clickable}`} onClick={onClick} title={`Ver perfil de ${name}`}>
+      {inner}
+    </button>
+  );
+}
+
+/** Conteúdo padrão da modal de perfil do colaborador. */
+export function FreelancerProfileBody({
+  name,
+  phone,
+  document,
+  profilePhotoUrl,
+}: {
+  name: string;
+  phone?: string | null;
+  document?: string | null;
+  profilePhotoUrl?: string | null;
+}) {
+  return (
+    <div className={styles.profile}>
+      {profilePhotoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className={styles.profilePhoto} src={photoUrl(profilePhotoUrl)} alt={name} />
+      ) : (
+        <span className={styles.initials} style={{ width: 96, height: 96, fontSize: "1.8rem" }} aria-hidden>
+          {initialsOf(name)}
+        </span>
+      )}
+      <p className={styles.profileName}>{name}</p>
+      <p className={styles.profileRow}>Telefone: {phone || "—"}</p>
+      <p className={styles.profileRow}>Documento: {document || "—"}</p>
+    </div>
+  );
+}

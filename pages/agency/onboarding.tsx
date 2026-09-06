@@ -60,83 +60,91 @@ function OnboardingPage() {
               <p className={panel.muted}>
                 Colaboradores que se autocadastraram e aguardam a sua aprovação para acessar a plataforma.
               </p>
-              <table className={panel.table}>
-                <thead><tr><th>Nome</th><th>E-mail</th><th>Documento</th><th>Telefone</th><th>Ações</th></tr></thead>
-                <tbody>
-                  {pending.map((f) => (
-                    <tr key={f.id}>
-                      <td>{f.name}</td>
-                      <td>{f.email}</td>
-                      <td>{f.document ?? "—"}</td>
-                      <td>{f.phone ?? "—"}</td>
-                      <td>
-                        <button className={panel.primaryBtn} disabled={busy === f.id}
-                          onClick={() => act(f.id, () => approveFreelancer(f.id))}>
-                          Aprovar
-                        </button>{" "}
-                        <button className={panel.secondaryBtn} disabled={busy === f.id}
-                          onClick={() => { if (confirm(`Recusar o cadastro de ${f.name}? A conta será removida.`)) act(f.id, () => rejectFreelancer(f.id)); }}>
-                          Recusar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {pending.length === 0 && <tr><td colSpan={5} className={panel.muted}>Nenhum cadastro pendente.</td></tr>}
-                </tbody>
-              </table>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead><tr><th>Nome</th><th>E-mail</th><th>Documento</th><th>Telefone</th><th>Ações</th></tr></thead>
+                  <tbody>
+                    {pending.map((f) => (
+                      <tr key={f.id}>
+                        <td>{f.name}</td>
+                        <td>{f.email}</td>
+                        <td>{f.document ?? "—"}</td>
+                        <td>{f.phone ?? "—"}</td>
+                        <td>
+                          <button className={panel.primaryBtn} disabled={busy === f.id}
+                            onClick={() => act(f.id, () => approveFreelancer(f.id))}>
+                            Aprovar
+                          </button>{" "}
+                          <button className={panel.secondaryBtn} disabled={busy === f.id}
+                            onClick={() => { if (confirm(`Recusar o cadastro de ${f.name}? A conta será removida.`)) act(f.id, () => rejectFreelancer(f.id)); }}>
+                            Recusar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {pending.length === 0 && <tr><td colSpan={5} className={panel.muted}>Nenhum cadastro pendente.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
 
               <h2 style={{ fontSize: "1.05rem", marginTop: "1.5rem" }}>Uniformes a enviar ({toShip.length})</h2>
-              <table className={panel.table}>
-                <thead><tr><th>Colaborador</th><th>Tamanho</th><th>Valor</th><th>Ação</th></tr></thead>
-                <tbody>
-                  {toShip.map((o) => (
-                    <tr key={o.id}>
-                      <td>{o.freelancerName ?? "—"}</td>
-                      <td>{o.shirtSize}</td>
-                      <td>R$ {Number(o.amount).toFixed(2)}</td>
-                      <td>
-                        <button className={panel.primaryBtn} disabled={busy === o.id}
-                          onClick={() => { const t = prompt("Código de rastreio (opcional):") ?? ""; act(o.id, () => shipUniform(o.id, t)); }}>
-                          Marcar como enviado
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {toShip.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nada a enviar.</td></tr>}
-                </tbody>
-              </table>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead><tr><th>Colaborador</th><th>Tamanho</th><th>Valor</th><th>Ação</th></tr></thead>
+                  <tbody>
+                    {toShip.map((o) => (
+                      <tr key={o.id}>
+                        <td>{o.freelancerName ?? "—"}</td>
+                        <td>{o.shirtSize}</td>
+                        <td>R$ {Number(o.amount).toFixed(2)}</td>
+                        <td>
+                          <button className={panel.primaryBtn} disabled={busy === o.id}
+                            onClick={() => { const t = prompt("Código de rastreio (opcional):") ?? ""; act(o.id, () => shipUniform(o.id, t)); }}>
+                            Marcar como enviado
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {toShip.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nada a enviar.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
 
               <h2 style={{ fontSize: "1.05rem", marginTop: "1.5rem" }}>Selfies a revisar ({toReview.length})</h2>
-              <table className={panel.table}>
-                <thead><tr><th>Colaborador</th><th>Tamanho</th><th>Selfie</th><th>Ação</th></tr></thead>
-                <tbody>
-                  {toReview.map((o) => (
-                    <tr key={o.id}>
-                      <td>{o.freelancerName ?? "—"}</td>
-                      <td>{o.shirtSize}</td>
-                      <td>{o.selfiePhotoUrl && <a href={photoUrl(o.selfiePhotoUrl)} target="_blank" rel="noreferrer">ver foto</a>}</td>
-                      <td><button className={panel.ghostBtn} onClick={() => setReview(o)}>Revisar</button></td>
-                    </tr>
-                  ))}
-                  {toReview.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nada a revisar.</td></tr>}
-                </tbody>
-              </table>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead><tr><th>Colaborador</th><th>Tamanho</th><th>Selfie</th><th>Ação</th></tr></thead>
+                  <tbody>
+                    {toReview.map((o) => (
+                      <tr key={o.id}>
+                        <td>{o.freelancerName ?? "—"}</td>
+                        <td>{o.shirtSize}</td>
+                        <td>{o.selfiePhotoUrl && <a href={photoUrl(o.selfiePhotoUrl)} target="_blank" rel="noreferrer">ver foto</a>}</td>
+                        <td><button className={panel.ghostBtn} onClick={() => setReview(o)}>Revisar</button></td>
+                      </tr>
+                    ))}
+                    {toReview.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nada a revisar.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
 
               <h2 style={{ fontSize: "1.05rem", marginTop: "1.5rem" }}>Todos os uniformes</h2>
-              <table className={panel.table}>
-                <thead><tr><th>Colaborador</th><th>Tamanho</th><th>Status</th><th>Rastreio</th></tr></thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.id}>
-                      <td>{o.freelancerName ?? "—"}</td>
-                      <td>{o.shirtSize}</td>
-                      <td><span className={panel.badge}>{UNIFORM_STATUS_LABELS[o.status]}</span></td>
-                      <td>{o.trackingCode ?? "—"}</td>
-                    </tr>
-                  ))}
-                  {orders.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nenhum pedido de uniforme.</td></tr>}
-                </tbody>
-              </table>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead><tr><th>Colaborador</th><th>Tamanho</th><th>Status</th><th>Rastreio</th></tr></thead>
+                  <tbody>
+                    {orders.map((o) => (
+                      <tr key={o.id}>
+                        <td>{o.freelancerName ?? "—"}</td>
+                        <td>{o.shirtSize}</td>
+                        <td><span className={panel.badge}>{UNIFORM_STATUS_LABELS[o.status]}</span></td>
+                        <td>{o.trackingCode ?? "—"}</td>
+                      </tr>
+                    ))}
+                    {orders.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nenhum pedido de uniforme.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </section>

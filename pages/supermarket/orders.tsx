@@ -8,15 +8,14 @@ import StatusBadge from "@/src/components/StatusBadge";
 import panel from "@/styles/panel.module.scss";
 import { getBranches, Branch } from "@/src/services/branchService";
 import { getCategories, Category } from "@/src/services/categoryService";
+import { getSupermarketRates, SupermarketCategoryRate } from "@/src/services/supermarketRateService";
 import {
   getOrders, createOrder, addOrderItems, cancelOrder, approveOrder, rejectOrder, Order, OrderItemInput,
   ORDER_STATUS_LABELS, ORDER_APPROVAL_LABELS, orderProgress, jobWasAbandoned, orderBranchNames,
 } from "@/src/services/orderService";
 import { formatShifts, formatShiftPeriods } from "@/src/services/jobService";
-import {
-  SHIFT_PERIODS, shiftLabel, shiftTimeRange, makeShiftInput, validateShiftInput,
-  ShiftInput, ShiftPeriod,
-} from "@/src/services/shifts";
+import { newShift, validateShifts, shiftLabel, shiftPeriodFromTime, ShiftInput } from "@/src/services/shifts";
+import ShiftsField from "@/src/components/ShiftsField";
 import { authService } from "@/src/services/authService";
 import type { SupermarketMembership } from "@/src/services/authService";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -36,10 +35,9 @@ const emptyDraft = () => ({
   titleTouched: false,
   quantity: "1",
   date: todayISO(),
-  shifts: [makeShiftInput("manha")] as ShiftInput[],
+  shifts: [newShift()] as ShiftInput[],
+  breaks: "" as "" | "sim" | "nao",
 });
-
-const shiftSortIndex = (p: ShiftPeriod) => SHIFT_PERIODS.findIndex((x) => x.value === p);
 
 function OrdersPage() {
   const supermarketId = authService.getProfileId() ?? "";
@@ -49,6 +47,7 @@ function OrdersPage() {
   const managerBranchId = membership?.branchId ?? null;
   const [branches, setBranches] = useState<Branch[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [rates, setRates] = useState<SupermarketCategoryRate[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,13 +71,30 @@ function OrdersPage() {
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "";
   const branchName = (id: string) => myBranches.find((b) => b.id === id)?.name ?? "";
 
+  // A vaga só aparece para os freelancers quando a agência já configurou o valor/hora
+  // dessa função para o supermercado (padrão da rede ou específico da filial) — ver
+  // supermarketRateService.activeRate no backend.
+  const hasAnyRate = (categoryId: string) =>
+    rates.some((r) => r.categoryId === categoryId && r.active);
+  const isCategoryPriced = (categoryId: string, branchIdSel: string) =>
+    !categoryId ||
+    !branchIdSel ||
+    rates.some((r) => r.categoryId === categoryId && r.active && (r.branchId == null || r.branchId === branchIdSel));
+  const unpricedWarning = (categoryId: string, branchIdSel: string) =>
+    categoryId && branchIdSel && !isCategoryPriced(categoryId, branchIdSel)
+      ? `A função "${categoryName(categoryId)}" ainda não tem valor/hora configurado para ${branchName(branchIdSel) || "esta filial"}. Peça para a agência configurar em Supermercados → "Valores/hora" antes de lançar vagas para essa função — sem isso a vaga não aparece para nenhum freelancer.`
+      : null;
+
   const load = async () => {
     setLoading(true);
     try {
-      const [b, c, o] = await Promise.all([getBranches(), getCategories(), getOrders()]);
+      const [b, c, o, r] = await Promise.all([
+        getBranches(), getCategories(), getOrders(), getSupermarketRates(supermarketId),
+      ]);
       setBranches(b);
       setCategories(c);
       setOrders(o);
+      setRates(r);
     } finally {
       setLoading(false);
     }
@@ -107,23 +123,6 @@ function OrdersPage() {
       title: d.titleTouched ? d.title : autoTitle(d.categoryId, branchIdSel),
     }));
 
-  const toggleShift = (period: ShiftPeriod) =>
-    setDraft((d) => {
-      const has = d.shifts.some((s) => s.shiftPeriod === period);
-      const shifts = has
-        ? d.shifts.filter((s) => s.shiftPeriod !== period)
-        : [...d.shifts, makeShiftInput(period)].sort(
-            (a, b) => shiftSortIndex(a.shiftPeriod) - shiftSortIndex(b.shiftPeriod)
-          );
-      return { ...d, shifts };
-    });
-
-  const updateShiftTime = (period: ShiftPeriod, patch: Partial<ShiftInput>) =>
-    setDraft((d) => ({
-      ...d,
-      shifts: d.shifts.map((s) => (s.shiftPeriod === period ? { ...s, ...patch } : s)),
-    }));
-
   const toItemInput = (): OrderItemInput => ({
     categoryId: draft.categoryId,
     branchId: draft.branchId,
@@ -131,6 +130,7 @@ function OrdersPage() {
     date: draft.date,
     shifts: draft.shifts,
     title: draft.title.trim() || undefined,
+    breaksEnabled: draft.breaks === "" ? undefined : draft.breaks === "sim",
   });
 
   const openNewItem = (addToOrderId?: string) => {
@@ -144,11 +144,10 @@ function OrdersPage() {
     if (!draft.categoryId) return setItemError("Selecione a função.");
     if (!draft.branchId) return setItemError("Selecione a filial.");
     if (Number(draft.quantity) < 1) return setItemError("Informe a quantidade de atendentes.");
-    if (!draft.shifts.length) return setItemError("Selecione ao menos um turno.");
-    for (const s of draft.shifts) {
-      const err = validateShiftInput(s);
-      if (err) return setItemError(`${shiftLabel(s.shiftPeriod)}: ${err}`);
-    }
+    const shiftError = validateShifts(draft.shifts);
+    if (shiftError) return setItemError(shiftError);
+    const rateWarning = unpricedWarning(draft.categoryId, draft.branchId);
+    if (rateWarning) return setItemError(rateWarning);
     if (itemModal.addToOrderId) {
       try {
         await addOrderItems(itemModal.addToOrderId, [toItemInput()]);
@@ -239,7 +238,7 @@ function OrdersPage() {
                       <td>{it.branchName}</td>
                       <td>{it.quantity}</td>
                       <td>{new Date(`${it.date}T00:00`).toLocaleDateString("pt-BR")}</td>
-                      <td>{it.shifts.map((s) => shiftLabel(s.shiftPeriod)).join(", ")}</td>
+                      <td>{it.shifts.map((s) => shiftLabel(s.nominalPeriod ?? shiftPeriodFromTime(s.startTime))).join(", ")}</td>
                       <td>{it.shifts.map((s) => `${s.startTime}–${s.endTime}`).join(", ")}</td>
                       <td className={panel.muted}>{it.title ?? "padrão"}</td>
                       <td><button className={panel.secondaryBtn} onClick={() => setCart((p) => p.filter((_, idx) => idx !== i))}>Remover</button></td>
@@ -331,7 +330,11 @@ function OrdersPage() {
             <label>Função</label>
             <select value={draft.categoryId} onChange={(e) => changeCategory(e.target.value)}>
               <option value="">Selecione…</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}{!hasAnyRate(c.id) ? " ⚠ sem valor/hora configurado" : ""}
+                </option>
+              ))}
             </select>
 
             <label>Filial (local do trabalho)</label>
@@ -339,6 +342,10 @@ function OrdersPage() {
               <option value="">Selecione…</option>
               {myBranches.map((b) => <option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
             </select>
+
+            {unpricedWarning(draft.categoryId, draft.branchId) && (
+              <p className={panel.error}>{unpricedWarning(draft.categoryId, draft.branchId)}</p>
+            )}
 
             <label>Título (descrição da vaga)</label>
             <input
@@ -353,52 +360,29 @@ function OrdersPage() {
             <label>Data</label>
             <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
 
-            <label>Turnos da vaga (um ou mais)</label>
-            <div className={panel.shiftRow}>
-              {SHIFT_PERIODS.map((p) => (
-                <label key={p.value} style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={draft.shifts.some((s) => s.shiftPeriod === p.value)}
-                    onChange={() => toggleShift(p.value)}
-                  />
-                  {p.label}
-                </label>
-              ))}
-            </div>
+            <label>Turnos da vaga (horário livre — um ou mais, podendo virar o dia)</label>
+            <ShiftsField
+              value={draft.shifts}
+              onChange={(shifts) => setDraft((d) => ({ ...d, shifts }))}
+            />
 
-            {draft.shifts.map((s) => {
-              const range = shiftTimeRange(s.shiftPeriod);
-              return (
-                <div key={s.shiftPeriod} className={panel.shiftRow}>
-                  <span style={{ minWidth: 72, fontWeight: 600 }}>{shiftLabel(s.shiftPeriod)}</span>
-                  <div style={{ flex: 1 }}>
-                    <label>Início</label>
-                    <input
-                      type="time"
-                      value={s.startTime}
-                      min={range.min}
-                      max={range.max}
-                      onChange={(e) => updateShiftTime(s.shiftPeriod, { startTime: e.target.value })}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label>Fim</label>
-                    <input
-                      type="time"
-                      value={s.endTime}
-                      min={range.min}
-                      max={range.max}
-                      onChange={(e) => updateShiftTime(s.shiftPeriod, { endTime: e.target.value })}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+            <label>Pausa/intervalo no ponto</label>
+            <select value={draft.breaks} onChange={(e) => setDraft({ ...draft, breaks: e.target.value as "" | "sim" | "nao" })}>
+              <option value="">Padrão da agência</option>
+              <option value="sim">Permitir pausa/intervalo</option>
+              <option value="nao">Não permitir</option>
+            </select>
 
             {itemError && <p className={panel.error}>{itemError}</p>}
 
-            <button className={panel.primaryBtn} onClick={confirmItem} disabled={!draft.categoryId || !draft.branchId || !draft.shifts.length}>
+            <button
+              className={panel.primaryBtn}
+              onClick={confirmItem}
+              disabled={
+                !draft.categoryId || !draft.branchId || !draft.shifts.length ||
+                !!unpricedWarning(draft.categoryId, draft.branchId)
+              }
+            >
               {itemModal.addToOrderId ? "Adicionar ao pedido" : "Adicionar ao carrinho"}
             </button>
           </div>

@@ -19,7 +19,8 @@ export default function ForgotPasswordPage() {
       <div className={s.page}>
         <aside className={s.brand}>
           <div className={s.brandInner}>
-            <div className={s.brandMark}><span>W</span> WorkFlow</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <div className={s.brandMark}><img src="/logo-white.png" alt="WorkFlow" /></div>
             <h1 className={s.brandTitle}>Recuperar acesso</h1>
             <p className={s.brandText}>
               Informe o e-mail cadastrado e enviaremos as instruções para você criar uma nova senha.
@@ -29,7 +30,8 @@ export default function ForgotPasswordPage() {
 
         <section className={s.formSide}>
           <div className={s.card}>
-            <div className={s.mobileMark}><span>W</span> WorkFlow</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <div className={s.mobileMark}><img src="/logo-white.png" alt="WorkFlow" /></div>
             <h2 className={s.title}>Esqueci minha senha</h2>
             <p className={s.subtitle}>Vamos te ajudar a voltar para a sua conta.</p>
 
