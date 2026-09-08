@@ -14,6 +14,7 @@ function SettingsPage() {
     requireCheckoutPhoto: true,
     reviewEnabled: false,
     breaksEnabled: false,
+    breakLimitMinutes: "",
     onboardingRequired: false,
     uniformPrice: "0",
     allowSelfRegistration: false,
@@ -32,6 +33,7 @@ function SettingsPage() {
           requireCheckoutPhoto: s.requireCheckoutPhoto,
           reviewEnabled: s.reviewEnabled,
           breaksEnabled: s.breaksEnabled,
+          breakLimitMinutes: s.breakLimitMinutes != null ? String(s.breakLimitMinutes) : "",
           onboardingRequired: s.onboardingRequired,
           uniformPrice: String(s.uniformPrice),
           allowSelfRegistration: s.allowSelfRegistration,
@@ -52,6 +54,7 @@ function SettingsPage() {
         requireCheckoutPhoto: form.requireCheckoutPhoto,
         reviewEnabled: form.reviewEnabled,
         breaksEnabled: form.breaksEnabled,
+        breakLimitMinutes: form.breakLimitMinutes.trim() === "" ? null : Number(form.breakLimitMinutes),
         onboardingRequired: form.onboardingRequired,
         uniformPrice: Number(form.uniformPrice),
         allowSelfRegistration: form.allowSelfRegistration,
@@ -109,6 +112,15 @@ function SettingsPage() {
                 <span className={panel.muted}>
                   O tempo de pausa não conta como hora trabalhada. Pode ser liberado ou bloqueado
                   por vaga no lançamento do pedido.
+                </span>
+
+                <label>Limite de pausa por turno (minutos)</label>
+                <input type="number" min={1} max={480} step={5} placeholder="sem limite"
+                  value={form.breakLimitMinutes}
+                  onChange={(e) => setForm({ ...form, breakLimitMinutes: e.target.value })} />
+                <span className={panel.muted}>
+                  Depois de atingido, o colaborador não consegue abrir uma nova pausa no turno.
+                  Deixe em branco para não limitar. Também pode ser sobrescrito por vaga.
                 </span>
 
                 <hr style={{ width: "100%", borderColor: "var(--border)" }} />

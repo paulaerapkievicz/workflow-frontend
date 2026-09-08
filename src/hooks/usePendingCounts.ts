@@ -13,8 +13,8 @@ export interface SupermarketPendingCounts {
   ordersToApprove: number;
 }
 
-/** Contadores de pendências para os badges do menu (agência ou supermercado). */
-export function usePendingCounts(role: "agency" | "supermarket") {
+/** Contadores de pendências para os badges do menu (agência, líder ou supermercado). */
+export function usePendingCounts(role: "agency" | "supermarket" | "leader") {
   const [counts, setCounts] = useState<AgencyPendingCounts & SupermarketPendingCounts>({
     uniformsToShip: 0,
     selfiesToReview: 0,
@@ -26,9 +26,10 @@ export function usePendingCounts(role: "agency" | "supermarket") {
 
   useEffect(() => {
     let alive = true;
+    const path = role === "leader" ? "agency" : role;
     const load = () =>
       api
-        .get(`/${role}/pending-counts`)
+        .get(`/${path}/pending-counts`)
         .then((r) => alive && setCounts((c) => ({ ...c, ...r.data })))
         .catch(() => {});
     load();

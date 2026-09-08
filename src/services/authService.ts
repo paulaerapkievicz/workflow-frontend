@@ -1,6 +1,6 @@
 import api from "@/src/services/api";
 
-export type Role = "admin" | "supermarket" | "freelancer" | "agency";
+export type Role = "admin" | "supermarket" | "freelancer" | "agency" | "leader";
 
 export interface AuthUser {
   id: string;
@@ -23,6 +23,13 @@ export interface AuthProfile {
   name?: string;
   /** Só para papel supermarket: permissões do usuário (dono ou gerente de loja). */
   membership?: SupermarketMembership | null;
+  /** Só para papel leader: dados do líder de agência. */
+  agencyId?: string;
+  agencyName?: string | null;
+  active?: boolean;
+  payType?: "hora" | "diaria" | "mensal" | null;
+  payAmount?: number | null;
+  availableBalance?: number;
   [key: string]: unknown;
 }
 

@@ -10,6 +10,8 @@ export interface AgencySettings {
   reviewEnabled: boolean;
   /** Libera o recurso de pausa/intervalo no ponto (pode ser sobrescrito por vaga). */
   breaksEnabled: boolean;
+  /** Limite de minutos de pausa por turno (null = sem limite; pode ser sobrescrito por vaga). */
+  breakLimitMinutes: number | null;
   /** Exige onboarding (perfil contratual + uniforme aprovado) antes de aceitar vagas. */
   onboardingRequired: boolean;
   /** Preço do kit uniforme cobrado do colaborador. */
@@ -22,5 +24,5 @@ export const getAgencySettings = async (): Promise<AgencySettings> =>
   (await api.get("/agency/settings")).data;
 
 export const updateAgencySettings = async (
-  patch: Partial<Omit<AgencySettings, "id">>
+  patch: Partial<Omit<AgencySettings, "id" | "breakLimitMinutes">> & { breakLimitMinutes?: number | null }
 ): Promise<AgencySettings> => (await api.put("/agency/settings", patch)).data;
