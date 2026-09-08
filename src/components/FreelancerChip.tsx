@@ -1,5 +1,7 @@
 import { photoUrl } from "@/src/services/jobPhotoService";
 import styles from "@/styles/freelancerChip.module.scss";
+import FreelancerReputation from "@/src/components/FreelancerReputation";
+import { FreelancerReputation as Reputation } from "@/src/services/reviewService";
 
 export interface FreelancerChipData {
   name?: string | null;
@@ -56,11 +58,13 @@ export function FreelancerProfileBody({
   phone,
   document,
   profilePhotoUrl,
+  reputation,
 }: {
   name: string;
   phone?: string | null;
   document?: string | null;
   profilePhotoUrl?: string | null;
+  reputation?: Reputation | null;
 }) {
   return (
     <div className={styles.profile}>
@@ -75,6 +79,11 @@ export function FreelancerProfileBody({
       <p className={styles.profileName}>{name}</p>
       <p className={styles.profileRow}>Telefone: {phone || "—"}</p>
       <p className={styles.profileRow}>Documento: {document || "—"}</p>
+      {reputation && (
+        <div style={{ marginTop: 12, width: "100%", textAlign: "left" }}>
+          <FreelancerReputation reputation={reputation} />
+        </div>
+      )}
     </div>
   );
 }

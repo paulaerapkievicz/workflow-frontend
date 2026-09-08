@@ -93,6 +93,8 @@ export interface Job {
   }[];
   jobPayment?: { id: string; status: string } | null;
   jobReview?: { id: string; rating: number; comment?: string | null; approved?: boolean | null } | null;
+  /** Avaliação da entrega feita pelo supermercado (cliente). */
+  jobClientReview?: { id: string; rating: number; comment?: string | null } | null;
 }
 
 /** Turno enviado para a API (janela livre + período nominal). */

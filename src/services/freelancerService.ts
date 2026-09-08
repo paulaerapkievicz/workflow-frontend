@@ -47,6 +47,7 @@ export interface JobFreelancerProfile {
   phone: string | null;
   document: string | null;
   profilePhotoUrl: string | null;
+  reputation?: import("@/src/services/reviewService").FreelancerReputation | null;
 }
 
 // Perfil do colaborador alocado numa vaga (visível pro supermercado dono da vaga)

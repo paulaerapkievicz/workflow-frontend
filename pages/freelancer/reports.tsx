@@ -4,18 +4,27 @@ import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import { getFreelancerReport, FreelancerReport } from "@/src/services/billingService";
+import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
+import FreelancerReputation from "@/src/components/FreelancerReputation";
+import { useAuth } from "@/src/hooks/useAuth";
 import { fmtDate } from "@/src/lib/datetime";
 
 const hrs = (h: number) => `${h.toFixed(1).replace(".", ",")} h`;
 const money = (v: number) => `R$ ${Number(v).toFixed(2)}`;
 
 function ReportsPage() {
+  const { profile } = useAuth();
   const [report, setReport] = useState<FreelancerReport | null>(null);
+  const [reputation, setReputation] = useState<Reputation | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getFreelancerReport().then(setReport).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (profile?.id) getFreelancerReputation(profile.id).then(setReputation).catch(() => {});
+  }, [profile]);
 
   return (
     <>
@@ -29,6 +38,13 @@ function ReportsPage() {
             <p>Carregando…</p>
           ) : (
             <>
+              {reputation && (
+                <div className={panel.card} style={{ marginBottom: "1rem" }}>
+                  <div className={panel.tableToolbar}><strong>Minha reputação</strong></div>
+                  <FreelancerReputation reputation={reputation} />
+                </div>
+              )}
+
               <div className={panel.cards}>
                 <div className={panel.card}><h2>{report.totals.jobsCount}</h2><p>Trabalhos concluídos</p></div>
                 <div className={panel.card}><h2>{hrs(report.totals.workedHours)}</h2><p>Horas trabalhadas</p></div>

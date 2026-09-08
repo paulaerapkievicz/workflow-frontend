@@ -20,6 +20,18 @@ export interface BillingJob {
   invoiceId: string | null;
 }
 
+export interface InvoiceAdjustment {
+  id: string;
+  invoiceId: string;
+  description: string;
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  agencyNote?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  adjustmentAuthor?: { id: string; name: string } | null;
+}
+
 export interface BillingInvoice {
   id: string;
   referenceMonth: string | null;
@@ -30,6 +42,12 @@ export interface BillingInvoice {
   contractedMinutes: number;
   workedMinutes: number;
   totalAmount: number;
+  /** Soma dos abatimentos já aprovados. */
+  adjustmentsTotal: number;
+  /** Valor líquido a pagar (`totalAmount - adjustmentsTotal`). */
+  netAmount: number;
+  /** Contestações ainda aguardando a agência. */
+  pendingAdjustments: number;
   status: "pending" | "paid" | "canceled";
   paymentUrl?: string | null;
   paymentRef?: string | null;
@@ -64,6 +82,7 @@ export interface MonthlyClosing {
   contractedMinutes: number | null;
   workedMinutes: number | null;
   totalAmount: number;
+  adjustmentsTotal?: number | null;
   status: "pending" | "paid" | "canceled";
   /** Link de pagamento do gateway (Mercado Pago) — presente quando o pagamento foi iniciado. */
   paymentUrl?: string | null;
@@ -74,7 +93,12 @@ export interface MonthlyClosing {
   invoiceAgency?: { id: string; name: string } | null;
   invoiceBranch?: { id: string; name: string } | null;
   invoiceJobs?: { id: string; title: string; grossAmount?: number | null }[];
+  invoiceAdjustments?: InvoiceAdjustment[];
 }
+
+/** Valor líquido a pagar de um fechamento (total menos abatimentos aprovados). */
+export const closingNetAmount = (c: Pick<MonthlyClosing, "totalAmount" | "adjustmentsTotal">) =>
+  Number((Number(c.totalAmount) - Number(c.adjustmentsTotal ?? 0)).toFixed(2));
 
 export interface ClosingPreview {
   jobs: {
@@ -157,6 +181,45 @@ export const downloadClosingPdf = async (id: string, referenceMonth?: string | n
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+};
+
+// ---- Contestação / abatimento do fechamento ----
+export const getInvoiceAdjustments = async (invoiceId: string): Promise<InvoiceAdjustment[]> =>
+  (await api.get(`/invoices/${invoiceId}/adjustments`)).data;
+
+export const createInvoiceAdjustment = async (
+  invoiceId: string,
+  payload: { description: string; amount: number }
+): Promise<InvoiceAdjustment> =>
+  (await api.post(`/invoices/${invoiceId}/adjustments`, payload)).data;
+
+export const deleteInvoiceAdjustment = async (invoiceId: string, adjustmentId: string): Promise<void> => {
+  await api.delete(`/invoices/${invoiceId}/adjustments/${adjustmentId}`);
+};
+
+export const approveInvoiceAdjustment = async (
+  invoiceId: string,
+  adjustmentId: string
+): Promise<InvoiceAdjustment> =>
+  (await api.post(`/invoices/${invoiceId}/adjustments/${adjustmentId}/approve`)).data;
+
+export const rejectInvoiceAdjustment = async (
+  invoiceId: string,
+  adjustmentId: string,
+  note: string
+): Promise<InvoiceAdjustment> =>
+  (await api.post(`/invoices/${invoiceId}/adjustments/${adjustmentId}/reject`, { note })).data;
+
+export const revertInvoiceAdjustment = async (
+  invoiceId: string,
+  adjustmentId: string
+): Promise<InvoiceAdjustment> =>
+  (await api.post(`/invoices/${invoiceId}/adjustments/${adjustmentId}/revert`)).data;
+
+export const ADJUSTMENT_STATUS_LABELS: Record<InvoiceAdjustment["status"], string> = {
+  pending: "Aguardando agência",
+  approved: "Aprovado",
+  rejected: "Recusado",
 };
 
 export const CLOSING_STATUS_LABELS: Record<MonthlyClosing["status"], string> = {

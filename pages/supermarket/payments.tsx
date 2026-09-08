@@ -2,10 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/supermarket/Sidebar";
+import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import {
   getBillingSummary, payClosing, syncClosingPayment, downloadClosingPdf, BillingSummary, BillingJob,
+  BillingInvoice, InvoiceAdjustment,
+  getInvoiceAdjustments, createInvoiceAdjustment, deleteInvoiceAdjustment,
+  ADJUSTMENT_STATUS_LABELS,
   hoursFromMin, money, monthName, CLOSING_STATUS_LABELS,
 } from "@/src/services/billingService";
 import { shiftLabel } from "@/src/services/shifts";
@@ -40,6 +44,12 @@ function BillingPage() {
   const [categoryId, setCategoryId] = useState("");
   const [orderId, setOrderId] = useState("");
   const [payMsg, setPayMsg] = useState<string | null>(null);
+
+  const [adjInvoice, setAdjInvoice] = useState<BillingInvoice | null>(null);
+  const [adjustments, setAdjustments] = useState<InvoiceAdjustment[]>([]);
+  const [adjForm, setAdjForm] = useState({ description: "", amount: "" });
+  const [adjBusy, setAdjBusy] = useState(false);
+  const [adjError, setAdjError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -147,6 +157,51 @@ function BillingPage() {
     finally { setPdfBusyId(null); }
   };
 
+  const openAdjustments = async (inv: BillingInvoice) => {
+    setAdjInvoice(inv);
+    setAdjustments([]);
+    setAdjForm({ description: "", amount: "" });
+    setAdjError(null);
+    try { setAdjustments(await getInvoiceAdjustments(inv.id)); } catch { setAdjustments([]); }
+  };
+
+  const refreshAdjustments = async (invoiceId: string) => {
+    const [list] = await Promise.all([getInvoiceAdjustments(invoiceId), load()]);
+    setAdjustments(list);
+  };
+
+  const addAdjustment = async () => {
+    if (!adjInvoice) return;
+    const amount = Number(adjForm.amount.replace(",", "."));
+    if (!adjForm.description.trim()) return setAdjError("Descreva o abatimento.");
+    if (!(amount > 0)) return setAdjError("Informe um valor maior que zero.");
+    setAdjBusy(true);
+    setAdjError(null);
+    try {
+      await createInvoiceAdjustment(adjInvoice.id, { description: adjForm.description.trim(), amount });
+      setAdjForm({ description: "", amount: "" });
+      await refreshAdjustments(adjInvoice.id);
+    } catch (err) {
+      setAdjError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    } finally {
+      setAdjBusy(false);
+    }
+  };
+
+  const removeAdjustment = async (adjustmentId: string) => {
+    if (!adjInvoice) return;
+    setAdjBusy(true);
+    setAdjError(null);
+    try {
+      await deleteInvoiceAdjustment(adjInvoice.id, adjustmentId);
+      await refreshAdjustments(adjInvoice.id);
+    } catch (err) {
+      setAdjError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    } finally {
+      setAdjBusy(false);
+    }
+  };
+
   const clearFilters = () => { setBranchId(""); setMonth(""); setCategoryId(""); setOrderId(""); };
   const anyFilter = branchId || month || categoryId || orderId;
 
@@ -214,9 +269,11 @@ function BillingPage() {
               {payMsg && <p className={panel.muted} style={{ marginBottom: "0.5rem" }}>{payMsg}</p>}
               <div style={{ overflowX: "auto" }}>
                 <table className={panel.table}>
-                  <thead><tr><th>Mês</th><th>Agência</th><th>Escopo</th><th>Vagas</th><th>Horas trab.</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+                  <thead><tr><th>Mês</th><th>Agência</th><th>Escopo</th><th>Vagas</th><th>Horas trab.</th><th>Valor</th><th>Abatimentos</th><th>A pagar</th><th>Status</th><th></th></tr></thead>
                   <tbody>
-                    {invoices.map((c) => (
+                    {invoices.map((c) => {
+                      const blockPay = c.pendingAdjustments > 0;
+                      return (
                       <tr key={c.id}>
                         <td>{monthName(c.referenceMonth)}</td>
                         <td>{c.agencyName ?? "—"}</td>
@@ -224,10 +281,22 @@ function BillingPage() {
                         <td>{c.totalJobs}</td>
                         <td>{hrs(hoursFromMin(c.workedMinutes))}</td>
                         <td>{money(c.totalAmount)}</td>
+                        <td>{c.adjustmentsTotal > 0 ? `- ${money(c.adjustmentsTotal)}` : "—"}</td>
+                        <td><strong>{money(c.netAmount)}</strong></td>
                         <td><span className={panel.badge}>{CLOSING_STATUS_LABELS[c.status]}</span></td>
                         <td>
+                          {c.status === "pending" && (
+                            <button className={panel.ghostBtn} onClick={() => openAdjustments(c)}>
+                              Contestar
+                            </button>
+                          )}
                           {c.status === "pending" && !c.paymentUrl && (
-                            <button className={panel.primaryBtn} disabled={busy === c.id} onClick={() => pay(c.id)}>
+                            <button
+                              className={panel.primaryBtn}
+                              disabled={busy === c.id || blockPay}
+                              title={blockPay ? "Aguarde a agência resolver as contestações pendentes." : undefined}
+                              onClick={() => pay(c.id)}
+                            >
                               {busy === c.id ? "…" : "Pagar fatura"}
                             </button>
                           )}
@@ -246,8 +315,9 @@ function BillingPage() {
                           </button>
                         </td>
                       </tr>
-                    ))}
-                    {invoices.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum fechamento recebido.</td></tr>}
+                      );
+                    })}
+                    {invoices.length === 0 && <tr><td colSpan={10} className={panel.muted}>Nenhum fechamento recebido.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -277,6 +347,71 @@ function BillingPage() {
           )}
         </section>
       </main>
+
+      {adjInvoice && (() => {
+        const live = (summary?.invoices ?? []).find((i) => i.id === adjInvoice.id) ?? adjInvoice;
+        return (
+          <Modal title={`Contestar fechamento — ${monthName(live.referenceMonth)}`} onClose={() => setAdjInvoice(null)}>
+            <p className={panel.muted}>
+              Lance aqui os valores a abater deste fechamento (ex.: quebra de caixa). A agência aprova
+              ou recusa cada item. Você paga o valor líquido depois que tudo for resolvido.
+            </p>
+
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", margin: "0.5rem 0" }}>
+              <span>Valor bruto: <strong>{money(live.totalAmount)}</strong></span>
+              <span>Abatimentos aprovados: <strong>- {money(live.adjustmentsTotal)}</strong></span>
+              <span>Valor líquido: <strong>{money(live.netAmount)}</strong></span>
+            </div>
+
+            <table className={panel.table}>
+              <thead><tr><th>Descrição</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                {adjustments.map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      {a.description}
+                      {a.status === "rejected" && a.agencyNote && (
+                        <div className={panel.muted} style={{ fontSize: "0.8rem" }}>Motivo: {a.agencyNote}</div>
+                      )}
+                    </td>
+                    <td>- {money(a.amount)}</td>
+                    <td><span className={panel.badge}>{ADJUSTMENT_STATUS_LABELS[a.status]}</span></td>
+                    <td>
+                      {a.status === "pending" && (
+                        <button className={panel.secondaryBtn} disabled={adjBusy} onClick={() => removeAdjustment(a.id)}>
+                          Remover
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {adjustments.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nenhuma contestação lançada.</td></tr>}
+              </tbody>
+            </table>
+
+            {live.status === "pending" && (
+              <div className={panel.form} style={{ marginTop: "0.75rem" }}>
+                <label>Descrição do abatimento</label>
+                <input
+                  value={adjForm.description}
+                  onChange={(e) => setAdjForm((s) => ({ ...s, description: e.target.value }))}
+                  placeholder="Ex.: Quebra de caixa 12/03"
+                />
+                <label>Valor (R$)</label>
+                <input
+                  type="number" min="0.01" step="0.01"
+                  value={adjForm.amount}
+                  onChange={(e) => setAdjForm((s) => ({ ...s, amount: e.target.value }))}
+                />
+                {adjError && <p className={panel.error}>{adjError}</p>}
+                <button className={panel.primaryBtn} disabled={adjBusy} onClick={addAdjustment}>
+                  {adjBusy ? "Salvando…" : "Adicionar contestação"}
+                </button>
+              </div>
+            )}
+          </Modal>
+        );
+      })()}
     </>
   );
 }

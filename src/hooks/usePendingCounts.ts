@@ -8,6 +8,7 @@ export interface AgencyPendingCounts {
   registrationsToApprove: number;
   branchesToApprove: number;
   memberCreditsToReview: number;
+  contestationsToReview: number;
 }
 
 export interface SupermarketPendingCounts {
@@ -23,6 +24,7 @@ export function usePendingCounts(role: "agency" | "supermarket" | "leader") {
     registrationsToApprove: 0,
     branchesToApprove: 0,
     memberCreditsToReview: 0,
+    contestationsToReview: 0,
     ordersToApprove: 0,
   });
 

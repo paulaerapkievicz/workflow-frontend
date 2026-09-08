@@ -23,6 +23,8 @@ export interface AuthProfile {
   name?: string;
   /** Só para papel supermarket: permissões do usuário (dono ou gerente de loja). */
   membership?: SupermarketMembership | null;
+  /** Só para papel supermarket: a agência que atende este supermercado. */
+  clientAgency?: { id: string; name: string; reviewEnabled: boolean } | null;
   /** Só para papel leader: dados do líder de agência. */
   agencyId?: string;
   agencyName?: string | null;

@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
+import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import { getOrders } from "@/src/services/orderService";
 import { getBranches, Branch } from "@/src/services/branchService";
 import {
   getClosings, previewClosing, createClosing, downloadClosingPdf, MonthlyClosing, ClosingPreview,
+  InvoiceAdjustment, getInvoiceAdjustments, approveInvoiceAdjustment, rejectInvoiceAdjustment,
+  revertInvoiceAdjustment, ADJUSTMENT_STATUS_LABELS, closingNetAmount,
   CLOSING_STATUS_LABELS, monthName, money,
 } from "@/src/services/billingService";
 
@@ -29,6 +32,11 @@ function ClosingsPage() {
   const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
+
+  const [adjClosing, setAdjClosing] = useState<MonthlyClosing | null>(null);
+  const [adjustments, setAdjustments] = useState<InvoiceAdjustment[]>([]);
+  const [adjBusy, setAdjBusy] = useState(false);
+  const [adjError, setAdjError] = useState<string | null>(null);
 
   const load = async () => {
     const [orders, br, c] = await Promise.all([getOrders(), getBranches(), getClosings()]);
@@ -80,6 +88,31 @@ function ClosingsPage() {
   const scopeLabel = branchId
     ? myBranches.find((b) => b.id === branchId)?.name ?? "filial"
     : "toda a matriz (todas as filiais)";
+
+  const pendingCount = (c: MonthlyClosing) =>
+    (c.invoiceAdjustments ?? []).filter((a) => a.status === "pending").length;
+
+  const openAdjustments = async (c: MonthlyClosing) => {
+    setAdjClosing(c);
+    setAdjustments([]);
+    setAdjError(null);
+    try { setAdjustments(await getInvoiceAdjustments(c.id)); } catch { setAdjustments([]); }
+  };
+
+  const runAdjustment = async (fn: () => Promise<unknown>) => {
+    if (!adjClosing) return;
+    setAdjBusy(true);
+    setAdjError(null);
+    try {
+      await fn();
+      const [list] = await Promise.all([getInvoiceAdjustments(adjClosing.id), load()]);
+      setAdjustments(list);
+    } catch (err) {
+      setAdjError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    } finally {
+      setAdjBusy(false);
+    }
+  };
 
   const baixarPdf = async (c: MonthlyClosing) => {
     setPdfBusyId(c.id);
@@ -156,9 +189,12 @@ function ClosingsPage() {
           <h2 style={{ fontSize: "1.1rem", marginTop: "1.5rem" }}>Fechamentos gerados</h2>
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
-              <thead><tr><th>Mês</th><th>Supermercado</th><th>Escopo</th><th>Vagas</th><th>Horas trab.</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
+              <thead><tr><th>Mês</th><th>Supermercado</th><th>Escopo</th><th>Vagas</th><th>Horas trab.</th><th>Valor</th><th>Abatim.</th><th>A pagar</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody>
-                {closings.map((c) => (
+                {closings.map((c) => {
+                  const pend = pendingCount(c);
+                  const adjTotal = Number(c.adjustmentsTotal ?? 0);
+                  return (
                   <tr key={c.id}>
                     <td>{monthName(c.referenceMonth)}</td>
                     <td>{c.invoiceSupermarket?.name ?? "—"}</td>
@@ -166,20 +202,77 @@ function ClosingsPage() {
                     <td>{c.totalJobs ?? "—"}</td>
                     <td>{hrs(c.workedMinutes)}</td>
                     <td>{money(c.totalAmount)}</td>
+                    <td>{adjTotal > 0 ? `- ${money(adjTotal)}` : "—"}</td>
+                    <td><strong>{money(closingNetAmount(c))}</strong></td>
                     <td><span className={panel.badge}>{CLOSING_STATUS_LABELS[c.status]}</span></td>
                     <td>
+                      <button className={panel.ghostBtn} onClick={() => openAdjustments(c)}>
+                        Contestações{pend ? ` (${pend})` : ""}
+                      </button>
                       <button className={panel.ghostBtn} disabled={pdfBusyId === c.id} onClick={() => baixarPdf(c)}>
                         {pdfBusyId === c.id ? "Baixando…" : "Baixar PDF"}
                       </button>
                     </td>
                   </tr>
-                ))}
-                {closings.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum fechamento ainda.</td></tr>}
+                  );
+                })}
+                {closings.length === 0 && <tr><td colSpan={10} className={panel.muted}>Nenhum fechamento ainda.</td></tr>}
               </tbody>
             </table>
           </div>
         </section>
       </main>
+
+      {adjClosing && (
+        <Modal title={`Contestações — ${monthName(adjClosing.referenceMonth)} · ${adjClosing.invoiceSupermarket?.name ?? ""}`} onClose={() => setAdjClosing(null)}>
+          <p className={panel.muted}>
+            O supermercado lançou estes abatimentos. Aprovar reduz o valor a receber deste fechamento
+            e o débito sai do saldo da agência. Recusar mantém o valor cheio.
+          </p>
+          {adjError && <p className={panel.error}>{adjError}</p>}
+          <table className={panel.table}>
+            <thead><tr><th>Descrição</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody>
+              {adjustments.map((a) => (
+                <tr key={a.id}>
+                  <td>
+                    {a.description}
+                    {a.status === "rejected" && a.agencyNote && (
+                      <div className={panel.muted} style={{ fontSize: "0.8rem" }}>Motivo: {a.agencyNote}</div>
+                    )}
+                  </td>
+                  <td>- {money(a.amount)}</td>
+                  <td><span className={panel.badge}>{ADJUSTMENT_STATUS_LABELS[a.status]}</span></td>
+                  <td>
+                    {a.status === "pending" && (
+                      <>
+                        <button className={panel.primaryBtn} disabled={adjBusy}
+                          onClick={() => runAdjustment(() => approveInvoiceAdjustment(adjClosing.id, a.id))}>
+                          Aprovar
+                        </button>
+                        <button className={panel.secondaryBtn} disabled={adjBusy}
+                          onClick={() => {
+                            const note = window.prompt("Motivo da recusa:");
+                            if (note && note.trim()) runAdjustment(() => rejectInvoiceAdjustment(adjClosing.id, a.id, note.trim()));
+                          }}>
+                          Recusar
+                        </button>
+                      </>
+                    )}
+                    {a.status === "approved" && adjClosing.status === "pending" && (
+                      <button className={panel.secondaryBtn} disabled={adjBusy}
+                        onClick={() => runAdjustment(() => revertInvoiceAdjustment(adjClosing.id, a.id))}>
+                        Reverter
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {adjustments.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nenhuma contestação neste fechamento.</td></tr>}
+            </tbody>
+          </table>
+        </Modal>
+      )}
     </>
   );
 }

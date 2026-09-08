@@ -17,6 +17,9 @@ import { getCategories, Category } from "@/src/services/categoryService";
 import { getSupermarketRates, SupermarketCategoryRate } from "@/src/services/supermarketRateService";
 import { getJobPhotos, photoUrl, JobPhoto } from "@/src/services/jobPhotoService";
 import { getJobFreelancerProfile, JobFreelancerProfile } from "@/src/services/freelancerService";
+import { createSupermarketReview } from "@/src/services/reviewService";
+import StarRating from "@/src/components/StarRating";
+import { useAuth } from "@/src/hooks/useAuth";
 import { authService } from "@/src/services/authService";
 import {
   shiftFromWindow, newShift, validateShifts, toShiftPayload, ShiftInput,
@@ -27,6 +30,8 @@ import { matchesFilter, RowFilter } from "@/src/lib/filterRows";
 import { fmtTime, fmtDate, isoDateBR } from "@/src/lib/datetime";
 
 function JobsPage() {
+  const { profile: authProfile } = useAuth();
+  const reviewEnabled = !!authProfile?.clientAgency?.reviewEnabled;
   const [jobs, setJobs] = useState<Job[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -38,6 +43,11 @@ function JobsPage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<RowFilter>({});
+
+  const [reviewJob, setReviewJob] = useState<Job | null>(null);
+  const [rv, setRv] = useState<{ rating: number; comment: string }>({ rating: 0, comment: "" });
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   const [editJob, setEditJob] = useState<Job | null>(null);
   const [form, setForm] = useState<{ title: string; categoryId: string; date: string; shifts: ShiftInput[] }>({
@@ -117,6 +127,28 @@ function JobsPage() {
     catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
   };
 
+  const openReview = (job: Job) => {
+    setReviewJob(job);
+    setRv({ rating: 0, comment: "" });
+    setReviewError(null);
+  };
+
+  const submitReview = async () => {
+    if (!reviewJob) return;
+    if (!(rv.rating >= 1 && rv.rating <= 5)) return setReviewError("Escolha uma nota de 1 a 5.");
+    setReviewBusy(true);
+    setReviewError(null);
+    try {
+      await createSupermarketReview(reviewJob.id, { rating: rv.rating, comment: rv.comment.trim() || undefined });
+      setReviewJob(null);
+      await load();
+    } catch (err) {
+      setReviewError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao avaliar." : "Erro ao avaliar.");
+    } finally {
+      setReviewBusy(false);
+    }
+  };
+
   const openPhotos = async (job: Job) => {
     setPhotoJob(job);
     try { setPhotos(await getJobPhotos(job.id)); } catch { setPhotos([]); }
@@ -184,6 +216,15 @@ function JobsPage() {
           {["in_progress", "completed"].includes(j.status) && (
             <button className={panel.ghostBtn} onClick={() => openPhotos(j)}>Fotos</button>
           )}
+          {j.status === "completed" && j.assignedFreelancer && reviewEnabled && (
+            j.jobClientReview ? (
+              <span className={panel.muted} title="Você já avaliou este colaborador nesta vaga">
+                <StarRating value={j.jobClientReview.rating} size={13} />
+              </span>
+            ) : (
+              <button className={panel.ghostBtn} onClick={() => openReview(j)}>Avaliar colaborador</button>
+            )
+          )}
           {j.status === "pending" && (
             <>
               <button className={panel.ghostBtn} onClick={() => openEdit(j)}>Editar</button>
@@ -246,6 +287,30 @@ function JobsPage() {
               disabled={!!editJob && !!unpricedWarning(form.categoryId, editJob.branchId)}
             >
               Salvar
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {reviewJob && (
+        <Modal title={`Avaliar colaborador — ${reviewJob.assignedFreelancer?.name ?? ""}`} onClose={() => setReviewJob(null)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              Sua nota entra na média de reputação do colaborador. A agência e outros supermercados
+              da rede enxergam essa média.
+            </p>
+            <label>Nota</label>
+            <StarRating value={rv.rating} onChange={(rating) => setRv((s) => ({ ...s, rating }))} size={26} />
+            <label>Comentário (opcional)</label>
+            <textarea
+              value={rv.comment}
+              onChange={(e) => setRv((s) => ({ ...s, comment: e.target.value }))}
+              rows={3}
+              placeholder="Como foi o atendimento?"
+            />
+            {reviewError && <p className={panel.error}>{reviewError}</p>}
+            <button className={panel.primaryBtn} onClick={submitReview} disabled={reviewBusy}>
+              {reviewBusy ? "Enviando…" : "Enviar avaliação"}
             </button>
           </div>
         </Modal>
