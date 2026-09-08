@@ -51,6 +51,7 @@ export interface SupermarketMember {
   branchId?: string | null;
   canSubmitOrders: boolean;
   canApproveOrders: boolean;
+  canViewInvoices: boolean;
   isOwner: boolean;
   memberUser?: { id: string; name: string; email: string } | null;
   memberBranch?: { id: string; name: string } | null;
@@ -68,13 +69,14 @@ export const addMember = async (
     branchId?: string | null;
     canSubmitOrders?: boolean;
     canApproveOrders?: boolean;
+    canViewInvoices?: boolean;
   }
 ): Promise<SupermarketMember> =>
   (await api.post(`/supermarkets/${supermarketId}/members`, payload)).data;
 
 export const updateMember = async (
   id: string,
-  patch: Partial<Pick<SupermarketMember, "branchId" | "canSubmitOrders" | "canApproveOrders">>
+  patch: Partial<Pick<SupermarketMember, "branchId" | "canSubmitOrders" | "canApproveOrders" | "canViewInvoices">>
 ): Promise<SupermarketMember> => (await api.put(`/supermarket-members/${id}`, patch)).data;
 
 export const deleteMember = async (id: string): Promise<void> => {

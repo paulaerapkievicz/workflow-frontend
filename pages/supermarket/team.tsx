@@ -22,7 +22,7 @@ function TeamPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    name: "", email: "", password: "", branchId: "", canSubmitOrders: true, canApproveOrders: false,
+    name: "", email: "", password: "", branchId: "", canSubmitOrders: true, canApproveOrders: false, canViewInvoices: false,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -45,9 +45,10 @@ function TeamPage() {
         branchId: form.branchId || null,
         canSubmitOrders: form.canSubmitOrders,
         canApproveOrders: form.canApproveOrders,
+        canViewInvoices: form.canViewInvoices,
       });
       setOpen(false);
-      setForm({ name: "", email: "", password: "", branchId: "", canSubmitOrders: true, canApproveOrders: false });
+      setForm({ name: "", email: "", password: "", branchId: "", canSubmitOrders: true, canApproveOrders: false, canViewInvoices: false });
       await load();
     } catch (err) {
       setError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
@@ -81,7 +82,9 @@ function TeamPage() {
           </header>
           <p className={panel.muted}>
             Cada gerente pode solicitar vagas para a sua loja. Pedidos de quem não tem permissão de
-            aprovação ficam <strong>aguardando aprovação</strong> de um aprovador da rede.
+            aprovação ficam <strong>aguardando aprovação</strong> de um aprovador da rede. A coluna
+            <strong> Vê faturas</strong> libera (ou não) o acesso do gerente ao Faturamento e ao
+            pagamento das faturas do fechamento mensal — o responsável pela rede sempre vê.
           </p>
 
           {!isOwner ? (
@@ -89,7 +92,7 @@ function TeamPage() {
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
-                <thead><tr><th>Nome</th><th>E-mail</th><th>Loja</th><th>Solicita</th><th>Aprova</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nome</th><th>E-mail</th><th>Loja</th><th>Solicita</th><th>Aprova</th><th>Vê faturas</th><th>Ações</th></tr></thead>
                 <tbody>
                   {members.map((m) => (
                     <tr key={m.id}>
@@ -112,11 +115,15 @@ function TeamPage() {
                           onChange={(e) => patch(m, { canApproveOrders: e.target.checked })} />
                       </td>
                       <td>
+                        <input type="checkbox" disabled={m.isOwner} checked={m.isOwner || m.canViewInvoices}
+                          onChange={(e) => patch(m, { canViewInvoices: e.target.checked })} />
+                      </td>
+                      <td>
                         {!m.isOwner && <button className={panel.secondaryBtn} onClick={() => remove(m)}>Remover</button>}
                       </td>
                     </tr>
                   ))}
-                  {members.length === 0 && <tr><td colSpan={6}>Nenhum membro.</td></tr>}
+                  {members.length === 0 && <tr><td colSpan={7}>Nenhum membro.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -145,6 +152,10 @@ function TeamPage() {
             <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input type="checkbox" checked={form.canApproveOrders} onChange={(e) => setForm({ ...form, canApproveOrders: e.target.checked })} />
               Pode aprovar pedidos (envia direto ao pool)
+            </label>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="checkbox" checked={form.canViewInvoices} onChange={(e) => setForm({ ...form, canViewInvoices: e.target.checked })} />
+              Pode ver e pagar as faturas da rede
             </label>
             {error && <p className={panel.error}>{error}</p>}
             <button className={panel.primaryBtn} onClick={save} disabled={!form.name || !form.email || !form.password}>Salvar</button>

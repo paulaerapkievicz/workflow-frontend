@@ -13,6 +13,8 @@ import {
   hoursFromMin, money, monthName, CLOSING_STATUS_LABELS,
 } from "@/src/services/billingService";
 import { shiftLabel } from "@/src/services/shifts";
+import { useAuth } from "@/src/hooks/useAuth";
+import type { SupermarketMembership } from "@/src/services/authService";
 
 type GroupKey = "categoryName" | "branchName" | "referenceMonth" | "orderId";
 
@@ -34,6 +36,10 @@ function pivot(jobs: BillingJob[], key: GroupKey, labelOf: (j: BillingJob) => st
 }
 
 function BillingPage() {
+  const { profile, loading: authLoading } = useAuth();
+  const membership = (profile as { membership?: SupermarketMembership } | null)?.membership ?? null;
+  const canViewInvoices = membership ? membership.isOwner || membership.canViewInvoices : true;
+
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -58,6 +64,7 @@ function BillingPage() {
   };
 
   useEffect(() => {
+    if (authLoading || !canViewInvoices) return;
     (async () => {
       // De volta do checkout do Mercado Pago: confirma as faturas que já têm pagamento iniciado.
       if (typeof window !== "undefined" && /[?&]fatura=/.test(window.location.search)) {
@@ -73,7 +80,7 @@ function BillingPage() {
       }
       await load().catch(() => {});
     })();
-  }, []);
+  }, [authLoading, canViewInvoices]);
 
   const jobs = useMemo(() => summary?.jobs ?? [], [summary]);
 
@@ -213,7 +220,12 @@ function BillingPage() {
         <section className={panel.content}>
           <header className={panel.header}><h1>Faturamento</h1></header>
 
-          {loading || !summary ? (
+          {!authLoading && !canViewInvoices ? (
+            <p className={panel.muted}>
+              Você não tem permissão para ver as faturas da rede. Fale com o responsável pelo
+              supermercado ou com a agência para liberar o acesso.
+            </p>
+          ) : loading || !summary ? (
             <p>Carregando…</p>
           ) : (
             <>

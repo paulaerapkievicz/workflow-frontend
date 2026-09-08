@@ -15,6 +15,8 @@ export interface SupermarketMembership {
   branchId: string | null;
   canSubmitOrders: boolean;
   canApproveOrders: boolean;
+  /** Vê e paga as faturas (fechamento mensal) da rede. */
+  canViewInvoices: boolean;
   isOwner: boolean;
 }
 

@@ -7,6 +7,7 @@ import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import {
   getSupermarkets, createSupermarketAsAgency, updateSupermarket, Supermarket,
+  getMembers, addMember, updateMember, deleteMember, SupermarketMember,
 } from "@/src/services/supermarketService";
 import {
   getBranches, createBranch, updateBranch, deleteBranch, geocodeAddress, branchHasLocation, approveBranch, Branch,
@@ -21,6 +22,7 @@ import {
 const emptyMarket = { id: "", name: "", cnpj: "", address: "", phone: "", email: "", password: "" };
 const emptyBranch = { id: "", name: "", address: "", phone: "" };
 const emptyRate = { categoryId: "", branchId: "", hourlyRate: "" };
+const emptyMember = { name: "", email: "", password: "", branchId: "", canSubmitOrders: true, canApproveOrders: false, canViewInvoices: false };
 
 function SupermarketsPage() {
   const [markets, setMarkets] = useState<Supermarket[]>([]);
@@ -41,6 +43,12 @@ function SupermarketsPage() {
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+
+  const [teamOf, setTeamOf] = useState<Supermarket | null>(null);
+  const [members, setMembers] = useState<SupermarketMember[]>([]);
+  const [memberModal, setMemberModal] = useState(false);
+  const [memberForm, setMemberForm] = useState({ ...emptyMember });
+  const [memberError, setMemberError] = useState<string | null>(null);
 
   const [branchesOf, setBranchesOf] = useState<Supermarket | null>(null);
   const [branchModal, setBranchModal] = useState(false);
@@ -159,6 +167,45 @@ function SupermarketsPage() {
     catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
   };
 
+  const openTeam = async (m: Supermarket) => {
+    setTeamOf(m);
+    setMembers([]);
+    try { setMembers(await getMembers(m.id)); } catch { /* vazio */ }
+  };
+  const reloadTeam = async () => {
+    if (!teamOf) return;
+    try { setMembers(await getMembers(teamOf.id)); } catch { /* vazio */ }
+  };
+  const saveMember = async () => {
+    if (!teamOf) return;
+    setMemberError(null);
+    try {
+      await addMember(teamOf.id, {
+        name: memberForm.name,
+        email: memberForm.email,
+        password: memberForm.password,
+        branchId: memberForm.branchId || null,
+        canSubmitOrders: memberForm.canSubmitOrders,
+        canApproveOrders: memberForm.canApproveOrders,
+        canViewInvoices: memberForm.canViewInvoices,
+      });
+      setMemberModal(false);
+      setMemberForm({ ...emptyMember });
+      await reloadTeam();
+    } catch (err) {
+      setMemberError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    }
+  };
+  const patchMember = async (mem: SupermarketMember, p: Partial<SupermarketMember>) => {
+    try { await updateMember(mem.id, p); await reloadTeam(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+  };
+  const removeMember = async (mem: SupermarketMember) => {
+    if (!confirm(`Remover ${mem.memberUser?.name ?? "este gerente"}?`)) return;
+    try { await deleteMember(mem.id); await reloadTeam(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+  };
+
   const openRates = async (m: Supermarket) => {
     setRatesOf(m);
     setRateForm({ ...emptyRate });
@@ -251,6 +298,7 @@ function SupermarketsPage() {
                       <td>
                         <button className={panel.ghostBtn} onClick={() => setBranchesOf(m)}>Filiais</button>
                         <button className={panel.ghostBtn} onClick={() => openRates(m)}>Valores/hora</button>
+                        <button className={panel.ghostBtn} onClick={() => openTeam(m)}>Equipe</button>
                         <button className={panel.ghostBtn} onClick={() => openEditMarket(m)}>Editar</button>
                       </td>
                     </tr>
@@ -374,6 +422,82 @@ function SupermarketsPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {teamOf && !memberModal && (
+        <Modal title={`Equipe — ${teamOf.name}`} onClose={() => setTeamOf(null)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              Gerentes de loja do supermercado. Aqui a agência também define quem pode
+              solicitar/aprovar pedidos e quem <strong>vê e paga as faturas</strong> do fechamento
+              mensal. O dono do supermercado sempre enxerga tudo.
+            </p>
+            <button className={panel.primaryBtn} onClick={() => { setMemberForm({ ...emptyMember }); setMemberError(null); setMemberModal(true); }}>
+              Adicionar gerente
+            </button>
+            <div style={{ overflowX: "auto" }}>
+              <table className={panel.table}>
+                <thead><tr><th>Nome</th><th>E-mail</th><th>Loja</th><th>Solicita</th><th>Aprova</th><th>Vê faturas</th><th>Ações</th></tr></thead>
+                <tbody>
+                  {members.map((mem) => (
+                    <tr key={mem.id}>
+                      <td>{mem.memberUser?.name ?? "—"}{mem.isOwner && <span className={panel.badge} style={{ marginLeft: 6 }}>dono</span>}</td>
+                      <td>{mem.memberUser?.email ?? "—"}</td>
+                      <td>
+                        {mem.isOwner ? "Rede toda" : (
+                          <select value={mem.branchId ?? ""} onChange={(e) => patchMember(mem, { branchId: e.target.value || null })}>
+                            <option value="">Rede toda</option>
+                            {branchesForMarket(teamOf.id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                          </select>
+                        )}
+                      </td>
+                      <td><input type="checkbox" disabled={mem.isOwner} checked={mem.canSubmitOrders}
+                        onChange={(e) => patchMember(mem, { canSubmitOrders: e.target.checked })} /></td>
+                      <td><input type="checkbox" disabled={mem.isOwner} checked={mem.canApproveOrders}
+                        onChange={(e) => patchMember(mem, { canApproveOrders: e.target.checked })} /></td>
+                      <td><input type="checkbox" disabled={mem.isOwner} checked={mem.isOwner || mem.canViewInvoices}
+                        onChange={(e) => patchMember(mem, { canViewInvoices: e.target.checked })} /></td>
+                      <td>{!mem.isOwner && <button className={panel.secondaryBtn} onClick={() => removeMember(mem)}>Remover</button>}</td>
+                    </tr>
+                  ))}
+                  {members.length === 0 && <tr><td colSpan={7} className={panel.muted}>Nenhum membro.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {teamOf && memberModal && (
+        <Modal title="Adicionar gerente" onClose={() => setMemberModal(false)}>
+          <div className={panel.form}>
+            <label>Nome</label>
+            <input value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} />
+            <label>E-mail</label>
+            <input type="email" value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} />
+            <label>Senha de acesso</label>
+            <input type="password" minLength={4} value={memberForm.password} onChange={(e) => setMemberForm({ ...memberForm, password: e.target.value })} />
+            <label>Loja</label>
+            <select value={memberForm.branchId} onChange={(e) => setMemberForm({ ...memberForm, branchId: e.target.value })}>
+              <option value="">Rede toda</option>
+              {branchesForMarket(teamOf.id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="checkbox" checked={memberForm.canSubmitOrders} onChange={(e) => setMemberForm({ ...memberForm, canSubmitOrders: e.target.checked })} />
+              Pode solicitar vagas
+            </label>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="checkbox" checked={memberForm.canApproveOrders} onChange={(e) => setMemberForm({ ...memberForm, canApproveOrders: e.target.checked })} />
+              Pode aprovar pedidos (envia direto ao pool)
+            </label>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="checkbox" checked={memberForm.canViewInvoices} onChange={(e) => setMemberForm({ ...memberForm, canViewInvoices: e.target.checked })} />
+              Pode ver e pagar as faturas da rede
+            </label>
+            {memberError && <p className={panel.error}>{memberError}</p>}
+            <button className={panel.primaryBtn} onClick={saveMember} disabled={!memberForm.name || !memberForm.email || !memberForm.password}>Salvar</button>
           </div>
         </Modal>
       )}
