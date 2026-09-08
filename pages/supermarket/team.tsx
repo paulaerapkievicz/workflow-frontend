@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/supermarket/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import BranchScopeField from "@/src/components/supermarket/BranchScopeField";
 import panel from "@/styles/panel.module.scss";
 import {
   getMembers, addMember, updateMember, deleteMember, SupermarketMember,
@@ -11,6 +12,11 @@ import {
 import { getBranchesBySupermarket, Branch } from "@/src/services/branchService";
 import { useAuth } from "@/src/hooks/useAuth";
 import type { SupermarketMembership } from "@/src/services/authService";
+
+const emptyForm = {
+  name: "", email: "", password: "", branchIds: [] as string[],
+  canSubmitOrders: true, canApproveOrders: false, canViewInvoices: false, canPayInvoices: false,
+};
 
 function TeamPage() {
   const { profile } = useAuth();
@@ -21,10 +27,10 @@ function TeamPage() {
   const [members, setMembers] = useState<SupermarketMember[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    name: "", email: "", password: "", branchId: "", canSubmitOrders: true, canApproveOrders: false, canViewInvoices: false,
-  });
+  const [form, setForm] = useState({ ...emptyForm });
   const [error, setError] = useState<string | null>(null);
+  const [scopeOf, setScopeOf] = useState<SupermarketMember | null>(null);
+  const [scopeDraft, setScopeDraft] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     if (!supermarketId) return;
@@ -42,28 +48,48 @@ function TeamPage() {
         name: form.name,
         email: form.email,
         password: form.password,
-        branchId: form.branchId || null,
+        branchIds: form.branchIds,
         canSubmitOrders: form.canSubmitOrders,
         canApproveOrders: form.canApproveOrders,
         canViewInvoices: form.canViewInvoices,
+        canPayInvoices: form.canPayInvoices,
       });
       setOpen(false);
-      setForm({ name: "", email: "", password: "", branchId: "", canSubmitOrders: true, canApproveOrders: false, canViewInvoices: false });
+      setForm({ ...emptyForm });
       await load();
     } catch (err) {
       setError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
     }
   };
 
-  const patch = async (m: SupermarketMember, p: Partial<SupermarketMember>) => {
+  const patch = async (m: SupermarketMember, p: Parameters<typeof updateMember>[1]) => {
     try { await updateMember(m.id, p); await load(); }
     catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+  };
+
+  // Ver/pagar são coerentes: ligar "paga" liga "vê"; desligar "vê" desliga "paga".
+  const setView = (m: SupermarketMember, on: boolean) =>
+    patch(m, on ? { canViewInvoices: true } : { canViewInvoices: false, canPayInvoices: false });
+  const setPay = (m: SupermarketMember, on: boolean) =>
+    patch(m, on ? { canViewInvoices: true, canPayInvoices: true } : { canPayInvoices: false });
+
+  const openScope = (m: SupermarketMember) => { setScopeOf(m); setScopeDraft(m.branchIds ?? []); };
+  const saveScope = async () => {
+    if (!scopeOf) return;
+    await patch(scopeOf, { branchIds: scopeDraft });
+    setScopeOf(null);
   };
 
   const remove = async (m: SupermarketMember) => {
     if (!confirm(`Remover ${m.memberUser?.name ?? "este gerente"}?`)) return;
     try { await deleteMember(m.id); await load(); }
     catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+  };
+
+  const scopeLabel = (m: SupermarketMember) => {
+    if (m.isOwner || !m.branchIds?.length) return "Rede toda";
+    if (m.memberBranches?.length) return m.memberBranches.map((b) => b.name).join(", ");
+    return `${m.branchIds.length} loja(s)`;
   };
 
   return (
@@ -75,16 +101,18 @@ function TeamPage() {
           <header className={panel.header}>
             <h1>Equipe da rede</h1>
             {isOwner && (
-              <button className={panel.primaryBtn} onClick={() => { setError(null); setOpen(true); }}>
+              <button className={panel.primaryBtn} onClick={() => { setError(null); setForm({ ...emptyForm }); setOpen(true); }}>
                 Adicionar gerente
               </button>
             )}
           </header>
           <p className={panel.muted}>
-            Cada gerente pode solicitar vagas para a sua loja. Pedidos de quem não tem permissão de
-            aprovação ficam <strong>aguardando aprovação</strong> de um aprovador da rede. A coluna
-            <strong> Vê faturas</strong> libera (ou não) o acesso do gerente ao Faturamento e ao
-            pagamento das faturas do fechamento mensal — o responsável pela rede sempre vê.
+            Um gerente pode responder pela <strong>rede toda</strong> ou por <strong>uma ou mais
+            filiais</strong>. Pedidos de quem não tem permissão de aprovação ficam
+            <strong> aguardando aprovação</strong> de um aprovador da rede. <strong>Vê faturas</strong>
+            libera o acesso ao Faturamento; <strong>Paga faturas</strong> permite, além de ver, pagar
+            e contestar o fechamento mensal — quem vê não necessariamente paga. O responsável pela
+            rede sempre vê e paga.
           </p>
 
           {!isOwner ? (
@@ -92,18 +120,19 @@ function TeamPage() {
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
-                <thead><tr><th>Nome</th><th>E-mail</th><th>Loja</th><th>Solicita</th><th>Aprova</th><th>Vê faturas</th><th>Ações</th></tr></thead>
+                <thead><tr>
+                  <th>Nome</th><th>E-mail</th><th>Lojas</th><th>Solicita</th><th>Aprova</th>
+                  <th>Vê faturas</th><th>Paga faturas</th><th>Ações</th>
+                </tr></thead>
                 <tbody>
                   {members.map((m) => (
                     <tr key={m.id}>
                       <td>{m.memberUser?.name ?? "—"}{m.isOwner && <span className={panel.badge} style={{ marginLeft: 6 }}>dono</span>}</td>
                       <td>{m.memberUser?.email ?? "—"}</td>
                       <td>
-                        {m.isOwner ? "Rede toda" : (
-                          <select value={m.branchId ?? ""} onChange={(e) => patch(m, { branchId: e.target.value || null })}>
-                            <option value="">Rede toda</option>
-                            {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                          </select>
+                        {scopeLabel(m)}
+                        {!m.isOwner && (
+                          <button className={panel.ghostBtn} style={{ marginLeft: 6 }} onClick={() => openScope(m)}>Editar</button>
                         )}
                       </td>
                       <td>
@@ -116,14 +145,18 @@ function TeamPage() {
                       </td>
                       <td>
                         <input type="checkbox" disabled={m.isOwner} checked={m.isOwner || m.canViewInvoices}
-                          onChange={(e) => patch(m, { canViewInvoices: e.target.checked })} />
+                          onChange={(e) => setView(m, e.target.checked)} />
+                      </td>
+                      <td>
+                        <input type="checkbox" disabled={m.isOwner} checked={m.isOwner || m.canPayInvoices}
+                          onChange={(e) => setPay(m, e.target.checked)} />
                       </td>
                       <td>
                         {!m.isOwner && <button className={panel.secondaryBtn} onClick={() => remove(m)}>Remover</button>}
                       </td>
                     </tr>
                   ))}
-                  {members.length === 0 && <tr><td colSpan={7}>Nenhum membro.</td></tr>}
+                  {members.length === 0 && <tr><td colSpan={8}>Nenhum membro.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -140,11 +173,8 @@ function TeamPage() {
             <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <label>Senha de acesso</label>
             <input type="password" minLength={4} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-            <label>Loja</label>
-            <select value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}>
-              <option value="">Rede toda</option>
-              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            <label>Lojas do gerente</label>
+            <BranchScopeField branches={branches} value={form.branchIds} onChange={(branchIds) => setForm({ ...form, branchIds })} />
             <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input type="checkbox" checked={form.canSubmitOrders} onChange={(e) => setForm({ ...form, canSubmitOrders: e.target.checked })} />
               Pode solicitar vagas
@@ -154,11 +184,27 @@ function TeamPage() {
               Pode aprovar pedidos (envia direto ao pool)
             </label>
             <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <input type="checkbox" checked={form.canViewInvoices} onChange={(e) => setForm({ ...form, canViewInvoices: e.target.checked })} />
-              Pode ver e pagar as faturas da rede
+              <input type="checkbox" checked={form.canViewInvoices}
+                onChange={(e) => setForm({ ...form, canViewInvoices: e.target.checked, canPayInvoices: e.target.checked ? form.canPayInvoices : false })} />
+              Pode ver as faturas da rede
+            </label>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input type="checkbox" checked={form.canPayInvoices}
+                onChange={(e) => setForm({ ...form, canPayInvoices: e.target.checked, canViewInvoices: e.target.checked ? true : form.canViewInvoices })} />
+              Pode pagar e contestar as faturas
             </label>
             {error && <p className={panel.error}>{error}</p>}
             <button className={panel.primaryBtn} onClick={save} disabled={!form.name || !form.email || !form.password}>Salvar</button>
+          </div>
+        </Modal>
+      )}
+
+      {scopeOf && (
+        <Modal title={`Lojas de ${scopeOf.memberUser?.name ?? "gerente"}`} onClose={() => setScopeOf(null)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>Sem nenhuma filial marcada, o gerente responde pela rede toda.</p>
+            <BranchScopeField branches={branches} value={scopeDraft} onChange={setScopeDraft} />
+            <button className={panel.primaryBtn} onClick={saveScope}>Salvar</button>
           </div>
         </Modal>
       )}

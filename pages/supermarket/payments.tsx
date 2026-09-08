@@ -39,6 +39,7 @@ function BillingPage() {
   const { profile, loading: authLoading } = useAuth();
   const membership = (profile as { membership?: SupermarketMembership } | null)?.membership ?? null;
   const canViewInvoices = membership ? membership.isOwner || membership.canViewInvoices : true;
+  const canPayInvoices = membership ? membership.isOwner || membership.canPayInvoices : true;
 
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -229,6 +230,11 @@ function BillingPage() {
             <p>Carregando…</p>
           ) : (
             <>
+              {!canPayInvoices && (
+                <p className={panel.muted}>
+                  Você pode consultar as faturas, mas não pagá-las nem contestá-las.
+                </p>
+              )}
               <div className={panel.filterBar}>
                 <label className={panel.filterField}>
                   <span>Escopo</span>
@@ -297,12 +303,12 @@ function BillingPage() {
                         <td><strong>{money(c.netAmount)}</strong></td>
                         <td><span className={panel.badge}>{CLOSING_STATUS_LABELS[c.status]}</span></td>
                         <td>
-                          {c.status === "pending" && (
+                          {c.status === "pending" && canPayInvoices && (
                             <button className={panel.ghostBtn} onClick={() => openAdjustments(c)}>
                               Contestar
                             </button>
                           )}
-                          {c.status === "pending" && !c.paymentUrl && (
+                          {c.status === "pending" && canPayInvoices && !c.paymentUrl && (
                             <button
                               className={panel.primaryBtn}
                               disabled={busy === c.id || blockPay}
@@ -312,7 +318,7 @@ function BillingPage() {
                               {busy === c.id ? "…" : "Pagar fatura"}
                             </button>
                           )}
-                          {c.status === "pending" && c.paymentUrl && (
+                          {c.status === "pending" && canPayInvoices && c.paymentUrl && (
                             <>
                               <a className={panel.primaryBtn} href={c.paymentUrl} target="_blank" rel="noopener noreferrer">
                                 Abrir pagamento

@@ -44,7 +44,9 @@ function OrdersPage() {
   const { profile } = useAuth();
   const membership = (profile as { membership?: SupermarketMembership } | null)?.membership ?? null;
   const canApprove = membership?.canApproveOrders ?? true;
-  const managerBranchId = membership?.branchId ?? null;
+  // null/[] = rede toda; 1 filial = trava a seleção; várias = limita as opções.
+  const managerBranchIds = membership?.branchIds ?? null;
+  const lockedBranchId = managerBranchIds && managerBranchIds.length === 1 ? managerBranchIds[0] : null;
   const [branches, setBranches] = useState<Branch[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [rates, setRates] = useState<SupermarketCategoryRate[]>([]);
@@ -65,8 +67,8 @@ function OrdersPage() {
     () =>
       branches
         .filter((b) => b.supermarketId === supermarketId)
-        .filter((b) => !managerBranchId || b.id === managerBranchId),
-    [branches, supermarketId, managerBranchId]
+        .filter((b) => !managerBranchIds || managerBranchIds.includes(b.id)),
+    [branches, supermarketId, managerBranchIds]
   );
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "";
   const branchName = (id: string) => myBranches.find((b) => b.id === id)?.name ?? "";
@@ -134,7 +136,7 @@ function OrdersPage() {
   });
 
   const openNewItem = (addToOrderId?: string) => {
-    setDraft({ ...emptyDraft(), branchId: managerBranchId ?? "" });
+    setDraft({ ...emptyDraft(), branchId: lockedBranchId ?? "" });
     setItemError(null);
     setItemModal({ open: true, addToOrderId });
   };
@@ -338,7 +340,7 @@ function OrdersPage() {
             </select>
 
             <label>Filial (local do trabalho)</label>
-            <select value={draft.branchId} onChange={(e) => changeBranch(e.target.value)} disabled={!!managerBranchId}>
+            <select value={draft.branchId} onChange={(e) => changeBranch(e.target.value)} disabled={!!lockedBranchId}>
               <option value="">Selecione…</option>
               {myBranches.map((b) => <option key={b.id} value={b.id}>{b.name} — {b.address}</option>)}
             </select>

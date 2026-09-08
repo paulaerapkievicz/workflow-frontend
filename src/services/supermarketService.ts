@@ -48,13 +48,15 @@ export interface SupermarketMember {
   id: string;
   supermarketId: string;
   userId: string;
-  branchId?: string | null;
+  /** [] = rede toda; com itens = gerente restrito a essas filiais. */
+  branchIds: string[];
   canSubmitOrders: boolean;
   canApproveOrders: boolean;
   canViewInvoices: boolean;
+  canPayInvoices: boolean;
   isOwner: boolean;
   memberUser?: { id: string; name: string; email: string } | null;
-  memberBranch?: { id: string; name: string } | null;
+  memberBranches?: { id: string; name: string }[];
 }
 
 export const getMembers = async (supermarketId: string): Promise<SupermarketMember[]> =>
@@ -66,17 +68,24 @@ export const addMember = async (
     name: string;
     email: string;
     password: string;
-    branchId?: string | null;
+    branchIds?: string[];
     canSubmitOrders?: boolean;
     canApproveOrders?: boolean;
     canViewInvoices?: boolean;
+    canPayInvoices?: boolean;
   }
 ): Promise<SupermarketMember> =>
   (await api.post(`/supermarkets/${supermarketId}/members`, payload)).data;
 
 export const updateMember = async (
   id: string,
-  patch: Partial<Pick<SupermarketMember, "branchId" | "canSubmitOrders" | "canApproveOrders" | "canViewInvoices">>
+  patch: {
+    branchIds?: string[];
+    canSubmitOrders?: boolean;
+    canApproveOrders?: boolean;
+    canViewInvoices?: boolean;
+    canPayInvoices?: boolean;
+  }
 ): Promise<SupermarketMember> => (await api.put(`/supermarket-members/${id}`, patch)).data;
 
 export const deleteMember = async (id: string): Promise<void> => {

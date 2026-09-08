@@ -12,11 +12,14 @@ export interface AuthUser {
 
 export interface SupermarketMembership {
   supermarketId: string;
-  branchId: string | null;
+  /** null = rede toda; array = gerente restrito a essas filiais. */
+  branchIds: string[] | null;
   canSubmitOrders: boolean;
   canApproveOrders: boolean;
-  /** Vê e paga as faturas (fechamento mensal) da rede. */
+  /** Vê as faturas (fechamento mensal) da rede. */
   canViewInvoices: boolean;
+  /** Além de ver, paga a fatura e lança/remove contestação. */
+  canPayInvoices: boolean;
   isOwner: boolean;
 }
 
