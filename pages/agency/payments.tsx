@@ -14,10 +14,14 @@ import {
 } from "@/src/services/jobService";
 import { getAgencySettings } from "@/src/services/agencySettingsService";
 import {
-  getMyWithdrawals, requestWithdrawal, Withdrawal, WITHDRAWAL_STATUS_LABELS,
+  getMyWithdrawals, Withdrawal, WITHDRAWAL_STATUS_LABELS,
 } from "@/src/services/withdrawalService";
+import WithdrawForm from "@/src/components/WithdrawForm";
 import { useAuth } from "@/src/hooks/useAuth";
 import { matchesFilter, RowFilter } from "@/src/lib/filterRows";
+import {
+  getAgencyMembers, registerAgencyMemberPayment, AgencyMember, PAY_TYPE_LABELS,
+} from "@/src/services/agencyMemberService";
 
 function AgencyPayments() {
   const { profile, refresh } = useAuth();
@@ -25,8 +29,6 @@ function AgencyPayments() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [heldJobs, setHeldJobs] = useState<Job[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const [amount, setAmount] = useState("");
-  const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [heldMsg, setHeldMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [releasingId, setReleasingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<RowFilter>({});
@@ -34,21 +36,59 @@ function AgencyPayments() {
   const [rv, setRv] = useState({ rating: 5, comment: "", approved: true });
   const [rvError, setRvError] = useState<string | null>(null);
 
+  const [members, setMembers] = useState<AgencyMember[]>([]);
+  const [payMember, setPayMember] = useState<AgencyMember | null>(null);
+  const [leaderPay, setLeaderPay] = useState({ amount: "", referenceMonth: "", note: "" });
+  const [leaderPayError, setLeaderPayError] = useState<string | null>(null);
+
   const balance = Number((profile as { availableBalance?: number } | null)?.availableBalance ?? 0);
 
   const [reviewEnabled, setReviewEnabled] = useState(false);
 
   const load = useCallback(async () => {
-    const [p, j, h, w, s] = await Promise.all([
+    const [p, j, h, w, s, m] = await Promise.all([
       getMyPayments(), getJobs(), getPendingSettlementJobs().catch(() => []),
       getMyWithdrawals(), getAgencySettings().catch(() => null),
+      getAgencyMembers().catch(() => []),
     ]);
     setPayments(p);
     setJobs(j);
     setHeldJobs(h);
     setWithdrawals(w);
     setReviewEnabled(s?.reviewEnabled ?? false);
+    setMembers(m);
   }, []);
+
+  const openLeaderPay = (m: AgencyMember) => {
+    setPayMember(m);
+    const now = new Date();
+    setLeaderPay({
+      amount: m.payType === "mensal" && m.payAmount != null ? String(m.payAmount) : "",
+      referenceMonth: m.payType === "mensal"
+        ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+        : "",
+      note: "",
+    });
+    setLeaderPayError(null);
+  };
+
+  const submitLeaderPay = async () => {
+    if (!payMember) return;
+    setLeaderPayError(null);
+    const amount = Number(leaderPay.amount);
+    if (!(amount > 0)) { setLeaderPayError("Informe um valor válido."); return; }
+    try {
+      await registerAgencyMemberPayment(payMember.id, {
+        amount,
+        referenceMonth: leaderPay.referenceMonth || null,
+        note: leaderPay.note || null,
+      });
+      setPayMember(null);
+      await Promise.all([load(), refresh()]);
+    } catch (err) {
+      setLeaderPayError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    }
+  };
 
   const releaseHeld = async (job: Job, capToContracted: boolean) => {
     const label = capToContracted ? "pagar só o tempo contratado" : "pagar as horas trabalhadas";
@@ -77,18 +117,6 @@ function AgencyPayments() {
     [jobs, reviewEnabled]
   );
 
-  const submitWithdrawal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMsg(null);
-    try {
-      await requestWithdrawal(Number(amount));
-      setAmount("");
-      setMsg({ type: "success", text: "Saque solicitado." });
-      await Promise.all([load(), refresh()]);
-    } catch (err) {
-      setMsg({ type: "error", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
-    }
-  };
 
   const openReview = (job: Job) => {
     setReviewJob(job);
@@ -154,12 +182,7 @@ function AgencyPayments() {
           <div className={panel.balanceCard}>
             <span className={panel.muted}>Saldo disponível</span>
             <strong>R$ {balance.toFixed(2)}</strong>
-            <form className={panel.form} onSubmit={submitWithdrawal}>
-              <label>Valor do saque</label>
-              <input type="number" min="0.01" step="0.01" max={balance} value={amount} onChange={(e) => setAmount(e.target.value)} required />
-              {msg && <p className={msg.type === "error" ? panel.error : panel.success}>{msg.text}</p>}
-              <button className={panel.primaryBtn} type="submit" disabled={!amount || Number(amount) <= 0}>Solicitar saque</button>
-            </form>
+            <WithdrawForm balance={balance} onDone={() => Promise.all([load(), refresh()])} />
           </div>
 
           {(heldJobs.length > 0 || heldMsg) && (
@@ -235,24 +258,75 @@ function AgencyPayments() {
           <FilterBar fields={filterFields} value={filter} onChange={setFilter} />
           <DataTable columns={columns} rows={rows} rowKey={(p) => p.id} storageKey="agency-payments" empty="Nenhum pagamento ainda." />
 
+          {members.length > 0 && (
+            <>
+              <h2 style={{ fontSize: "1.1rem" }}>Pagamento a líderes</h2>
+              <p className={panel.muted}>
+                Registrar um pagamento credita a carteira do líder e <strong>debita o saldo da agência</strong>.
+              </p>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead><tr><th>Líder</th><th>Combinado</th><th>Carteira</th><th>Ação</th></tr></thead>
+                  <tbody>
+                    {members.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.name ?? "—"}{!m.active && <span className={`${panel.badge} ${panel.badgeCanceled}`} style={{ marginLeft: 6 }}>inativo</span>}</td>
+                        <td>{m.payType ? `${PAY_TYPE_LABELS[m.payType]} · R$ ${Number(m.payAmount ?? 0).toFixed(2)}` : "—"}</td>
+                        <td>R$ {Number(m.availableBalance).toFixed(2)}</td>
+                        <td><button className={panel.primaryBtn} onClick={() => openLeaderPay(m)}>Registrar pagamento</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
           <h2 style={{ fontSize: "1.1rem" }}>Meus saques</h2>
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
-              <thead><tr><th>Data</th><th>Valor</th><th>Status</th></tr></thead>
+              <thead><tr><th>Data</th><th>Valor</th><th>Chave Pix</th><th>Status</th></tr></thead>
               <tbody>
                 {withdrawals.map((w) => (
                   <tr key={w.id}>
                     <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
                     <td>R$ {Number(w.amount).toFixed(2)}</td>
+                    <td>{w.pixKey ?? "—"}</td>
                     <td><span className={panel.badge}>{WITHDRAWAL_STATUS_LABELS[w.status]}</span></td>
                   </tr>
                 ))}
-                {withdrawals.length === 0 && <tr><td colSpan={3}>Nenhum saque solicitado.</td></tr>}
+                {withdrawals.length === 0 && <tr><td colSpan={4}>Nenhum saque solicitado.</td></tr>}
               </tbody>
             </table>
           </div>
         </section>
       </main>
+
+      {payMember && (
+        <Modal title={`Pagar líder — ${payMember.name ?? ""}`} onClose={() => setPayMember(null)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              O valor é creditado na carteira de {payMember.name ?? "o líder"} e debitado do saldo da agência.
+            </p>
+            <label>Valor (R$)</label>
+            <input
+              type="number" min="0.01" step="0.01"
+              value={leaderPay.amount}
+              onChange={(e) => setLeaderPay({ ...leaderPay, amount: e.target.value })}
+            />
+            <label>Mês de referência (AAAA-MM, opcional)</label>
+            <input
+              placeholder="2026-09"
+              value={leaderPay.referenceMonth}
+              onChange={(e) => setLeaderPay({ ...leaderPay, referenceMonth: e.target.value })}
+            />
+            <label>Observação (opcional)</label>
+            <input value={leaderPay.note} onChange={(e) => setLeaderPay({ ...leaderPay, note: e.target.value })} />
+            {leaderPayError && <p className={panel.error}>{leaderPayError}</p>}
+            <button className={panel.primaryBtn} onClick={submitLeaderPay}>Registrar pagamento</button>
+          </div>
+        </Modal>
+      )}
 
       {reviewJob && (
         <Modal title={`Avaliar entrega — ${reviewJob.title}`} onClose={() => setReviewJob(null)}>

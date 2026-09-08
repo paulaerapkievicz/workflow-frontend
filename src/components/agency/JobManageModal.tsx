@@ -60,6 +60,7 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
   const [reqPhoto, setReqPhoto] = useState(triState(job.requireCheckoutPhoto));
   const [reviewEnabled, setReviewEnabled] = useState(triState(job.reviewEnabled));
   const [breaks, setBreaks] = useState(triState(job.breaksEnabled));
+  const [breakLimit, setBreakLimit] = useState(job.breakLimitMinutes?.toString() ?? "");
 
   const [rows, setRows] = useState<TimesheetRow[]>(() =>
     [...(job.shifts ?? [])]
@@ -87,6 +88,7 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
     requireCheckoutPhoto: reqPhoto === "" ? null : reqPhoto === "sim",
     reviewEnabled: reviewEnabled === "" ? null : reviewEnabled === "sim",
     breaksEnabled: breaks === "" ? null : breaks === "sim",
+    breakLimitMinutes: breakLimit === "" ? null : Number(breakLimit),
   });
 
   const saveConfig = async () => {
@@ -254,6 +256,14 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
               <option value="sim">Permitir</option>
               <option value="nao">Não permitir</option>
             </select>
+
+            <label>
+              Limite de pausa por turno (min)
+              {settings ? ` — padrão ${settings.breakLimitMinutes ?? "sem limite"}` : ""}
+            </label>
+            <input type="number" min={1} max={480} value={breakLimit}
+              placeholder={settings?.breakLimitMinutes != null ? String(settings.breakLimitMinutes) : "sem limite"}
+              onChange={(e) => setBreakLimit(e.target.value)} />
 
             {error && <p className={panel.error}>{error}</p>}
             <button className={panel.primaryBtn} onClick={saveConfig} disabled={saving}>

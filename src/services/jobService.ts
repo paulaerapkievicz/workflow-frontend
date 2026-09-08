@@ -63,6 +63,7 @@ export interface Job {
   requireCheckoutPhoto?: boolean | null;
   reviewEnabled?: boolean | null;
   breaksEnabled?: boolean | null;
+  breakLimitMinutes?: number | null;
   /** @deprecated agora é configuração da agência */
   photosRequired?: boolean;
   /** @deprecated agora é configuração da agência */
@@ -130,6 +131,7 @@ export interface JobConfigInput {
   requireCheckoutPhoto?: boolean | null;
   reviewEnabled?: boolean | null;
   breaksEnabled?: boolean | null;
+  breakLimitMinutes?: number | null;
 }
 
 /** Agência edita a vaga: função/turno/título (pendente) + overrides de configuração. */
