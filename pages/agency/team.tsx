@@ -15,7 +15,15 @@ import { getBranches, Branch } from "@/src/services/branchService";
 import { getSupermarkets, Supermarket } from "@/src/services/supermarketService";
 import { useAuth } from "@/src/hooks/useAuth";
 
-const PAY_TYPES: LeaderPayType[] = ["hora", "diaria", "mensal"];
+const PAY_TYPES: LeaderPayType[] = ["hora", "diaria", "mensal", "por_colaborador"];
+
+const PAY_TYPE_HINT: Record<LeaderPayType, string> = {
+  hora: "Valor por hora — o crédito é lançado manualmente pela agência.",
+  diaria: "Valor por diária — o crédito é lançado manualmente pela agência.",
+  mensal: "Valor mensal fixo — o crédito é lançado manualmente pela agência.",
+  por_colaborador:
+    "Sem salário fixo: o líder ganha este valor por cada vaga concluída por um colaborador do grupo dele. O crédito entra sozinho na carteira quando o colaborador cumpre a escala; se houver desistência, falta ou troca, fica aguardando a agência liberar em Pagamentos.",
+};
 
 function TeamPage() {
   const { profile } = useAuth();
@@ -245,7 +253,8 @@ function TeamPage() {
             <select value={form.payType} onChange={(e) => setForm({ ...form, payType: e.target.value as LeaderPayType })}>
               {PAY_TYPES.map((t) => <option key={t} value={t}>{PAY_TYPE_LABELS[t]}</option>)}
             </select>
-            <label>Valor (R$)</label>
+            <p className={panel.muted} style={{ fontSize: "0.8rem" }}>{PAY_TYPE_HINT[form.payType]}</p>
+            <label>{form.payType === "por_colaborador" ? "Valor por colaborador que trabalhou (R$)" : "Valor (R$)"}</label>
             <input type="number" min="0.01" step="0.01" value={form.payAmount} onChange={(e) => setForm({ ...form, payAmount: e.target.value })} />
             {createError && <p className={panel.error}>{createError}</p>}
             <button className={panel.primaryBtn} onClick={submitCreate}>Cadastrar</button>
@@ -264,7 +273,8 @@ function TeamPage() {
             <select value={inviteForm.payType} onChange={(e) => setInviteForm({ ...inviteForm, payType: e.target.value as LeaderPayType })}>
               {PAY_TYPES.map((t) => <option key={t} value={t}>{PAY_TYPE_LABELS[t]}</option>)}
             </select>
-            <label>Valor (R$)</label>
+            <p className={panel.muted} style={{ fontSize: "0.8rem" }}>{PAY_TYPE_HINT[inviteForm.payType]}</p>
+            <label>{inviteForm.payType === "por_colaborador" ? "Valor por colaborador que trabalhou (R$)" : "Valor (R$)"}</label>
             <input type="number" min="0.01" step="0.01" value={inviteForm.payAmount} onChange={(e) => setInviteForm({ ...inviteForm, payAmount: e.target.value })} />
             {inviteError && <p className={panel.error}>{inviteError}</p>}
             {!inviteLink ? (
@@ -327,10 +337,13 @@ function TeamPage() {
             <select value={payForm.payType} onChange={(e) => setPayForm({ ...payForm, payType: e.target.value as LeaderPayType })}>
               {PAY_TYPES.map((t) => <option key={t} value={t}>{PAY_TYPE_LABELS[t]}</option>)}
             </select>
-            <label>Valor (R$)</label>
+            <p className={panel.muted} style={{ fontSize: "0.8rem" }}>{PAY_TYPE_HINT[payForm.payType]}</p>
+            <label>{payForm.payType === "por_colaborador" ? "Valor por colaborador que trabalhou (R$)" : "Valor (R$)"}</label>
             <input type="number" min="0.01" step="0.01" value={payForm.payAmount} onChange={(e) => setPayForm({ ...payForm, payAmount: e.target.value })} />
             <p className={panel.muted} style={{ fontSize: "0.8rem" }}>
-              Para creditar a carteira do líder, use &quot;Pagamento a líderes&quot; na tela de Pagamentos.
+              {payForm.payType === "por_colaborador"
+                ? "Vale para as vagas concluídas a partir de agora. Você pode ajustar este valor quando quiser."
+                : "Para creditar a carteira do líder, use “Pagamento a líderes” na tela de Pagamentos."}
             </p>
             {payError && <p className={panel.error}>{payError}</p>}
             <button className={panel.primaryBtn} onClick={savePay}>Salvar</button>

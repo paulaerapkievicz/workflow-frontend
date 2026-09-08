@@ -1,12 +1,37 @@
 import api from "@/src/services/api";
 
-export type LeaderPayType = "hora" | "diaria" | "mensal";
+export type LeaderPayType = "hora" | "diaria" | "mensal" | "por_colaborador";
 
 export const PAY_TYPE_LABELS: Record<LeaderPayType, string> = {
   hora: "Por hora",
   diaria: "Por diária",
   mensal: "Mensal",
+  por_colaborador: "Por colaborador que trabalhou",
 };
+
+export type LeaderJobCreditStatus = "released" | "pending" | "canceled";
+
+export const CREDIT_STATUS_LABELS: Record<LeaderJobCreditStatus, string> = {
+  released: "Liberado",
+  pending: "Aguardando a agência",
+  canceled: "Não pago",
+};
+
+export interface LeaderJobCredit {
+  id: string;
+  agencyMemberId: string;
+  leaderName: string | null;
+  jobId: string;
+  jobTitle: string | null;
+  branchName: string | null;
+  freelancerId: string | null;
+  freelancerName: string | null;
+  amount: number;
+  status: LeaderJobCreditStatus;
+  note: string | null;
+  releasedAt: string | null;
+  createdAt: string;
+}
 
 export interface AgencyMemberPayment {
   id: string;
@@ -29,6 +54,9 @@ export interface AgencyMember {
   availableBalance: number;
   scope: { freelancerIds: string[]; branchIds: string[] };
   payments: AgencyMemberPayment[];
+  jobCredits: LeaderJobCredit[];
+  creditsReleasedTotal: number;
+  creditsPendingTotal: number;
 }
 
 export const getAgencyMembers = async (): Promise<AgencyMember[]> =>
@@ -71,7 +99,24 @@ export interface LeaderWallet {
   payAmount: number | null;
   availableBalance: number;
   payments: AgencyMemberPayment[];
+  jobCredits: LeaderJobCredit[];
+  creditsReleasedTotal: number;
+  creditsPendingTotal: number;
 }
 
 export const getLeaderWallet = async (): Promise<LeaderWallet> =>
   (await api.get("/leader/wallet")).data;
+
+export const getMemberJobCredits = async (
+  status?: LeaderJobCreditStatus
+): Promise<LeaderJobCredit[]> =>
+  (await api.get("/agency/member-credits", { params: status ? { status } : {} })).data;
+
+export const releaseMemberJobCredit = async (id: string): Promise<LeaderJobCredit> =>
+  (await api.post(`/agency/member-credits/${id}/release`)).data;
+
+export const cancelMemberJobCredit = async (
+  id: string,
+  note?: string
+): Promise<LeaderJobCredit> =>
+  (await api.post(`/agency/member-credits/${id}/cancel`, { note })).data;

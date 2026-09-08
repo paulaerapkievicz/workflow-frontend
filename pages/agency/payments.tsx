@@ -21,6 +21,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { matchesFilter, RowFilter } from "@/src/lib/filterRows";
 import {
   getAgencyMembers, registerAgencyMemberPayment, AgencyMember, PAY_TYPE_LABELS,
+  getMemberJobCredits, releaseMemberJobCredit, cancelMemberJobCredit, LeaderJobCredit,
 } from "@/src/services/agencyMemberService";
 
 function AgencyPayments() {
@@ -41,15 +42,20 @@ function AgencyPayments() {
   const [leaderPay, setLeaderPay] = useState({ amount: "", referenceMonth: "", note: "" });
   const [leaderPayError, setLeaderPayError] = useState<string | null>(null);
 
+  const [pendingCredits, setPendingCredits] = useState<LeaderJobCredit[]>([]);
+  const [creditBusyId, setCreditBusyId] = useState<string | null>(null);
+  const [creditMsg, setCreditMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
   const balance = Number((profile as { availableBalance?: number } | null)?.availableBalance ?? 0);
 
   const [reviewEnabled, setReviewEnabled] = useState(false);
 
   const load = useCallback(async () => {
-    const [p, j, h, w, s, m] = await Promise.all([
+    const [p, j, h, w, s, m, c] = await Promise.all([
       getMyPayments(), getJobs(), getPendingSettlementJobs().catch(() => []),
       getMyWithdrawals(), getAgencySettings().catch(() => null),
       getAgencyMembers().catch(() => []),
+      getMemberJobCredits("pending").catch(() => []),
     ]);
     setPayments(p);
     setJobs(j);
@@ -57,7 +63,30 @@ function AgencyPayments() {
     setWithdrawals(w);
     setReviewEnabled(s?.reviewEnabled ?? false);
     setMembers(m);
+    setPendingCredits(c);
   }, []);
+
+  const decideCredit = async (credit: LeaderJobCredit, action: "release" | "cancel") => {
+    if (action === "cancel" && !confirm(`Não pagar o crédito de ${credit.leaderName ?? "líder"} pela vaga "${credit.jobTitle ?? ""}"?`)) return;
+    setCreditMsg(null);
+    setCreditBusyId(credit.id);
+    try {
+      if (action === "release") await releaseMemberJobCredit(credit.id);
+      else await cancelMemberJobCredit(credit.id);
+      await Promise.all([load(), refresh()]);
+      setCreditMsg({
+        type: "success",
+        text: action === "release" ? "Crédito liberado para o líder." : "Crédito marcado como não pago.",
+      });
+    } catch (err) {
+      setCreditMsg({
+        type: "error",
+        text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.",
+      });
+    } finally {
+      setCreditBusyId(null);
+    }
+  };
 
   const openLeaderPay = (m: AgencyMember) => {
     setPayMember(m);
@@ -258,11 +287,63 @@ function AgencyPayments() {
           <FilterBar fields={filterFields} value={filter} onChange={setFilter} />
           <DataTable columns={columns} rows={rows} rowKey={(p) => p.id} storageKey="agency-payments" empty="Nenhum pagamento ainda." />
 
+          {(pendingCredits.length > 0 || creditMsg) && (
+            <>
+              <h2 style={{ fontSize: "1.1rem" }}>Créditos de líderes a revisar (por colaborador)</h2>
+              <p className={panel.muted}>
+                Vagas concluídas com desistência, falta ou troca de colaborador. O crédito do líder
+                pago <strong>por colaborador que trabalhou</strong> só entra na carteira dele depois
+                que você libera. Liberar <strong>debita o saldo da agência</strong>.
+              </p>
+              {creditMsg && (
+                <p className={creditMsg.type === "error" ? panel.error : panel.success}>{creditMsg.text}</p>
+              )}
+              {pendingCredits.length > 0 && (
+                <div style={{ overflowX: "auto" }}>
+                  <table className={panel.table}>
+                    <thead>
+                      <tr><th>Líder</th><th>Colaborador</th><th>Vaga</th><th>Filial</th><th>Valor</th><th>Ações</th></tr>
+                    </thead>
+                    <tbody>
+                      {pendingCredits.map((c) => (
+                        <tr key={c.id}>
+                          <td>{c.leaderName ?? "—"}</td>
+                          <td>{c.freelancerName ?? "—"}</td>
+                          <td>{c.jobTitle ?? "—"}</td>
+                          <td>{c.branchName ?? "—"}</td>
+                          <td>R$ {Number(c.amount).toFixed(2)}</td>
+                          <td>
+                            <button
+                              className={panel.primaryBtn}
+                              disabled={creditBusyId === c.id}
+                              onClick={() => decideCredit(c, "release")}
+                            >
+                              Liberar
+                            </button>
+                            <button
+                              className={panel.ghostBtn}
+                              disabled={creditBusyId === c.id}
+                              onClick={() => decideCredit(c, "cancel")}
+                            >
+                              Não pagar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
           {members.length > 0 && (
             <>
               <h2 style={{ fontSize: "1.1rem" }}>Pagamento a líderes</h2>
               <p className={panel.muted}>
                 Registrar um pagamento credita a carteira do líder e <strong>debita o saldo da agência</strong>.
+                Líderes pagos <strong>por colaborador que trabalhou</strong> recebem automaticamente a cada
+                vaga concluída — use isto só para ajustes pontuais.
               </p>
               <div style={{ overflowX: "auto" }}>
                 <table className={panel.table}>
@@ -271,7 +352,15 @@ function AgencyPayments() {
                     {members.map((m) => (
                       <tr key={m.id}>
                         <td>{m.name ?? "—"}{!m.active && <span className={`${panel.badge} ${panel.badgeCanceled}`} style={{ marginLeft: 6 }}>inativo</span>}</td>
-                        <td>{m.payType ? `${PAY_TYPE_LABELS[m.payType]} · R$ ${Number(m.payAmount ?? 0).toFixed(2)}` : "—"}</td>
+                        <td>
+                          {m.payType ? `${PAY_TYPE_LABELS[m.payType]} · R$ ${Number(m.payAmount ?? 0).toFixed(2)}` : "—"}
+                          {m.payType === "por_colaborador" && (
+                            <div className={panel.muted} style={{ fontSize: "0.78rem" }}>
+                              recebido: R$ {Number(m.creditsReleasedTotal ?? 0).toFixed(2)}
+                              {Number(m.creditsPendingTotal ?? 0) > 0 && ` · a revisar: R$ ${Number(m.creditsPendingTotal).toFixed(2)}`}
+                            </div>
+                          )}
+                        </td>
                         <td>R$ {Number(m.availableBalance).toFixed(2)}</td>
                         <td><button className={panel.primaryBtn} onClick={() => openLeaderPay(m)}>Registrar pagamento</button></td>
                       </tr>

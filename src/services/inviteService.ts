@@ -10,7 +10,7 @@ export interface InvitePreview {
 
 export interface InviteExtras {
   /** Só para convite de líder: forma e valor de pagamento dele. */
-  payType?: "hora" | "diaria" | "mensal";
+  payType?: "hora" | "diaria" | "mensal" | "por_colaborador";
   payAmount?: number;
 }
 
