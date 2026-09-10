@@ -12,7 +12,11 @@ import { getSupermarketRates, SupermarketCategoryRate } from "@/src/services/sup
 import {
   getOrders, createOrder, addOrderItems, cancelOrder, approveOrder, rejectOrder, Order, OrderItemInput,
   ORDER_STATUS_LABELS, ORDER_APPROVAL_LABELS, orderProgress, jobWasAbandoned, orderBranchNames,
+  orderInDateRange, orderJobDateSpan,
 } from "@/src/services/orderService";
+import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
+import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import { formatShifts, formatShiftPeriods } from "@/src/services/jobService";
 import { AlertDot } from "@/src/components/AlertDot";
 import { jobStartedUnfilled, orderHasStartedUnfilled } from "@/src/services/unfilledAlerts";
@@ -70,6 +74,18 @@ function OrdersPage() {
   const [draft, setDraft] = useState(emptyDraft());
   const [itemError, setItemError] = useState<string | null>(null);
   const [detail, setDetail] = useState<Order | null>(null);
+  const [range, setRange] = useDateRangeFilter("supermarket-orders-daterange");
+
+  const visibleOrders = useMemo(
+    () => orders.filter((o) => orderInDateRange(o, range)),
+    [orders, range]
+  );
+  const detailJobs = useMemo(() => {
+    const all = detail?.orderJobs ?? [];
+    if (range.preset === "todas") return { shown: all, hidden: 0 };
+    const shown = all.filter((j) => inDateRange(j.startTime, range));
+    return { shown, hidden: all.length - shown.length };
+  }, [detail, range]);
 
   const myBranches = useMemo(
     () =>
@@ -270,20 +286,24 @@ function OrdersPage() {
           </div>
 
           <h2 style={{ fontSize: "1.1rem", marginTop: "1.5rem" }}>Meus pedidos</h2>
+          <div className={panel.filterBar} style={{ margin: "0.5rem 0" }}>
+            <DateRangeQuickFilter value={range} onChange={setRange} label="Vagas em" />
+          </div>
           {loading ? (
             <p>Carregando…</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead>
-                  <tr><th>Data</th><th>Filial</th><th>Vagas</th><th>Preenchidas</th><th>Concluídas</th><th>Status</th><th>Atenção</th><th></th></tr>
+                  <tr><th>Vagas em</th><th>Criado em</th><th>Filial</th><th>Vagas</th><th>Preenchidas</th><th>Concluídas</th><th>Status</th><th>Atenção</th><th></th></tr>
                 </thead>
                 <tbody>
-                  {orders.map((o) => {
+                  {visibleOrders.map((o) => {
                     const p = orderProgress(o);
                     const abandoned = (o.orderJobs ?? []).some(jobWasAbandoned);
                     return (
                       <tr key={o.id}>
+                        <td>{orderJobDateSpan(o)}</td>
                         <td>{new Date(o.createdAt).toLocaleDateString("pt-BR")}</td>
                         <td>{orderBranchNames(o)}</td>
                         <td>{p.total}</td>
@@ -328,7 +348,11 @@ function OrdersPage() {
                       </tr>
                     );
                   })}
-                  {orders.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum pedido ainda.</td></tr>}
+                  {visibleOrders.length === 0 && (
+                    <tr><td colSpan={9} className={panel.muted}>
+                      {orders.length === 0 ? "Nenhum pedido ainda." : "Nenhum pedido com vaga neste período."}
+                    </td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -413,11 +437,18 @@ function OrdersPage() {
           <div className={panel.form}>
             <p className={panel.muted}>{orderBranchNames(detail)} · {new Date(detail.createdAt).toLocaleString("pt-BR")}</p>
             {detail.notes && <p>{detail.notes}</p>}
+            {detailJobs.hidden > 0 && (
+              <p className={panel.muted}>
+                Mostrando só as vagas de {dateRangeLabel(range)} — {detailJobs.hidden}{" "}
+                {detailJobs.hidden === 1 ? "vaga oculta" : "vagas ocultas"} de outras datas.{" "}
+                <button className={panel.ghostBtn} onClick={() => setRange({ preset: "todas" })}>ver todas</button>
+              </p>
+            )}
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead><tr><th>Vaga</th><th>Filial</th><th>Função</th><th>Turno</th><th>Horário</th><th>Colaborador</th><th>Status</th><th>Atenção</th></tr></thead>
                 <tbody>
-                  {(detail.orderJobs ?? []).map((j) => (
+                  {detailJobs.shown.map((j) => (
                     <tr key={j.id}>
                       <td>{j.title}{jobWasAbandoned(j) && <span className={`${panel.badge} ${panel.badgeCanceled}`} style={{ marginLeft: 6 }}>desistência</span>}</td>
                       <td>{j.jobBranch?.name ?? "—"}</td>
@@ -433,6 +464,9 @@ function OrdersPage() {
                       </td>
                     </tr>
                   ))}
+                  {detailJobs.shown.length === 0 && (
+                    <tr><td colSpan={8} className={panel.muted}>Nenhuma vaga neste período.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>

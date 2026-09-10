@@ -9,34 +9,22 @@ import panel from "@/styles/panel.module.scss";
 import {
   getJobs, checkIn, checkOut, startBreak, endBreak, withdrawJob, readGeolocation, canFreelancerCancel,
   hasOpenBreak, mapUrl, mapEmbedUrl, Job, JobShift, formatShifts,
-  formatShiftPeriods, minutesToHours,
+  formatShiftPeriods, minutesToHours, STATUS_LABELS,
 } from "@/src/services/jobService";
 import { getJobPhotos, uploadJobPhoto, photoUrl, JobPhoto } from "@/src/services/jobPhotoService";
 import { authService } from "@/src/services/authService";
 import { useAuth } from "@/src/hooks/useAuth";
 import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
 import { fmtTime, fmtDate } from "@/src/lib/datetime";
+import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
+import { inDateRange } from "@/src/lib/dateRange";
 
 const SHIFT_STATUS_LABELS: Record<string, string> = {
   pending: "Aguardando", in_progress: "Em andamento", done: "Concluído", missed: "Perdido",
 };
 
 const sortShifts = (shifts?: JobShift[]) => [...(shifts ?? [])].sort((a, b) => a.position - b.position);
-
-type Period = "hoje" | "semana" | "mes" | "tudo";
-const PERIOD_LABELS: Record<Period, string> = { hoje: "Hoje", semana: "Semana", mes: "Mês", tudo: "Tudo" };
-
-/** A vaga cai no período escolhido? (baseado no início da vaga) */
-const inPeriod = (iso: string, period: Period): boolean => {
-  if (period === "tudo") return true;
-  const d = new Date(iso);
-  const now = new Date();
-  if (period === "hoje") return d.toDateString() === now.toDateString();
-  const days = period === "semana" ? 7 : 31;
-  const start = new Date(now); start.setDate(now.getDate() - days);
-  const end = new Date(now); end.setDate(now.getDate() + days);
-  return d >= start && d <= end;
-};
 
 /** Prioridade de exibição: em andamento → aceita → concluída → cancelada. */
 const STATUS_ORDER: Record<string, number> = {
@@ -58,7 +46,8 @@ function MyJobs() {
   const breaksAllowed = (j: Job) => j.breaksEnabled ?? agency.breaksEnabled ?? false;
 
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [period, setPeriod] = useState<Period>("semana");
+  const [range, setRange] = useDateRangeFilter("freelancer-jobs-daterange", { preset: "semana" });
+  const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [mapJobId, setMapJobId] = useState<string | null>(null);
@@ -80,12 +69,13 @@ function MyJobs() {
   const visible = useMemo(
     () =>
       [...mine]
-        .filter((j) => inPeriod(j.startTime, period))
+        .filter((j) => inDateRange(j.startTime, range))
+        .filter((j) => !statusFilter || j.status === statusFilter)
         .sort((a, b) => {
           const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
           return s !== 0 ? s : new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
         }),
-    [mine, period]
+    [mine, range, statusFilter]
   );
 
   const load = async () => {
@@ -227,16 +217,20 @@ function MyJobs() {
           {banner && <p className={banner.type === "error" ? panel.error : panel.success}>{banner.text}</p>}
 
           <div className={panel.filterBar}>
-            {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                className={p === period ? panel.primaryBtn : panel.ghostBtn}
-                onClick={() => setPeriod(p)}
-              >
-                {PERIOD_LABELS[p]}
-              </button>
-            ))}
+            <DateRangeQuickFilter
+              value={range}
+              onChange={setRange}
+              presets={["hoje", "semana", "mes", "custom", "todas"]}
+            />
+            <label className={panel.filterField}>
+              <span>Status</span>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">Todos</option>
+                {Object.entries(STATUS_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+            </label>
           </div>
 
           {loading ? (

@@ -10,6 +10,9 @@ import {
 import { distanceInMeters, formatDistance } from "@/src/lib/distance";
 import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
 import { fmtDate } from "@/src/lib/datetime";
+import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
+import { inDateRange } from "@/src/lib/dateRange";
 
 function AvailableJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -18,6 +21,8 @@ function AvailableJobs() {
 
   const [fnFilter, setFnFilter] = useState("");
   const [branchFilter, setBranchFilter] = useState("");
+  const [superFilter, setSuperFilter] = useState("");
+  const [range, setRange] = useDateRangeFilter("freelancer-available-daterange");
   const [me, setMe] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locBusy, setLocBusy] = useState(false);
   const [maxKm, setMaxKm] = useState("");
@@ -63,6 +68,10 @@ function AvailableJobs() {
     () => Array.from(new Set(jobs.map((j) => j.jobBranch?.name).filter(Boolean))) as string[],
     [jobs]
   );
+  const supermarketNames = useMemo(
+    () => Array.from(new Set(jobs.map((j) => j.jobSupermarket?.name).filter(Boolean))) as string[],
+    [jobs]
+  );
 
   const distanceOf = (j: Job): number | null => {
     if (!me || j.jobBranch?.latitude == null || j.jobBranch?.longitude == null) return null;
@@ -72,8 +81,10 @@ function AvailableJobs() {
   const rows = useMemo(() => {
     const maxMeters = maxKm ? Number(maxKm) * 1000 : null;
     let list = jobs.filter((j) => {
+      if (!inDateRange(j.startTime, range)) return false;
       if (fnFilter && j.jobCategory?.name !== fnFilter) return false;
       if (branchFilter && j.jobBranch?.name !== branchFilter) return false;
+      if (superFilter && j.jobSupermarket?.name !== superFilter) return false;
       if (maxMeters != null) {
         const d = distanceOf(j);
         if (d == null || d > maxMeters) return false;
@@ -90,7 +101,7 @@ function AvailableJobs() {
       });
     }
     return list;
-  }, [jobs, fnFilter, branchFilter, me, maxKm]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [jobs, fnFilter, branchFilter, superFilter, range, me, maxKm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -107,6 +118,14 @@ function AvailableJobs() {
           {error && <p className={panel.error}>{error}</p>}
 
           <div className={panel.filterBar}>
+            <DateRangeQuickFilter value={range} onChange={setRange} />
+            <label className={panel.filterField}>
+              <span>Supermercado</span>
+              <select value={superFilter} onChange={(e) => setSuperFilter(e.target.value)}>
+                <option value="">Todos</option>
+                {supermarketNames.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
             <label className={panel.filterField}>
               <span>Função</span>
               <select value={fnFilter} onChange={(e) => setFnFilter(e.target.value)}>
@@ -136,11 +155,17 @@ function AvailableJobs() {
             <button type="button" className={panel.ghostBtn} onClick={useMyLocation} disabled={locBusy}>
               {locBusy ? "Localizando…" : me ? "Atualizar minha localização" : "Ordenar pelas mais próximas"}
             </button>
-            {(fnFilter || branchFilter || maxKm) && (
+            {(fnFilter || branchFilter || superFilter || maxKm || range.preset !== "todas") && (
               <button
                 type="button"
                 className={panel.ghostBtn}
-                onClick={() => { setFnFilter(""); setBranchFilter(""); setMaxKm(""); }}
+                onClick={() => {
+                  setFnFilter("");
+                  setBranchFilter("");
+                  setSuperFilter("");
+                  setMaxKm("");
+                  setRange({ preset: "todas" });
+                }}
               >
                 Limpar
               </button>

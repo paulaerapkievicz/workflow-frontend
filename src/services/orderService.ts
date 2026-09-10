@@ -1,6 +1,8 @@
 import api from "@/src/services/api";
 import type { Job } from "@/src/services/jobService";
 import { toShiftPayload, type ShiftInput, type ShiftPeriod } from "@/src/services/shifts";
+import { inDateRange, type DateRange } from "@/src/lib/dateRange";
+import { isoDateBR } from "@/src/lib/datetime";
 
 export type OrderStatus = "open" | "in_progress" | "completed" | "canceled";
 export type OrderApprovalStatus = "approved" | "pending_approval" | "rejected";
@@ -121,3 +123,25 @@ export const orderBranchNames = (order: Order): string => {
 /** Vaga que voltou a ficar disponível depois que alguém desistiu. */
 export const jobWasAbandoned = (job: Job): boolean =>
   job.status === "pending" && (job.jobLogs ?? []).some((l) => l.eventType === "withdrawn");
+
+/** O pedido tem ao menos uma vaga cujo turno cai no intervalo escolhido? */
+export const orderInDateRange = (order: Order, range: DateRange): boolean => {
+  if (range.preset === "todas") return true;
+  return (order.orderJobs ?? []).some((j) => inDateRange(j.startTime, range));
+};
+
+/** Intervalo de datas dos turnos das vagas do pedido — "10/09" ou "10–12/09". */
+export const orderJobDateSpan = (order: Order): string => {
+  const days = (order.orderJobs ?? [])
+    .map((j) => isoDateBR(j.startTime))
+    .filter(Boolean)
+    .sort();
+  if (!days.length) return "—";
+  const fmt = (ymd: string) => {
+    const [, m, d] = ymd.split("-");
+    return `${d}/${m}`;
+  };
+  const first = days[0];
+  const last = days[days.length - 1];
+  return first === last ? fmt(first) : `${fmt(first)}–${fmt(last)}`;
+};

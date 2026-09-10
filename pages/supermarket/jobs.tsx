@@ -28,6 +28,9 @@ import ShiftsField from "@/src/components/ShiftsField";
 import FreelancerChip, { FreelancerProfileBody } from "@/src/components/FreelancerChip";
 import { matchesFilter, RowFilter } from "@/src/lib/filterRows";
 import { fmtTime, fmtDate, isoDateBR } from "@/src/lib/datetime";
+import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
+import { inDateRange } from "@/src/lib/dateRange";
 
 function JobsPage() {
   const { profile: authProfile } = useAuth();
@@ -43,6 +46,7 @@ function JobsPage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<RowFilter>({});
+  const [range, setRange] = useDateRangeFilter("supermarket-jobs-daterange");
 
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [rv, setRv] = useState<{ rating: number; comment: string }>({ rating: 0, comment: "" });
@@ -167,20 +171,22 @@ function JobsPage() {
 
   const rows = useMemo(
     () =>
-      jobs.filter((job) =>
-        matchesFilter(
-          {
-            status: job.status,
-            freelancerName: job.assignedFreelancer?.name,
-            branchName: job.jobBranch?.name ?? branchName(job.branchId),
-            title: job.title,
-            categoryName: job.jobCategory?.name ?? categoryName(job.categoryId),
-            date: job.startTime,
-          },
-          filter
-        )
+      jobs.filter(
+        (job) =>
+          inDateRange(job.startTime, range) &&
+          matchesFilter(
+            {
+              status: job.status,
+              freelancerName: job.assignedFreelancer?.name,
+              branchName: job.jobBranch?.name ?? branchName(job.branchId),
+              title: job.title,
+              categoryName: job.jobCategory?.name ?? categoryName(job.categoryId),
+              date: job.startTime,
+            },
+            filter
+          )
       ),
-    [jobs, filter, branches, categories] // eslint-disable-line react-hooks/exhaustive-deps
+    [jobs, filter, range, branches, categories] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const filterFields: FilterFieldDef[] = [
@@ -189,7 +195,6 @@ function JobsPage() {
     { key: "freelancer", label: "Colaborador", type: "text" },
     { key: "branch", label: "Filial", type: "text" },
     { key: "category", label: "Função", type: "text" },
-    { key: "date", label: "Data", type: "date" },
   ];
 
   const columns: Column<Job>[] = [
@@ -248,6 +253,9 @@ function JobsPage() {
             As vagas nascem dos seus pedidos. Enquanto não forem aceitas, podem ser editadas ou removidas —
             vagas já aceitas por colaboradores ficam bloqueadas.
           </p>
+          <div className={panel.filterBar} style={{ marginBottom: "0.6rem" }}>
+            <DateRangeQuickFilter value={range} onChange={setRange} />
+          </div>
           <FilterBar fields={filterFields} value={filter} onChange={setFilter} />
           {loading ? (
             <p>Carregando…</p>

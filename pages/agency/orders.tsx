@@ -8,7 +8,11 @@ import StatusBadge from "@/src/components/StatusBadge";
 import panel from "@/styles/panel.module.scss";
 import {
   getOrders, Order, ORDER_STATUS_LABELS, orderProgress, jobWasAbandoned, orderBranchNames,
+  orderInDateRange, orderJobDateSpan,
 } from "@/src/services/orderService";
+import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
+import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import {
   formatShifts, formatShiftPeriods, minutesToHours, releaseJob, registerNoShow,
   forceCheckoutJob, reassignJob, agencyStartBreak, agencyEndBreak, hasOpenBreak,
@@ -82,6 +86,7 @@ function AgencyOrdersPage() {
   const [freelancers, setFreelancers] = useState<AgencyFreelancer[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlyOpen, setOnlyOpen] = useState(false);
+  const [range, setRange] = useDateRangeFilter("agency-orders-daterange");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [manageJob, setManageJob] = useState<Job | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -129,10 +134,19 @@ function AgencyOrdersPage() {
   };
 
   const rows = useMemo(
-    () => (onlyOpen ? orders.filter((o) => ["open", "in_progress"].includes(o.status)) : orders),
-    [orders, onlyOpen]
+    () =>
+      orders
+        .filter((o) => (onlyOpen ? ["open", "in_progress"].includes(o.status) : true))
+        .filter((o) => orderInDateRange(o, range)),
+    [orders, onlyOpen, range]
   );
   const detail = orders.find((o) => o.id === detailId) ?? null;
+  const detailJobs = useMemo(() => {
+    const all = detail?.orderJobs ?? [];
+    if (range.preset === "todas") return { shown: all, hidden: 0 };
+    const shown = all.filter((j) => inDateRange(j.startTime, range));
+    return { shown, hidden: all.length - shown.length };
+  }, [detail, range]);
 
   const act = async (jobId: string, fn: () => Promise<unknown>) => {
     setBusy(jobId);
@@ -152,6 +166,9 @@ function AgencyOrdersPage() {
             Acompanhe a demanda, o preenchimento pela sua rede e libere/repasse vagas quando necessário.
           </p>
 
+          <div className={panel.filterBar}>
+            <DateRangeQuickFilter value={range} onChange={setRange} label="Vagas em" />
+          </div>
           <label className={panel.toggleRow}>
             <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
             Mostrar apenas pedidos abertos / em andamento
@@ -163,7 +180,7 @@ function AgencyOrdersPage() {
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead>
-                  <tr><th>Data</th><th>Supermercado</th><th>Filial</th><th>Vagas</th><th>Preenchidas</th><th>Concluídas</th><th>Status</th><th>Atenção</th><th></th></tr>
+                  <tr><th>Vagas em</th><th>Criado em</th><th>Supermercado</th><th>Filial</th><th>Vagas</th><th>Preenchidas</th><th>Concluídas</th><th>Status</th><th>Atenção</th><th></th></tr>
                 </thead>
                 <tbody>
                   {rows.map((o) => {
@@ -171,6 +188,7 @@ function AgencyOrdersPage() {
                     const abandoned = (o.orderJobs ?? []).some(jobWasAbandoned);
                     return (
                       <tr key={o.id}>
+                        <td>{orderJobDateSpan(o)}</td>
                         <td>{new Date(o.createdAt).toLocaleDateString("pt-BR")}</td>
                         <td>{o.orderSupermarket?.name ?? "—"}</td>
                         <td>{orderBranchNames(o)}</td>
@@ -186,7 +204,7 @@ function AgencyOrdersPage() {
                       </tr>
                     );
                   })}
-                  {rows.length === 0 && <tr><td colSpan={9} className={panel.muted}>Nenhum pedido.</td></tr>}
+                  {rows.length === 0 && <tr><td colSpan={10} className={panel.muted}>Nenhum pedido.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -196,11 +214,18 @@ function AgencyOrdersPage() {
 
       {detail && (
         <Modal title={`Pedido — ${detail.orderSupermarket?.name ?? ""}`} onClose={() => setDetailId(null)}>
+          {detailJobs.hidden > 0 && (
+            <p className={panel.muted} style={{ marginBottom: "0.5rem" }}>
+              Mostrando só as vagas de {dateRangeLabel(range)} — {detailJobs.hidden}{" "}
+              {detailJobs.hidden === 1 ? "vaga oculta" : "vagas ocultas"} de outras datas.{" "}
+              <button className={panel.ghostBtn} onClick={() => setRange({ preset: "todas" })}>ver todas</button>
+            </p>
+          )}
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
               <thead><tr><th>Vaga</th><th>Filial</th><th>Função</th><th>Turno</th><th>Horário</th><th>Colaborador</th><th>Status</th><th>Atenção</th><th>Ações</th></tr></thead>
               <tbody>
-                {(detail.orderJobs ?? []).flatMap((j) => [
+                {detailJobs.shown.flatMap((j) => [
                   <tr key={j.id}>
                     <td>{j.title}{jobWasAbandoned(j) && <span className={`${panel.badge} ${panel.badgeCanceled}`} style={{ marginLeft: 6 }}>desistência</span>}</td>
                     <td>{j.jobBranch?.name ?? "—"}</td>
@@ -282,6 +307,9 @@ function AgencyOrdersPage() {
                     </td>
                   </tr>,
                 ])}
+                {detailJobs.shown.length === 0 && (
+                  <tr><td colSpan={9} className={panel.muted}>Nenhuma vaga neste período.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
