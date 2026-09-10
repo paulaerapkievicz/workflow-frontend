@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
@@ -11,10 +12,19 @@ function SettingsPage() {
   const [form, setForm] = useState({
     checkinRadius: "300",
     cancellationWindowMinutes: "30",
+    checkinEarlyToleranceMinutes: "30",
     requireCheckoutPhoto: true,
     reviewEnabled: false,
     breaksEnabled: false,
     breakLimitMinutes: "",
+    alertsEnabled: true,
+    notifySupermarketOnAlerts: true,
+    lateCheckinToleranceMinutes: "10",
+    lateCheckinCriticalMinutes: "30",
+    earlyCheckoutToleranceMinutes: "15",
+    missingCheckoutGraceMinutes: "20",
+    unfilledAlertLeadMinutes: "120",
+    shortNoticeWithdrawalMinutes: "180",
     onboardingRequired: false,
     uniformPrice: "0",
     allowSelfRegistration: false,
@@ -30,10 +40,19 @@ function SettingsPage() {
         setForm({
           checkinRadius: String(s.checkinRadius),
           cancellationWindowMinutes: String(s.cancellationWindowMinutes),
+          checkinEarlyToleranceMinutes: String(s.checkinEarlyToleranceMinutes),
           requireCheckoutPhoto: s.requireCheckoutPhoto,
           reviewEnabled: s.reviewEnabled,
           breaksEnabled: s.breaksEnabled,
           breakLimitMinutes: s.breakLimitMinutes != null ? String(s.breakLimitMinutes) : "",
+          alertsEnabled: s.alertsEnabled,
+          notifySupermarketOnAlerts: s.notifySupermarketOnAlerts,
+          lateCheckinToleranceMinutes: String(s.lateCheckinToleranceMinutes),
+          lateCheckinCriticalMinutes: String(s.lateCheckinCriticalMinutes),
+          earlyCheckoutToleranceMinutes: String(s.earlyCheckoutToleranceMinutes),
+          missingCheckoutGraceMinutes: String(s.missingCheckoutGraceMinutes),
+          unfilledAlertLeadMinutes: String(s.unfilledAlertLeadMinutes),
+          shortNoticeWithdrawalMinutes: String(s.shortNoticeWithdrawalMinutes),
           onboardingRequired: s.onboardingRequired,
           uniformPrice: String(s.uniformPrice),
           allowSelfRegistration: s.allowSelfRegistration,
@@ -51,10 +70,19 @@ function SettingsPage() {
       const s = await updateAgencySettings({
         checkinRadius: Number(form.checkinRadius),
         cancellationWindowMinutes: Number(form.cancellationWindowMinutes),
+        checkinEarlyToleranceMinutes: Number(form.checkinEarlyToleranceMinutes),
         requireCheckoutPhoto: form.requireCheckoutPhoto,
         reviewEnabled: form.reviewEnabled,
         breaksEnabled: form.breaksEnabled,
         breakLimitMinutes: form.breakLimitMinutes.trim() === "" ? null : Number(form.breakLimitMinutes),
+        alertsEnabled: form.alertsEnabled,
+        notifySupermarketOnAlerts: form.notifySupermarketOnAlerts,
+        lateCheckinToleranceMinutes: Number(form.lateCheckinToleranceMinutes),
+        lateCheckinCriticalMinutes: Number(form.lateCheckinCriticalMinutes),
+        earlyCheckoutToleranceMinutes: Number(form.earlyCheckoutToleranceMinutes),
+        missingCheckoutGraceMinutes: Number(form.missingCheckoutGraceMinutes),
+        unfilledAlertLeadMinutes: Number(form.unfilledAlertLeadMinutes),
+        shortNoticeWithdrawalMinutes: Number(form.shortNoticeWithdrawalMinutes),
         onboardingRequired: form.onboardingRequired,
         uniformPrice: Number(form.uniformPrice),
         allowSelfRegistration: form.allowSelfRegistration,
@@ -79,6 +107,18 @@ function SettingsPage() {
             Estas regras valem para todos os colaboradores da sua rede.
           </p>
 
+          <div className={panel.card} style={{ maxWidth: 480, marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+            <div>
+              <strong>Perfil e dados cadastrais</strong>
+              <p className={panel.muted} style={{ margin: 0 }}>
+                Nome fantasia, razão social, CNPJ, contato, foto e logotipo da agência.
+              </p>
+            </div>
+            <Link href="/agency/profile" className={panel.primaryBtn} style={{ textDecoration: "none", whiteSpace: "nowrap" }}>
+              Gerenciar cadastro
+            </Link>
+          </div>
+
           {loading || !settings ? (
             <p>Carregando…</p>
           ) : (
@@ -93,6 +133,15 @@ function SettingsPage() {
                 <input type="number" min={0} max={1440} step={5} value={form.cancellationWindowMinutes}
                   onChange={(e) => setForm({ ...form, cancellationWindowMinutes: e.target.value })} />
                 <span className={panel.muted}>Depois desse prazo, só a agência libera/repassa a vaga.</span>
+
+                <label>Antecedência máxima para o check-in (minutos antes do início do turno)</label>
+                <input type="number" min={0} max={240} step={5} value={form.checkinEarlyToleranceMinutes}
+                  onChange={(e) => setForm({ ...form, checkinEarlyToleranceMinutes: e.target.value })} />
+                <span className={panel.muted}>
+                  Antes disso o ponto não abre — vale para todos os turnos da vaga, então o turno
+                  seguinte só libera perto do horário dele, mesmo que o colaborador já tenha encerrado
+                  o anterior. Atraso nunca é bloqueado. Pode ser sobrescrito por vaga.
+                </span>
 
                 <label className={panel.toggleRow}>
                   <input type="checkbox" checked={form.requireCheckoutPhoto}
@@ -122,6 +171,48 @@ function SettingsPage() {
                   Depois de atingido, o colaborador não consegue abrir uma nova pausa no turno.
                   Deixe em branco para não limitar. Também pode ser sobrescrito por vaga.
                 </span>
+
+                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                <strong>Alertas de ocorrência</strong>
+                <span className={panel.muted}>
+                  Avisos automáticos de problemas na execução das vagas, na página <strong>Alertas</strong>.
+                </span>
+                <label className={panel.toggleRow}>
+                  <input type="checkbox" checked={form.alertsEnabled}
+                    onChange={(e) => setForm({ ...form, alertsEnabled: e.target.checked })} />
+                  Ativar o controle de ocorrências
+                </label>
+                <label className={panel.toggleRow}>
+                  <input type="checkbox" checked={form.notifySupermarketOnAlerts}
+                    onChange={(e) => setForm({ ...form, notifySupermarketOnAlerts: e.target.checked })} />
+                  Mostrar ao supermercado-cliente os alertas que afetam a entrega
+                </label>
+
+                <label>Atraso tolerado no check-in (minutos)</label>
+                <input type="number" min={0} max={120} step={1} value={form.lateCheckinToleranceMinutes}
+                  onChange={(e) => setForm({ ...form, lateCheckinToleranceMinutes: e.target.value })} />
+                <span className={panel.muted}>Passado esse atraso sem check-in, abre um alerta.</span>
+
+                <label>Atraso no check-in que vira crítico (minutos)</label>
+                <input type="number" min={5} max={240} step={1} value={form.lateCheckinCriticalMinutes}
+                  onChange={(e) => setForm({ ...form, lateCheckinCriticalMinutes: e.target.value })} />
+
+                <label>Margem de saída antecipada (minutos)</label>
+                <input type="number" min={0} max={120} step={1} value={form.earlyCheckoutToleranceMinutes}
+                  onChange={(e) => setForm({ ...form, earlyCheckoutToleranceMinutes: e.target.value })} />
+                <span className={panel.muted}>Check-out mais cedo que isso, em relação ao fim do turno, vira alerta.</span>
+
+                <label>Folga após o fim do turno sem check-out (minutos)</label>
+                <input type="number" min={0} max={240} step={1} value={form.missingCheckoutGraceMinutes}
+                  onChange={(e) => setForm({ ...form, missingCheckoutGraceMinutes: e.target.value })} />
+
+                <label>Antecedência do aviso de vaga sem colaborador (minutos)</label>
+                <input type="number" min={15} max={1440} step={15} value={form.unfilledAlertLeadMinutes}
+                  onChange={(e) => setForm({ ...form, unfilledAlertLeadMinutes: e.target.value })} />
+
+                <label>Desistência considerada &quot;de última hora&quot; (minutos antes do início)</label>
+                <input type="number" min={0} max={1440} step={15} value={form.shortNoticeWithdrawalMinutes}
+                  onChange={(e) => setForm({ ...form, shortNoticeWithdrawalMinutes: e.target.value })} />
 
                 <hr style={{ width: "100%", borderColor: "var(--border)" }} />
                 <label className={panel.toggleRow}>

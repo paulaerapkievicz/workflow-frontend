@@ -54,7 +54,17 @@ export interface ShiftInput {
   startTime: string; // HH:MM
   endTime: string; // HH:MM
   nominalPeriod?: ShiftPeriod | null;
+  /** Turno com nome personalizado — o `nominalPeriod` fica só como filtro derivado da hora. */
+  custom?: boolean;
+  /** Nome do turno quando `custom` (vazio = usa "Turno N" pela ordem). */
+  label?: string | null;
 }
+
+/** Nome exibido de um turno da lista (personalizado, período ou "Turno N" pela ordem). */
+export const shiftDisplayName = (s: ShiftInput, index: number): string => {
+  if (s.custom) return (s.label ?? "").trim() || `Turno ${index + 1}`;
+  return shiftLabel(s.nominalPeriod ?? shiftPeriodFromTime(s.startTime));
+};
 
 let seq = 0;
 const shiftId = () => `s${Date.now().toString(36)}${(seq++).toString(36)}`;
@@ -71,12 +81,23 @@ export const newShift = (period?: ShiftPeriod): ShiftInput => {
   };
 };
 
-export const shiftFromWindow = (startTime: string, endTime: string): ShiftInput => ({
-  id: shiftId(),
-  startTime,
-  endTime,
-  nominalPeriod: shiftPeriodFromTime(startTime),
-});
+export const shiftFromWindow = (
+  startTime: string,
+  endTime: string,
+  meta?: { label?: string | null; nominalPeriod?: string | null }
+): ShiftInput => {
+  const period = shiftBound(meta?.nominalPeriod)?.value ?? shiftPeriodFromTime(startTime);
+  // Turno é "personalizado" quando o rótulo salvo não bate com o nome do período nominal.
+  const custom = !!meta?.label && meta.label.trim() !== "" && meta.label.trim() !== shiftLabel(period);
+  return {
+    id: shiftId(),
+    startTime,
+    endTime,
+    nominalPeriod: period,
+    custom,
+    label: custom ? (meta?.label ?? "").trim() : null,
+  };
+};
 
 /** O turno termina depois da meia-noite (fim <= início). */
 export const crossesMidnight = (s: { startTime: string; endTime: string }): boolean =>
@@ -113,7 +134,10 @@ export const validateShifts = (shifts: ShiftInput[]): string | null => {
   if (!shifts.length) return "adicione ao menos um turno.";
   for (const s of shifts) {
     const err = validateShiftInput(s);
-    if (err) return `${shiftLabel(s.nominalPeriod)}: ${err}`;
+    if (err) {
+      const name = s.custom ? (s.label ?? "").trim() || "Turno personalizado" : shiftLabel(s.nominalPeriod);
+      return `${name}: ${err}`;
+    }
   }
   const sorted = [...shifts].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
   for (let i = 0; i < sorted.length; i++) {
@@ -130,9 +154,15 @@ export const validateShifts = (shifts: ShiftInput[]): string | null => {
   return null;
 };
 
-/** Payload de turno para a API (só a janela + o período nominal escolhido). */
-export const toShiftPayload = (s: ShiftInput) => ({
-  startTime: s.startTime,
-  endTime: s.endTime,
-  nominalPeriod: s.nominalPeriod ?? shiftPeriodFromTime(s.startTime),
-});
+/**
+ * Payload de turno para a API: janela + período nominal (sempre derivável, serve de filtro) +
+ * `label`. Turno personalizado sem nome digitado cai no padrão "Turno N" pela ordem (`index`).
+ */
+export const toShiftPayload = (s: ShiftInput, index = 0) => {
+  const nominalPeriod =
+    (!s.custom && s.nominalPeriod) || shiftPeriodFromTime(s.startTime);
+  const label = s.custom
+    ? (s.label ?? "").trim() || `Turno ${index + 1}`
+    : (s.label ?? "").trim() || null;
+  return { startTime: s.startTime, endTime: s.endTime, nominalPeriod, label, custom: !!s.custom };
+};

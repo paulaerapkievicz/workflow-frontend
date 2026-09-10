@@ -4,7 +4,7 @@ import { usePendingCounts } from "@/src/hooks/usePendingCounts";
 export default function AgencySidebar() {
   const {
     uniformsToShip, selfiesToReview, registrationsToApprove, branchesToApprove, memberCreditsToReview,
-    contestationsToReview,
+    contestationsToReview, alertsOpen,
   } = usePendingCounts("agency");
   return (
     <SideNav
@@ -16,9 +16,11 @@ export default function AgencySidebar() {
         { href: "/agency/supermarkets", label: "Gestão de Clientes", icon: "🏬", badge: branchesToApprove },
         { href: "/agency/team", label: "Equipe", icon: "🧑‍💼" },
         { href: "/agency/orders", label: "Convocações", icon: "🛒" },
+        { href: "/agency/alerts", label: "Alertas", icon: "🚨", badge: alertsOpen },
         { href: "/agency/live", label: "Ao vivo", icon: "🟢" },
         { href: "/agency/closings", label: "Fechamentos", icon: "📅", badge: contestationsToReview },
         { href: "/agency/payments", label: "Pagamentos", icon: "💳", badge: memberCreditsToReview },
+        { href: "/agency/contracts", label: "Contratos", icon: "📄" },
         { href: "/agency/settings", label: "Configurações", icon: "⚙️" },
       ]}
     />

@@ -63,7 +63,7 @@ export default function ShiftsField({ value, onChange, disabled, showError = tru
         ))}
       </div>
 
-      {value.map((s) => {
+      {value.map((s, idx) => {
         const wraps = crossesMidnight(s);
         const dur = shiftDurationMinutes(s);
         return (
@@ -71,16 +71,31 @@ export default function ShiftsField({ value, onChange, disabled, showError = tru
             <div className={styles.field}>
               <label>Período</label>
               <select
-                value={s.nominalPeriod ?? shiftPeriodFromTime(s.startTime)}
+                value={s.custom ? "custom" : s.nominalPeriod ?? shiftPeriodFromTime(s.startTime)}
                 disabled={disabled}
-                onChange={(e) => patch(s.id, { nominalPeriod: e.target.value as ShiftPeriod })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "custom") patch(s.id, { custom: true });
+                  else patch(s.id, { custom: false, label: null, nominalPeriod: v as ShiftPeriod });
+                }}
               >
                 {SHIFT_PERIODS.map((p) => (
                   <option key={p.value} value={p.value}>
                     {p.label}
                   </option>
                 ))}
+                <option value="custom">Personalizado…</option>
               </select>
+              {s.custom && (
+                <input
+                  type="text"
+                  value={s.label ?? ""}
+                  disabled={disabled}
+                  maxLength={40}
+                  placeholder={`Turno ${idx + 1}`}
+                  onChange={(e) => patch(s.id, { label: e.target.value })}
+                />
+              )}
             </div>
             <div className={styles.field}>
               <label>Início</label>

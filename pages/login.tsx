@@ -9,7 +9,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { useSelfRegistrationOpen } from "@/src/hooks/useSelfRegistrationOpen";
 
 const ROLE_HOME: Record<string, string> = {
-  admin: "/",
+  admin: "/admin/agencias",
   supermarket: "/supermarket/dashboard",
   agency: "/agency/dashboard",
   leader: "/leader/dashboard",

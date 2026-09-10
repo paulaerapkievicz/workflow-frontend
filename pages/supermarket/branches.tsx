@@ -6,11 +6,17 @@ import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import {
-  getBranches, createBranch, updateBranch, deleteBranch, geocodeAddress, branchHasLocation, Branch,
+  getBranches, createBranch, deleteBranch, geocodeAddress, branchHasLocation, Branch,
 } from "@/src/services/branchService";
+import {
+  getBranchProfile, updateBranchProfile, uploadBranchImage, ResolvedBranchProfile,
+} from "@/src/services/supermarketProfileService";
+import ProfileImageField from "@/src/components/ProfileImageField";
 import { authService } from "@/src/services/authService";
 
-const emptyForm = { id: "", name: "", address: "", phone: "" };
+const emptyForm = {
+  id: "", name: "", address: "", phone: "", legalName: "", cnpj: "", email: "",
+};
 
 function BranchesPage() {
   const supermarketId = authService.getProfileId() ?? "";
@@ -20,6 +26,8 @@ function BranchesPage() {
   const [error, setError] = useState<string | null>(null);
   const [geoMsg, setGeoMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [geoBusy, setGeoBusy] = useState(false);
+  const [resolved, setResolved] = useState<ResolvedBranchProfile | null>(null);
+  const editingBranch = branches.find((b) => b.id === form.id) ?? null;
 
   const load = async () => {
     const all = await getBranches();
@@ -29,12 +37,21 @@ function BranchesPage() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const openNew = () => { setForm({ ...emptyForm }); setError(null); setGeoMsg(null); setOpen(true); };
-  const openEdit = (b: Branch) => {
-    setForm({ id: b.id, name: b.name, address: b.address, phone: b.phone ?? "" });
+  const openNew = () => {
+    setForm({ ...emptyForm });
+    setResolved(null);
+    setError(null); setGeoMsg(null); setOpen(true);
+  };
+  const openEdit = async (b: Branch) => {
+    setForm({
+      id: b.id, name: b.name, address: b.address, phone: b.phone ?? "",
+      legalName: b.legalName ?? "", cnpj: b.cnpj ?? "", email: b.email ?? "",
+    });
+    setResolved(null);
     setError(null);
     setGeoMsg(branchHasLocation(b) ? { type: "ok", text: "Localização já definida pelo endereço." } : null);
     setOpen(true);
+    try { setResolved((await getBranchProfile(b.id)).profile); } catch { /* opcional */ }
   };
 
   const testGeocode = async () => {
@@ -53,10 +70,15 @@ function BranchesPage() {
 
   const save = async () => {
     setError(null);
-    const payload = { name: form.name, address: form.address, phone: form.phone, regeocode: true };
     try {
-      if (form.id) await updateBranch(form.id, payload);
-      else await createBranch({ ...payload, supermarketId });
+      if (form.id) {
+        await updateBranchProfile(form.id, {
+          name: form.name, address: form.address, phone: form.phone,
+          legalName: form.legalName, cnpj: form.cnpj, email: form.email,
+        });
+      } else {
+        await createBranch({ name: form.name, address: form.address, phone: form.phone, regeocode: true, supermarketId });
+      }
       setOpen(false);
       await load();
     } catch (err) {
@@ -125,6 +147,40 @@ function BranchesPage() {
             {geoMsg && <p className={geoMsg.type === "ok" ? panel.success : panel.error}>{geoMsg.text}</p>}
             <label>Telefone</label>
             <input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+
+            {form.id && (
+              <>
+                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                <p className={panel.muted} style={{ margin: 0 }}>
+                  Dados cadastrais da filial. Deixe em branco para <strong>usar o cadastro da matriz</strong>.
+                </p>
+                <label>Razão social</label>
+                <input value={form.legalName} onChange={(e) => set("legalName", e.target.value)}
+                  placeholder={resolved?.inherited.includes("legalName") ? `matriz: ${resolved?.legalName ?? ""}` : ""} />
+                <label>CNPJ</label>
+                <input value={form.cnpj} onChange={(e) => set("cnpj", e.target.value)}
+                  placeholder={resolved?.inherited.includes("cnpj") ? `matriz: ${resolved?.cnpj ?? ""}` : ""} />
+                <label>E-mail</label>
+                <input value={form.email} onChange={(e) => set("email", e.target.value)}
+                  placeholder={resolved?.inherited.includes("email") ? `matriz: ${resolved?.email ?? ""}` : ""} />
+
+                {editingBranch && (
+                  <div style={{ display: "grid", gap: "1rem", marginTop: "0.5rem" }}>
+                    <ProfileImageField label="Logotipo da filial" shape="rect"
+                      hint={resolved?.inherited.includes("logoUrl") ? "Hoje usa o logotipo da matriz." : undefined}
+                      currentUrl={editingBranch.logoUrl ?? null}
+                      onUpload={(f) => uploadBranchImage(editingBranch.id, "logo", f)}
+                      onDone={load} />
+                    <ProfileImageField label="Foto da filial" shape="round"
+                      hint={resolved?.inherited.includes("profilePhotoUrl") ? "Hoje usa a foto da matriz." : undefined}
+                      currentUrl={editingBranch.profilePhotoUrl ?? null}
+                      onUpload={(f) => uploadBranchImage(editingBranch.id, "photo", f)}
+                      onDone={load} />
+                  </div>
+                )}
+              </>
+            )}
+
             {error && <p className={panel.error}>{error}</p>}
             <button className={panel.primaryBtn} onClick={save} disabled={!form.name || !form.address}>Salvar</button>
           </div>

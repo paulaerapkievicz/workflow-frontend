@@ -11,6 +11,7 @@ import {
 import { photoUrl } from "@/src/services/jobPhotoService";
 import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
 import { useAuth } from "@/src/hooks/useAuth";
+import Link from "next/link";
 
 type Field = { key: string; label: string; type?: "text" | "date" | "number"; required?: boolean };
 
@@ -359,6 +360,29 @@ function OnboardingPage() {
                   </button>
                 </div>
               </div>
+
+              {(() => {
+                const ob = (profile as { onboarding?: { approved?: boolean; contractTemplateAvailable?: boolean; contractSigned?: boolean } } | null)?.onboarding;
+                if (!ob?.approved) return null;
+                return (
+                  <div className={panel.card} style={{ marginTop: "1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <strong>4. Contrato</strong>
+                      <span className={`${panel.badge} ${ob.contractSigned ? panel.badgeDone : panel.badgePending}`}>
+                        {ob.contractSigned ? "Assinado" : ob.contractTemplateAvailable ? "Pendente" : "Aguardando a agência"}
+                      </span>
+                    </div>
+                    <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
+                      {ob.contractTemplateAvailable
+                        ? "O seu contrato já está pronto com os dados acima. Revise e assine eletronicamente."
+                        : "A sua agência ainda não publicou o modelo de contrato."}
+                    </p>
+                    <Link className={panel.primaryBtn} href="/freelancer/contrato" style={{ textDecoration: "none" }}>
+                      {ob.contractSigned ? "Ver contrato assinado" : "Ir para o contrato"}
+                    </Link>
+                  </div>
+                );
+              })()}
             </>
           )}
         </section>

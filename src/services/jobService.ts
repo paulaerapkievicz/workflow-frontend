@@ -64,6 +64,7 @@ export interface Job {
   reviewEnabled?: boolean | null;
   breaksEnabled?: boolean | null;
   breakLimitMinutes?: number | null;
+  checkinEarlyToleranceMinutes?: number | null;
   /** @deprecated agora é configuração da agência */
   photosRequired?: boolean;
   /** @deprecated agora é configuração da agência */
@@ -102,6 +103,8 @@ export interface ShiftPayload {
   startTime: string; // HH:MM
   endTime: string; // HH:MM
   nominalPeriod?: ShiftPeriod | null;
+  label?: string | null;
+  custom?: boolean;
 }
 
 /** Edição de uma vaga ainda disponível (não aceita). */
@@ -134,6 +137,7 @@ export interface JobConfigInput {
   reviewEnabled?: boolean | null;
   breaksEnabled?: boolean | null;
   breakLimitMinutes?: number | null;
+  checkinEarlyToleranceMinutes?: number | null;
 }
 
 /** Agência edita a vaga: função/turno/título (pendente) + overrides de configuração. */

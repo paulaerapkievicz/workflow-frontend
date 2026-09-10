@@ -2,6 +2,7 @@ import '../styles/globals.scss';
 import '../styles/ThemeToggle.scss';
 import type { AppProps } from 'next/app';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'react-quill-new/dist/quill.snow.css';
 import Header from '@/src/components/Header';
 import Footer from '@/src/components/Footer';
 

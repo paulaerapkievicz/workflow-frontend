@@ -14,7 +14,7 @@ import {
   ORDER_STATUS_LABELS, ORDER_APPROVAL_LABELS, orderProgress, jobWasAbandoned, orderBranchNames,
 } from "@/src/services/orderService";
 import { formatShifts, formatShiftPeriods } from "@/src/services/jobService";
-import { newShift, validateShifts, shiftLabel, shiftPeriodFromTime, ShiftInput } from "@/src/services/shifts";
+import { newShift, validateShifts, shiftDisplayName, ShiftInput } from "@/src/services/shifts";
 import ShiftsField from "@/src/components/ShiftsField";
 import { authService } from "@/src/services/authService";
 import type { SupermarketMembership } from "@/src/services/authService";
@@ -240,7 +240,7 @@ function OrdersPage() {
                       <td>{it.branchName}</td>
                       <td>{it.quantity}</td>
                       <td>{new Date(`${it.date}T00:00`).toLocaleDateString("pt-BR")}</td>
-                      <td>{it.shifts.map((s) => shiftLabel(s.nominalPeriod ?? shiftPeriodFromTime(s.startTime))).join(", ")}</td>
+                      <td>{it.shifts.map((s, si) => shiftDisplayName(s, si)).join(", ")}</td>
                       <td>{it.shifts.map((s) => `${s.startTime}–${s.endTime}`).join(", ")}</td>
                       <td className={panel.muted}>{it.title ?? "padrão"}</td>
                       <td><button className={panel.secondaryBtn} onClick={() => setCart((p) => p.filter((_, idx) => idx !== i))}>Remover</button></td>

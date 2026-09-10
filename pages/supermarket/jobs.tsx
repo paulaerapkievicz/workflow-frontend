@@ -89,7 +89,7 @@ function JobsPage() {
   const openEdit = (job: Job) => {
     const shifts: ShiftInput[] = [...(job.shifts ?? [])]
       .sort((a, b) => a.position - b.position)
-      .map((s) => shiftFromWindow(hhmm(s.startTime), hhmm(s.endTime)));
+      .map((s) => shiftFromWindow(hhmm(s.startTime), hhmm(s.endTime), { label: s.label, nominalPeriod: s.nominalPeriod }));
     if (!shifts.length) shifts.push(newShift());
     setForm({
       title: job.title,

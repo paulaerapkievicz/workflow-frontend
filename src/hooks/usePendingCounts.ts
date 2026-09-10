@@ -9,10 +9,14 @@ export interface AgencyPendingCounts {
   branchesToApprove: number;
   memberCreditsToReview: number;
   contestationsToReview: number;
+  alertsOpen: number;
+  alertsCritical: number;
 }
 
 export interface SupermarketPendingCounts {
   ordersToApprove: number;
+  alertsOpen: number;
+  alertsCritical: number;
 }
 
 /** Contadores de pendências para os badges do menu (agência, líder ou supermercado). */
@@ -26,6 +30,8 @@ export function usePendingCounts(role: "agency" | "supermarket" | "leader") {
     memberCreditsToReview: 0,
     contestationsToReview: 0,
     ordersToApprove: 0,
+    alertsOpen: 0,
+    alertsCritical: 0,
   });
 
   useEffect(() => {

@@ -49,7 +49,7 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
   const [shifts, setShifts] = useState<ShiftInput[]>(() => {
     const s = [...(job.shifts ?? [])]
       .sort((a, b) => a.position - b.position)
-      .map((x) => shiftFromWindow(fmtTime(x.startTime), fmtTime(x.endTime)));
+      .map((x) => shiftFromWindow(fmtTime(x.startTime), fmtTime(x.endTime), { label: x.label, nominalPeriod: x.nominalPeriod }));
     return s.length ? s : [newShift()];
   });
 
@@ -61,6 +61,7 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
   const [reviewEnabled, setReviewEnabled] = useState(triState(job.reviewEnabled));
   const [breaks, setBreaks] = useState(triState(job.breaksEnabled));
   const [breakLimit, setBreakLimit] = useState(job.breakLimitMinutes?.toString() ?? "");
+  const [earlyTolerance, setEarlyTolerance] = useState(job.checkinEarlyToleranceMinutes?.toString() ?? "");
 
   const [rows, setRows] = useState<TimesheetRow[]>(() =>
     [...(job.shifts ?? [])]
@@ -89,6 +90,7 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
     reviewEnabled: reviewEnabled === "" ? null : reviewEnabled === "sim",
     breaksEnabled: breaks === "" ? null : breaks === "sim",
     breakLimitMinutes: breakLimit === "" ? null : Number(breakLimit),
+    checkinEarlyToleranceMinutes: earlyTolerance === "" ? null : Number(earlyTolerance),
   });
 
   const saveConfig = async () => {
@@ -235,6 +237,14 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
             <input type="number" min={0} max={10080} value={cancelWindow}
               placeholder={settings ? String(settings.cancellationWindowMinutes) : "padrão"}
               onChange={(e) => setCancelWindow(e.target.value)} />
+
+            <label>
+              Antecedência máxima do check-in (min)
+              {settings ? ` — padrão ${settings.checkinEarlyToleranceMinutes}` : ""}
+            </label>
+            <input type="number" min={0} max={240} value={earlyTolerance}
+              placeholder={settings ? String(settings.checkinEarlyToleranceMinutes) : "padrão"}
+              onChange={(e) => setEarlyTolerance(e.target.value)} />
 
             <label>Foto no check-out</label>
             <select value={reqPhoto} onChange={(e) => setReqPhoto(e.target.value as "" | "sim" | "nao")}>

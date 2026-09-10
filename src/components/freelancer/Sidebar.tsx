@@ -9,6 +9,7 @@ export default function FreelancerSidebar() {
         { href: "/freelancer", label: "Vagas disponíveis", icon: "🔎" },
         { href: "/freelancer/jobs", label: "Meus trabalhos", icon: "🧾" },
         { href: "/freelancer/onboarding", label: "Onboarding", icon: "📝" },
+        { href: "/freelancer/contrato", label: "Contrato", icon: "📄" },
         { href: "/freelancer/reports", label: "Relatório", icon: "📊" },
         { href: "/freelancer/payments", label: "Carteira", icon: "💰" },
       ]}

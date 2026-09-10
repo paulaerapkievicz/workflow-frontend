@@ -12,6 +12,24 @@ export interface AgencySettings {
   breaksEnabled: boolean;
   /** Limite de minutos de pausa por turno (null = sem limite; pode ser sobrescrito por vaga). */
   breakLimitMinutes: number | null;
+  /** Antecedência máxima (min) para bater o check-in antes do início do turno. */
+  checkinEarlyToleranceMinutes: number;
+  /** Liga/desliga o controle de ocorrências das vagas (atraso, falta, saída antecipada…). */
+  alertsEnabled: boolean;
+  /** O supermercado-cliente recebe os alertas que afetam a entrega do serviço. */
+  notifySupermarketOnAlerts: boolean;
+  /** Atraso tolerado (min) no check-in antes de abrir o alerta. */
+  lateCheckinToleranceMinutes: number;
+  /** Acima deste atraso (min) o alerta de check-in vira crítico. */
+  lateCheckinCriticalMinutes: number;
+  /** Margem (min) de saída antecipada antes de abrir o alerta. */
+  earlyCheckoutToleranceMinutes: number;
+  /** Folga (min) após o fim do turno sem check-out antes de abrir o alerta. */
+  missingCheckoutGraceMinutes: number;
+  /** Antecedência (min) do aviso de vaga ainda sem colaborador. */
+  unfilledAlertLeadMinutes: number;
+  /** Abaixo desta antecedência (min) do início, uma desistência é "de última hora". */
+  shortNoticeWithdrawalMinutes: number;
   /** Exige onboarding (perfil contratual + uniforme aprovado) antes de aceitar vagas. */
   onboardingRequired: boolean;
   /** Preço do kit uniforme cobrado do colaborador. */

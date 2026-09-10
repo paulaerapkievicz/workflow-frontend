@@ -12,6 +12,12 @@ export interface Branch {
   supermarketId: string;
   /** approved = pode receber pedidos; pending = aguardando a agência aprovar o atendimento. */
   serviceStatus: "approved" | "pending";
+  /** Dados cadastrais próprios da filial (vazio = herda da matriz). */
+  legalName?: string | null;
+  cnpj?: string | null;
+  email?: string | null;
+  logoUrl?: string | null;
+  profilePhotoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
