@@ -16,7 +16,8 @@ import {
   removeCategoryFromFreelancer,
 } from "@/src/services/freelancerService";
 import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
-import FreelancerReputation from "@/src/components/FreelancerReputation";
+import { getFreelancerLeaders, AssignedLeader } from "@/src/services/agencyMemberService";
+import { FreelancerProfileBody } from "@/src/components/FreelancerChip";
 import { useAuth } from "@/src/hooks/useAuth";
 
 function FreelancersPage() {
@@ -33,6 +34,7 @@ function FreelancersPage() {
 
   const [editId, setEditId] = useState<string | null>(null);
   const [editReputation, setEditReputation] = useState<Reputation | null>(null);
+  const [editLeaders, setEditLeaders] = useState<AssignedLeader[] | null>(null);
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", skills: "" });
   const [editError, setEditError] = useState<string | null>(null);
   const [catMsg, setCatMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -103,7 +105,9 @@ function FreelancersPage() {
     setEditForm({ name: f.name, email: f.email, phone: f.phone ?? "", skills: f.skills ?? "" });
     setEditId(f.id);
     setEditReputation(null);
+    setEditLeaders(null);
     getFreelancerReputation(f.id).then(setEditReputation).catch(() => {});
+    getFreelancerLeaders(f.id).then(setEditLeaders).catch(() => {});
   };
 
   const saveEdit = async () => {
@@ -283,11 +287,15 @@ function FreelancersPage() {
       {editId && (
         <Modal title="Editar colaborador" onClose={() => setEditId(null)}>
           <div className={panel.form}>
-            {editReputation && (
-              <div style={{ padding: "8px 0 12px", borderBottom: "1px solid var(--border)", marginBottom: 8 }}>
-                <FreelancerReputation reputation={editReputation} />
-              </div>
-            )}
+            <div style={{ padding: "8px 0 12px", borderBottom: "1px solid var(--border)", marginBottom: 8 }}>
+              <FreelancerProfileBody
+                name={list.find((f) => f.id === editId)?.name ?? editForm.name}
+                phone={list.find((f) => f.id === editId)?.phone ?? editForm.phone}
+                profilePhotoUrl={list.find((f) => f.id === editId)?.profilePhotoUrl}
+                reputation={editReputation}
+                leaders={editLeaders}
+              />
+            </div>
             <label>Nome</label>
             <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
             <label>E-mail</label>

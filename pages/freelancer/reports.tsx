@@ -5,7 +5,9 @@ import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import { getFreelancerReport, FreelancerReport } from "@/src/services/billingService";
 import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
+import { getFreelancerLeaders, AssignedLeader } from "@/src/services/agencyMemberService";
 import FreelancerReputation from "@/src/components/FreelancerReputation";
+import { AssignedLeaders } from "@/src/components/FreelancerChip";
 import { useAuth } from "@/src/hooks/useAuth";
 import { fmtDate } from "@/src/lib/datetime";
 
@@ -16,6 +18,7 @@ function ReportsPage() {
   const { profile } = useAuth();
   const [report, setReport] = useState<FreelancerReport | null>(null);
   const [reputation, setReputation] = useState<Reputation | null>(null);
+  const [leaders, setLeaders] = useState<AssignedLeader[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +26,9 @@ function ReportsPage() {
   }, []);
 
   useEffect(() => {
-    if (profile?.id) getFreelancerReputation(profile.id).then(setReputation).catch(() => {});
+    if (!profile?.id) return;
+    getFreelancerReputation(profile.id).then(setReputation).catch(() => {});
+    getFreelancerLeaders(profile.id).then(setLeaders).catch(() => {});
   }, [profile]);
 
   return (
@@ -42,6 +47,7 @@ function ReportsPage() {
                 <div className={panel.card} style={{ marginBottom: "1rem" }}>
                   <div className={panel.tableToolbar}><strong>Minha reputação</strong></div>
                   <FreelancerReputation reputation={reputation} />
+                  <AssignedLeaders leaders={leaders} />
                 </div>
               )}
 

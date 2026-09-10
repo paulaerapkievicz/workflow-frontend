@@ -2,6 +2,7 @@ import { photoUrl } from "@/src/services/jobPhotoService";
 import styles from "@/styles/freelancerChip.module.scss";
 import FreelancerReputation from "@/src/components/FreelancerReputation";
 import { FreelancerReputation as Reputation } from "@/src/services/reviewService";
+import { AssignedLeader } from "@/src/services/agencyMemberService";
 
 export interface FreelancerChipData {
   name?: string | null;
@@ -52,19 +53,49 @@ export default function FreelancerChip({ freelancer, onClick, emptyLabel = "—"
   );
 }
 
+/** Lista dos líderes que respondem por um colaborador. */
+export function AssignedLeaders({ leaders }: { leaders?: AssignedLeader[] | null }) {
+  if (!leaders) return null;
+  const title = leaders.length === 1 ? "Líder responsável" : "Líderes responsáveis";
+  return (
+    <div style={{ marginTop: 12, width: "100%", textAlign: "left" }}>
+      <p className={styles.profileRow} style={{ fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+        {title}
+      </p>
+      {leaders.length === 0 ? (
+        <p className={styles.profileRow}>Nenhum líder designado.</p>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 4 }}>
+          {leaders.map((l) => (
+            <li key={l.id} className={styles.profileRow} style={{ color: "var(--text)" }}>
+              {l.name}
+              {l.scope === "all" && (
+                <span className={styles.profileRow} style={{ marginLeft: 6 }}>
+                  · rede toda
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Conteúdo padrão da modal de perfil do colaborador. */
 export function FreelancerProfileBody({
   name,
   phone,
-  document,
   profilePhotoUrl,
   reputation,
+  leaders,
 }: {
   name: string;
   phone?: string | null;
-  document?: string | null;
   profilePhotoUrl?: string | null;
   reputation?: Reputation | null;
+  /** Quando passado, mostra a seção "Líder responsável". */
+  leaders?: AssignedLeader[] | null;
 }) {
   return (
     <div className={styles.profile}>
@@ -78,12 +109,12 @@ export function FreelancerProfileBody({
       )}
       <p className={styles.profileName}>{name}</p>
       <p className={styles.profileRow}>Telefone: {phone || "—"}</p>
-      <p className={styles.profileRow}>Documento: {document || "—"}</p>
       {reputation && (
         <div style={{ marginTop: 12, width: "100%", textAlign: "left" }}>
-          <FreelancerReputation reputation={reputation} />
+          <FreelancerReputation reputation={reputation} compact />
         </div>
       )}
+      <AssignedLeaders leaders={leaders} />
     </div>
   );
 }

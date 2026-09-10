@@ -123,3 +123,13 @@ export const cancelMemberJobCredit = async (
   note?: string
 ): Promise<LeaderJobCredit> =>
   (await api.post(`/agency/member-credits/${id}/cancel`, { note })).data;
+
+/** Líder que responde por um colaborador: com ele no escopo (`explicit`) ou cobrindo a rede toda (`all`). */
+export interface AssignedLeader {
+  id: string;
+  name: string;
+  scope: "explicit" | "all";
+}
+
+export const getFreelancerLeaders = async (freelancerId: string): Promise<AssignedLeader[]> =>
+  (await api.get(`/freelancers/${freelancerId}/leaders`)).data;

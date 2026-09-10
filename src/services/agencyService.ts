@@ -41,6 +41,7 @@ export interface AgencyFreelancer {
   skills?: string | null;
   agencyId: string | null;
   availableBalance: number;
+  profilePhotoUrl?: string | null;
 }
 
 export const getAgencies = async (): Promise<Agency[]> => (await api.get("/agencies")).data;

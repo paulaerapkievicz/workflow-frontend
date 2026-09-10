@@ -273,7 +273,6 @@ function AgencyOrdersPage() {
           <FreelancerProfileBody
             name={profileFreelancer.name}
             phone={profileFreelancer.phone}
-            document={profileFreelancer.document}
             profilePhotoUrl={profileFreelancer.profilePhotoUrl}
           />
         </Modal>
