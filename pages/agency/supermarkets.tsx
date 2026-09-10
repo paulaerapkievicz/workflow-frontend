@@ -14,6 +14,8 @@ import {
 } from "@/src/services/branchService";
 import { createInvite } from "@/src/services/inviteService";
 import BranchScopeField from "@/src/components/supermarket/BranchScopeField";
+import TeamRolesManager from "@/src/components/TeamRolesManager";
+import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getCategories, Category } from "@/src/services/categoryService";
 import {
   getSupermarketRates, saveSupermarketRate, updateSupermarketRate, deleteSupermarketRate,
@@ -24,7 +26,7 @@ const emptyMarket = { id: "", name: "", cnpj: "", address: "", phone: "", email:
 const emptyBranch = { id: "", name: "", address: "", phone: "" };
 const emptyRate = { categoryId: "", branchId: "", hourlyRate: "" };
 const emptyMember = {
-  name: "", email: "", password: "", branchIds: [] as string[],
+  name: "", email: "", password: "", branchIds: [] as string[], teamRoleId: "",
   canSubmitOrders: true, canApproveOrders: false, canViewInvoices: false, canPayInvoices: false,
 };
 
@@ -50,6 +52,8 @@ function SupermarketsPage() {
 
   const [teamOf, setTeamOf] = useState<Supermarket | null>(null);
   const [members, setMembers] = useState<SupermarketMember[]>([]);
+  const [teamRoles, setTeamRoles] = useState<TeamRole[]>([]);
+  const [rolesModal, setRolesModal] = useState(false);
   const [memberModal, setMemberModal] = useState(false);
   const [editMemberId, setEditMemberId] = useState<string | null>(null);
   const [memberForm, setMemberForm] = useState({ ...emptyMember });
@@ -175,13 +179,21 @@ function SupermarketsPage() {
   const openTeam = async (m: Supermarket) => {
     setTeamOf(m);
     setMembers([]);
+    setTeamRoles([]);
     setMemberModal(false);
+    setRolesModal(false);
     setEditMemberId(null);
     try { setMembers(await getMembers(m.id)); } catch { /* vazio */ }
+    try { setTeamRoles(await getTeamRoles({ supermarketId: m.id })); } catch { /* vazio */ }
   };
   const reloadTeam = async () => {
     if (!teamOf) return;
     try { setMembers(await getMembers(teamOf.id)); } catch { /* vazio */ }
+  };
+  const reloadTeamRoles = async () => {
+    if (!teamOf) return;
+    try { setTeamRoles(await getTeamRoles({ supermarketId: teamOf.id })); } catch { /* vazio */ }
+    await reloadTeam();
   };
   const openAddMember = () => { setEditMemberId(null); setMemberForm({ ...emptyMember }); setMemberError(null); setMemberModal(true); };
   const openEditMember = (mem: SupermarketMember) => {
@@ -189,6 +201,7 @@ function SupermarketsPage() {
     setMemberForm({
       ...emptyMember,
       branchIds: mem.branchIds ?? [],
+      teamRoleId: mem.teamRoleId ?? "",
       canSubmitOrders: mem.canSubmitOrders,
       canApproveOrders: mem.canApproveOrders,
       canViewInvoices: mem.canViewInvoices,
@@ -202,6 +215,7 @@ function SupermarketsPage() {
     setMemberError(null);
     const perms = {
       branchIds: memberForm.branchIds,
+      teamRoleId: memberForm.teamRoleId || null,
       canSubmitOrders: memberForm.canSubmitOrders,
       canApproveOrders: memberForm.canApproveOrders,
       canViewInvoices: memberForm.canViewInvoices,
@@ -471,17 +485,26 @@ function SupermarketsPage() {
               as faturas do fechamento mensal — quem vê não necessariamente paga. O dono do
               supermercado sempre vê e paga.
             </p>
-            <button className={panel.primaryBtn} onClick={openAddMember}>Adicionar gerente</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className={panel.ghostBtn} onClick={() => setRolesModal(true)}>Cargos</button>
+              <button className={panel.primaryBtn} onClick={openAddMember}>Adicionar gerente</button>
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead><tr>
-                  <th>Nome</th><th>E-mail</th><th>Lojas</th><th>Solicita</th><th>Aprova</th>
+                  <th>Nome</th><th>Cargo</th><th>E-mail</th><th>Lojas</th><th>Solicita</th><th>Aprova</th>
                   <th>Vê faturas</th><th>Paga faturas</th><th>Ações</th>
                 </tr></thead>
                 <tbody>
                   {members.map((mem) => (
                     <tr key={mem.id}>
-                      <td>{mem.memberUser?.name ?? "—"}{mem.isOwner && <span className={panel.badge} style={{ marginLeft: 6 }}>dono</span>}</td>
+                      <td>{mem.memberUser?.name ?? "—"}</td>
+                      <td>
+                        <select value={mem.teamRoleId ?? ""} onChange={(e) => patchMember(mem, { teamRoleId: e.target.value || null })}>
+                          <option value="">— sem cargo —</option>
+                          {teamRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                      </td>
                       <td>{mem.memberUser?.email ?? "—"}</td>
                       <td>{memberScopeLabel(mem)}</td>
                       <td><input type="checkbox" disabled={mem.isOwner} checked={mem.canSubmitOrders}
@@ -498,12 +521,21 @@ function SupermarketsPage() {
                       </td>
                     </tr>
                   ))}
-                  {members.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum membro.</td></tr>}
+                  {members.length === 0 && <tr><td colSpan={9} className={panel.muted}>Nenhum membro.</td></tr>}
                 </tbody>
               </table>
             </div>
           </div>
         </Modal>
+      )}
+
+      {teamOf && rolesModal && (
+        <TeamRolesManager
+          roles={teamRoles}
+          supermarketId={teamOf.id}
+          onClose={() => setRolesModal(false)}
+          onChange={reloadTeamRoles}
+        />
       )}
 
       {teamOf && memberModal && (
@@ -522,6 +554,11 @@ function SupermarketsPage() {
                 <input type="password" minLength={4} value={memberForm.password} onChange={(e) => setMemberForm({ ...memberForm, password: e.target.value })} />
               </>
             )}
+            <label>Cargo na equipe</label>
+            <select value={memberForm.teamRoleId} onChange={(e) => setMemberForm({ ...memberForm, teamRoleId: e.target.value })}>
+              <option value="">— sem cargo —</option>
+              {teamRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
             <label>Lojas do gerente</label>
             <BranchScopeField
               branches={branchesForMarket(teamOf.id)}

@@ -5,16 +5,18 @@ import Sidebar from "@/src/components/supermarket/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import BranchScopeField from "@/src/components/supermarket/BranchScopeField";
+import TeamRolesManager from "@/src/components/TeamRolesManager";
 import panel from "@/styles/panel.module.scss";
 import {
   getMembers, addMember, updateMember, deleteMember, SupermarketMember,
 } from "@/src/services/supermarketService";
+import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getBranchesBySupermarket, Branch } from "@/src/services/branchService";
 import { useAuth } from "@/src/hooks/useAuth";
 import type { SupermarketMembership } from "@/src/services/authService";
 
 const emptyForm = {
-  name: "", email: "", password: "", branchIds: [] as string[],
+  name: "", email: "", password: "", branchIds: [] as string[], teamRoleId: "",
   canSubmitOrders: true, canApproveOrders: false, canViewInvoices: false, canPayInvoices: false,
 };
 
@@ -26,6 +28,8 @@ function TeamPage() {
 
   const [members, setMembers] = useState<SupermarketMember[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [roles, setRoles] = useState<TeamRole[]>([]);
+  const [rolesOpen, setRolesOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +38,14 @@ function TeamPage() {
 
   const load = useCallback(async () => {
     if (!supermarketId) return;
-    const [m, b] = await Promise.all([getMembers(supermarketId), getBranchesBySupermarket(supermarketId)]);
+    const [m, b, r] = await Promise.all([
+      getMembers(supermarketId),
+      getBranchesBySupermarket(supermarketId),
+      getTeamRoles().catch(() => []),
+    ]);
     setMembers(m);
     setBranches(b);
+    setRoles(r);
   }, [supermarketId]);
 
   useEffect(() => { load().catch(() => {}); }, [load]);
@@ -49,6 +58,7 @@ function TeamPage() {
         email: form.email,
         password: form.password,
         branchIds: form.branchIds,
+        teamRoleId: form.teamRoleId || null,
         canSubmitOrders: form.canSubmitOrders,
         canApproveOrders: form.canApproveOrders,
         canViewInvoices: form.canViewInvoices,
@@ -101,9 +111,12 @@ function TeamPage() {
           <header className={panel.header}>
             <h1>Equipe da rede</h1>
             {isOwner && (
-              <button className={panel.primaryBtn} onClick={() => { setError(null); setForm({ ...emptyForm }); setOpen(true); }}>
-                Adicionar gerente
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className={panel.ghostBtn} onClick={() => setRolesOpen(true)}>Cargos</button>
+                <button className={panel.primaryBtn} onClick={() => { setError(null); setForm({ ...emptyForm }); setOpen(true); }}>
+                  Adicionar gerente
+                </button>
+              </div>
             )}
           </header>
           <p className={panel.muted}>
@@ -121,13 +134,22 @@ function TeamPage() {
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead><tr>
-                  <th>Nome</th><th>E-mail</th><th>Lojas</th><th>Solicita</th><th>Aprova</th>
+                  <th>Nome</th><th>Cargo</th><th>E-mail</th><th>Lojas</th><th>Solicita</th><th>Aprova</th>
                   <th>Vê faturas</th><th>Paga faturas</th><th>Ações</th>
                 </tr></thead>
                 <tbody>
                   {members.map((m) => (
                     <tr key={m.id}>
-                      <td>{m.memberUser?.name ?? "—"}{m.isOwner && <span className={panel.badge} style={{ marginLeft: 6 }}>dono</span>}</td>
+                      <td>{m.memberUser?.name ?? "—"}</td>
+                      <td>
+                        <select
+                          value={m.teamRoleId ?? ""}
+                          onChange={(e) => patch(m, { teamRoleId: e.target.value || null })}
+                        >
+                          <option value="">— sem cargo —</option>
+                          {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                      </td>
                       <td>{m.memberUser?.email ?? "—"}</td>
                       <td>
                         {scopeLabel(m)}
@@ -156,7 +178,7 @@ function TeamPage() {
                       </td>
                     </tr>
                   ))}
-                  {members.length === 0 && <tr><td colSpan={8}>Nenhum membro.</td></tr>}
+                  {members.length === 0 && <tr><td colSpan={9}>Nenhum membro.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -173,6 +195,11 @@ function TeamPage() {
             <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <label>Senha de acesso</label>
             <input type="password" minLength={4} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            <label>Cargo na equipe</label>
+            <select value={form.teamRoleId} onChange={(e) => setForm({ ...form, teamRoleId: e.target.value })}>
+              <option value="">— sem cargo —</option>
+              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
             <label>Lojas do gerente</label>
             <BranchScopeField branches={branches} value={form.branchIds} onChange={(branchIds) => setForm({ ...form, branchIds })} />
             <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -197,6 +224,10 @@ function TeamPage() {
             <button className={panel.primaryBtn} onClick={save} disabled={!form.name || !form.email || !form.password}>Salvar</button>
           </div>
         </Modal>
+      )}
+
+      {rolesOpen && (
+        <TeamRolesManager roles={roles} onClose={() => setRolesOpen(false)} onChange={load} />
       )}
 
       {scopeOf && (

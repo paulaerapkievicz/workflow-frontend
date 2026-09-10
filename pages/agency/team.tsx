@@ -10,6 +10,8 @@ import {
   deactivateAgencyMember, AgencyMember, LeaderPayType, PAY_TYPE_LABELS,
 } from "@/src/services/agencyMemberService";
 import { createInvite } from "@/src/services/inviteService";
+import TeamRolesManager from "@/src/components/TeamRolesManager";
+import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
 import { getBranches, Branch } from "@/src/services/branchService";
 import { getSupermarkets, Supermarket } from "@/src/services/supermarketService";
@@ -32,10 +34,12 @@ function TeamPage() {
   const [freelancers, setFreelancers] = useState<AgencyFreelancer[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [supermarkets, setSupermarkets] = useState<Supermarket[]>([]);
+  const [roles, setRoles] = useState<TeamRole[]>([]);
+  const [rolesOpen, setRolesOpen] = useState(false);
   const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", payType: "mensal" as LeaderPayType, payAmount: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", payType: "mensal" as LeaderPayType, payAmount: "", teamRoleId: "" });
   const [createError, setCreateError] = useState<string | null>(null);
 
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -54,16 +58,18 @@ function TeamPage() {
   const [payError, setPayError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [m, fl, b, sm] = await Promise.all([
+    const [m, fl, b, sm, r] = await Promise.all([
       getAgencyMembers(),
       agencyId ? getMyFreelancers(agencyId) : Promise.resolve([]),
       getBranches().catch(() => []),
       getSupermarkets().catch(() => []),
+      getTeamRoles().catch(() => []),
     ]);
     setMembers(m);
     setFreelancers(fl);
     setBranches(b);
     setSupermarkets(sm);
+    setRoles(r);
   }, [agencyId]);
 
   useEffect(() => { load().catch(() => {}); }, [load]);
@@ -85,10 +91,10 @@ function TeamPage() {
     try {
       await createAgencyMember({
         name: form.name, email: form.email, password: form.password, phone: form.phone || undefined,
-        payType: form.payType, payAmount: amount,
+        payType: form.payType, payAmount: amount, teamRoleId: form.teamRoleId || null,
       });
       setCreateOpen(false);
-      setForm({ name: "", email: "", password: "", phone: "", payType: "mensal", payAmount: "" });
+      setForm({ name: "", email: "", password: "", phone: "", payType: "mensal", payAmount: "", teamRoleId: "" });
       setMsg({ type: "success", text: "Líder cadastrado." });
       await load();
     } catch (err) {
@@ -183,6 +189,7 @@ function TeamPage() {
           <header className={panel.header}>
             <h1>Líderes da agência</h1>
             <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button className={panel.ghostBtn} onClick={() => setRolesOpen(true)}>Cargos</button>
               <button className={panel.ghostBtn} onClick={openInvite}>Convidar líder</button>
               <button className={panel.primaryBtn} onClick={() => { setCreateError(null); setCreateOpen(true); }}>
                 Cadastrar líder
@@ -199,12 +206,24 @@ function TeamPage() {
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
               <thead>
-                <tr><th>Nome</th><th>E-mail</th><th>Pagamento</th><th>Carteira</th><th>Escopo</th><th>Status</th><th>Ações</th></tr>
+                <tr><th>Nome</th><th>Cargo</th><th>E-mail</th><th>Pagamento</th><th>Carteira</th><th>Escopo</th><th>Status</th><th>Ações</th></tr>
               </thead>
               <tbody>
                 {members.map((m) => (
                   <tr key={m.id}>
                     <td>{m.name ?? "—"}</td>
+                    <td>
+                      <select
+                        value={m.teamRoleId ?? ""}
+                        onChange={async (e) => {
+                          try { await updateAgencyMember(m.id, { teamRoleId: e.target.value || null }); await load(); }
+                          catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+                        }}
+                      >
+                        <option value="">— sem cargo —</option>
+                        {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                    </td>
                     <td>{m.email ?? "—"}</td>
                     <td>{m.payType ? `${PAY_TYPE_LABELS[m.payType]} · R$ ${Number(m.payAmount ?? 0).toFixed(2)}` : "—"}</td>
                     <td>R$ {Number(m.availableBalance).toFixed(2)}</td>
@@ -231,7 +250,7 @@ function TeamPage() {
                     </td>
                   </tr>
                 ))}
-                {members.length === 0 && <tr><td colSpan={7} className={panel.muted}>Nenhum líder cadastrado.</td></tr>}
+                {members.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum líder cadastrado.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -249,6 +268,11 @@ function TeamPage() {
             <input type="password" minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             <label>Telefone</label>
             <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <label>Cargo na equipe</label>
+            <select value={form.teamRoleId} onChange={(e) => setForm({ ...form, teamRoleId: e.target.value })}>
+              <option value="">— sem cargo —</option>
+              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
             <label>Forma de pagamento do líder</label>
             <select value={form.payType} onChange={(e) => setForm({ ...form, payType: e.target.value as LeaderPayType })}>
               {PAY_TYPES.map((t) => <option key={t} value={t}>{PAY_TYPE_LABELS[t]}</option>)}
@@ -349,6 +373,10 @@ function TeamPage() {
             <button className={panel.primaryBtn} onClick={savePay}>Salvar</button>
           </div>
         </Modal>
+      )}
+
+      {rolesOpen && (
+        <TeamRolesManager roles={roles} onClose={() => setRolesOpen(false)} onChange={load} />
       )}
     </>
   );

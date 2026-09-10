@@ -55,6 +55,8 @@ export interface SupermarketMember {
   canViewInvoices: boolean;
   canPayInvoices: boolean;
   isOwner: boolean;
+  teamRoleId?: string | null;
+  teamRole?: { id: string; name: string; position: number } | null;
   memberUser?: { id: string; name: string; email: string } | null;
   memberBranches?: { id: string; name: string }[];
 }
@@ -69,6 +71,7 @@ export const addMember = async (
     email: string;
     password: string;
     branchIds?: string[];
+    teamRoleId?: string | null;
     canSubmitOrders?: boolean;
     canApproveOrders?: boolean;
     canViewInvoices?: boolean;
@@ -81,6 +84,7 @@ export const updateMember = async (
   id: string,
   patch: {
     branchIds?: string[];
+    teamRoleId?: string | null;
     canSubmitOrders?: boolean;
     canApproveOrders?: boolean;
     canViewInvoices?: boolean;

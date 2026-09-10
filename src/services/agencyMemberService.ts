@@ -52,6 +52,8 @@ export interface AgencyMember {
   payType: LeaderPayType | null;
   payAmount: number | null;
   availableBalance: number;
+  teamRoleId?: string | null;
+  teamRole?: { id: string; name: string; position: number } | null;
   scope: { freelancerIds: string[]; branchIds: string[] };
   payments: AgencyMemberPayment[];
   jobCredits: LeaderJobCredit[];
@@ -69,13 +71,14 @@ export const createAgencyMember = async (payload: {
   phone?: string;
   payType: LeaderPayType;
   payAmount: number;
+  teamRoleId?: string | null;
   freelancerIds?: string[];
   branchIds?: string[];
 }): Promise<AgencyMember> => (await api.post("/agency/members", payload)).data;
 
 export const updateAgencyMember = async (
   id: string,
-  payload: { payType?: LeaderPayType; payAmount?: number; active?: boolean }
+  payload: { payType?: LeaderPayType; payAmount?: number; active?: boolean; teamRoleId?: string | null }
 ): Promise<AgencyMember> => (await api.put(`/agency/members/${id}`, payload)).data;
 
 export const setAgencyMemberScope = async (
