@@ -14,6 +14,8 @@ import {
   ORDER_STATUS_LABELS, ORDER_APPROVAL_LABELS, orderProgress, jobWasAbandoned, orderBranchNames,
 } from "@/src/services/orderService";
 import { formatShifts, formatShiftPeriods } from "@/src/services/jobService";
+import { AlertDot } from "@/src/components/AlertDot";
+import { jobStartedUnfilled, orderHasStartedUnfilled } from "@/src/services/unfilledAlerts";
 import { newShift, validateShifts, shiftDisplayName, ShiftInput } from "@/src/services/shifts";
 import ShiftsField from "@/src/components/ShiftsField";
 import { authService } from "@/src/services/authService";
@@ -57,6 +59,12 @@ function OrdersPage() {
   const [notes, setNotes] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const [itemModal, setItemModal] = useState<{ open: boolean; addToOrderId?: string }>({ open: false });
   const [draft, setDraft] = useState(emptyDraft());
@@ -268,7 +276,7 @@ function OrdersPage() {
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead>
-                  <tr><th>Data</th><th>Filial</th><th>Vagas</th><th>Preenchidas</th><th>Concluídas</th><th>Status</th><th></th></tr>
+                  <tr><th>Data</th><th>Filial</th><th>Vagas</th><th>Preenchidas</th><th>Concluídas</th><th>Status</th><th>Atenção</th><th></th></tr>
                 </thead>
                 <tbody>
                   {orders.map((o) => {
@@ -295,6 +303,11 @@ function OrdersPage() {
                           {abandoned && <span className={`${panel.badge} ${panel.badgeCanceled}`} style={{ marginLeft: 6 }}>desistência</span>}
                         </td>
                         <td>
+                          {orderHasStartedUnfilled(o, now) && (
+                            <AlertDot color="#DC2626" label="Vaga sem colaborador — horário já começou" blink />
+                          )}
+                        </td>
+                        <td>
                           <button className={panel.ghostBtn} onClick={() => setDetail(o)}>Ver</button>
                           {o.approvalStatus === "pending_approval" && canApprove && (
                             <>
@@ -315,7 +328,7 @@ function OrdersPage() {
                       </tr>
                     );
                   })}
-                  {orders.length === 0 && <tr><td colSpan={7} className={panel.muted}>Nenhum pedido ainda.</td></tr>}
+                  {orders.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum pedido ainda.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -332,12 +345,16 @@ function OrdersPage() {
             <label>Função</label>
             <select value={draft.categoryId} onChange={(e) => changeCategory(e.target.value)}>
               <option value="">Selecione…</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}{!hasAnyRate(c.id) ? " ⚠ sem valor/hora configurado" : ""}
-                </option>
+              {categories.filter((c) => hasAnyRate(c.id)).map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+            {categories.filter((c) => hasAnyRate(c.id)).length === 0 && (
+              <p className={panel.muted} style={{ fontSize: "0.8rem" }}>
+                Nenhuma função com valor/hora configurado ainda. Peça à agência para cadastrar os
+                valores/hora em Supermercados → “Valores/hora”.
+              </p>
+            )}
 
             <label>Filial (local do trabalho)</label>
             <select value={draft.branchId} onChange={(e) => changeBranch(e.target.value)} disabled={!!lockedBranchId}>
@@ -398,7 +415,7 @@ function OrdersPage() {
             {detail.notes && <p>{detail.notes}</p>}
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
-                <thead><tr><th>Vaga</th><th>Filial</th><th>Função</th><th>Turno</th><th>Horário</th><th>Colaborador</th><th>Status</th></tr></thead>
+                <thead><tr><th>Vaga</th><th>Filial</th><th>Função</th><th>Turno</th><th>Horário</th><th>Colaborador</th><th>Status</th><th>Atenção</th></tr></thead>
                 <tbody>
                   {(detail.orderJobs ?? []).map((j) => (
                     <tr key={j.id}>
@@ -409,6 +426,11 @@ function OrdersPage() {
                       <td>{formatShifts(j.shifts)}</td>
                       <td>{j.assignedFreelancer?.name ?? "—"}</td>
                       <td><StatusBadge status={j.status} /></td>
+                      <td>
+                        {jobStartedUnfilled(j, now)
+                          ? <AlertDot color="#DC2626" label="Vaga sem colaborador — horário já começou" blink />
+                          : <span className={panel.muted}>—</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

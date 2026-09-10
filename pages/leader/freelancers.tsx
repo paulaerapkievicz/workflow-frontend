@@ -13,6 +13,7 @@ import {
 } from "@/src/services/agencyService";
 import { createInvite } from "@/src/services/inviteService";
 import { getCategories, Category } from "@/src/services/categoryService";
+import FreelancerCategoriesEditor from "@/src/components/FreelancerCategoriesEditor";
 import {
   updateFreelancer,
   getFreelancerCategories,
@@ -326,40 +327,19 @@ function LeaderFreelancersPage() {
 
             <label>Funções que o colaborador exerce e o valor/hora que ele recebe</label>
             <p className={panel.muted} style={{ fontSize: "0.8rem", margin: 0 }}>
-              Toda função precisa de um valor/hora para ser salva — sem ele o colaborador não vê nem aceita vagas dessa função.
+              Escolha uma função ativa, informe o valor/hora e clique em Adicionar. Sem valor/hora o
+              colaborador não vê nem aceita vagas dessa função.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {categories.map((c) => {
-                const added = (catsByFreelancer[editId] ?? []).includes(c.id);
-                const rateValue = rateByFreelancer[editId]?.[c.id] ?? "";
-                return (
-                  <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ minWidth: 160 }}>{c.name}</span>
-                    <input
-                      type="number" min="0.01" step="0.01" placeholder="R$/h"
-                      style={{ width: 110 }}
-                      value={rateValue}
-                      onChange={(e) => setRateInput(editId, c.id, e.target.value)}
-                      onBlur={added ? (e) => commitRate(editId, c.id, e.target.value) : undefined}
-                    />
-                    {added ? (
-                      <button type="button" className={panel.secondaryBtn} onClick={() => removeCategory(editId, c.id)}>
-                        Remover
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={panel.ghostBtn}
-                        disabled={!(Number(rateValue) > 0)}
-                        onClick={() => addCategory(editId, c.id, rateValue)}
-                      >
-                        Adicionar
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <FreelancerCategoriesEditor
+              categories={categories}
+              addedIds={catsByFreelancer[editId] ?? []}
+              rates={rateByFreelancer[editId] ?? {}}
+              categoryName={categoryName}
+              onRateInput={(cid, v) => setRateInput(editId, cid, v)}
+              onAdd={(cid, v) => addCategory(editId, cid, v)}
+              onCommitRate={(cid, v) => commitRate(editId, cid, v)}
+              onRemove={(cid) => removeCategory(editId, cid)}
+            />
             {catMsg && <p className={catMsg.type === "ok" ? panel.success : panel.error}>{catMsg.text}</p>}
 
             {editError && <p className={panel.error}>{editError}</p>}

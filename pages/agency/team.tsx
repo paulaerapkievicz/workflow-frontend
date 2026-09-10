@@ -11,6 +11,7 @@ import {
 } from "@/src/services/agencyMemberService";
 import { createInvite } from "@/src/services/inviteService";
 import TeamRolesManager from "@/src/components/TeamRolesManager";
+import ScopePicker from "@/src/components/ScopePicker";
 import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
 import { getBranches, Branch } from "@/src/services/branchService";
@@ -79,9 +80,6 @@ function TeamPage() {
     supermarkets.forEach((s) => { map[s.id] = s.name; });
     return (id: string) => map[id] ?? "—";
   }, [supermarkets]);
-
-  const toggle = (list: string[], id: string) =>
-    list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 
   const submitCreate = async () => {
     setCreateError(null);
@@ -318,36 +316,22 @@ function TeamPage() {
           <div className={panel.form}>
             <p className={panel.muted}>
               Marque os colaboradores e/ou as filiais que este líder pode gerenciar. Deixe tudo
-              desmarcado para dar acesso à rede toda.
+              desmarcado para dar acesso à rede toda. As duas dimensões são independentes.
             </p>
             <label>Colaboradores</label>
-            <div style={{ maxHeight: 160, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 8, padding: 8 }}>
-              {freelancers.map((f) => (
-                <label key={f.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={scopeFreelancers.includes(f.id)}
-                    onChange={() => setScopeFreelancers((cur) => toggle(cur, f.id))}
-                  />
-                  {f.name}
-                </label>
-              ))}
-              {freelancers.length === 0 && <span className={panel.muted}>Nenhum colaborador.</span>}
-            </div>
+            <ScopePicker
+              items={freelancers.map((f) => ({ id: f.id, label: f.name }))}
+              value={scopeFreelancers}
+              onChange={setScopeFreelancers}
+              allLabel="Todos os colaboradores"
+            />
             <label>Filiais</label>
-            <div style={{ maxHeight: 160, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 8, padding: 8 }}>
-              {branches.map((b) => (
-                <label key={b.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={scopeBranches.includes(b.id)}
-                    onChange={() => setScopeBranches((cur) => toggle(cur, b.id))}
-                  />
-                  {b.name} <span className={panel.muted}>· {supermarketName(b.supermarketId)}</span>
-                </label>
-              ))}
-              {branches.length === 0 && <span className={panel.muted}>Nenhuma filial.</span>}
-            </div>
+            <ScopePicker
+              items={branches.map((b) => ({ id: b.id, label: b.name, sublabel: supermarketName(b.supermarketId) }))}
+              value={scopeBranches}
+              onChange={setScopeBranches}
+              allLabel="Todas as filiais"
+            />
             {scopeError && <p className={panel.error}>{scopeError}</p>}
             <button className={panel.primaryBtn} onClick={saveScope}>Salvar escopo</button>
           </div>

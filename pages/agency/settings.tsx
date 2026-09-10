@@ -5,7 +5,17 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
-import { getAgencySettings, updateAgencySettings, AgencySettings } from "@/src/services/agencySettingsService";
+import {
+  getAgencySettings, updateAgencySettings, AgencySettings, UnfilledAlertTier,
+} from "@/src/services/agencySettingsService";
+
+const newTier = (): UnfilledAlertTier => ({
+  id: `tier-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  minutesBefore: 30,
+  color: "#F97316",
+  label: "",
+  blink: false,
+});
 
 function SettingsPage() {
   const [settings, setSettings] = useState<AgencySettings | null>(null);
@@ -29,14 +39,19 @@ function SettingsPage() {
     uniformPrice: "0",
     allowSelfRegistration: false,
   });
+  const [tiers, setTiers] = useState<UnfilledAlertTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const patchTier = (id: string, p: Partial<UnfilledAlertTier>) =>
+    setTiers((cur) => cur.map((t) => (t.id === id ? { ...t, ...p } : t)));
 
   useEffect(() => {
     getAgencySettings()
       .then((s) => {
         setSettings(s);
+        setTiers(s.unfilledAlertTiers ?? []);
         setForm({
           checkinRadius: String(s.checkinRadius),
           cancellationWindowMinutes: String(s.cancellationWindowMinutes),
@@ -82,12 +97,18 @@ function SettingsPage() {
         earlyCheckoutToleranceMinutes: Number(form.earlyCheckoutToleranceMinutes),
         missingCheckoutGraceMinutes: Number(form.missingCheckoutGraceMinutes),
         unfilledAlertLeadMinutes: Number(form.unfilledAlertLeadMinutes),
+        unfilledAlertTiers: tiers.map((t) => ({
+          ...t,
+          minutesBefore: Number(t.minutesBefore) || 0,
+          label: t.label.trim() || `${Number(t.minutesBefore) || 0} min`,
+        })),
         shortNoticeWithdrawalMinutes: Number(form.shortNoticeWithdrawalMinutes),
         onboardingRequired: form.onboardingRequired,
         uniformPrice: Number(form.uniformPrice),
         allowSelfRegistration: form.allowSelfRegistration,
       });
       setSettings(s);
+      setTiers(s.unfilledAlertTiers ?? []);
       setMsg({ type: "ok", text: "Configurações salvas." });
     } catch (err) {
       setMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
@@ -209,6 +230,60 @@ function SettingsPage() {
                 <label>Antecedência do aviso de vaga sem colaborador (minutos)</label>
                 <input type="number" min={15} max={1440} step={15} value={form.unfilledAlertLeadMinutes}
                   onChange={(e) => setForm({ ...form, unfilledAlertLeadMinutes: e.target.value })} />
+                <span className={panel.muted}>Alimenta a página <strong>Alertas</strong>.</span>
+
+                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                <strong>Marcações de vaga sem colaborador (Convocações)</strong>
+                <span className={panel.muted}>
+                  Bolinhas coloridas nas vagas ainda <strong>disponíveis</strong> conforme se
+                  aproximam do horário de início. Aparecem por vaga e somadas no pedido, na tela de
+                  Convocações. Configure de menos urgente (mais minutos antes) para mais urgente.
+                </span>
+                {tiers.map((t) => (
+                  <div key={t.id} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    <input
+                      type="number" min={0} max={1440} step={5}
+                      style={{ width: 84 }}
+                      value={t.minutesBefore}
+                      onChange={(e) => patchTier(t.id, { minutesBefore: Number(e.target.value) })}
+                      aria-label="Minutos antes do início"
+                    />
+                    <span className={panel.muted} style={{ fontSize: "0.8rem" }}>min antes</span>
+                    <input
+                      type="color"
+                      value={/^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : "#F97316"}
+                      onChange={(e) => patchTier(t.id, { color: e.target.value })}
+                      style={{ width: 42, height: 32, padding: 0 }}
+                      aria-label="Cor"
+                    />
+                    <input
+                      type="text" maxLength={40} placeholder="Rótulo (ex.: Falta 30 min)"
+                      style={{ flex: "1 1 140px", minWidth: 120 }}
+                      value={t.label}
+                      onChange={(e) => patchTier(t.id, { label: e.target.value })}
+                    />
+                    <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.85rem" }}>
+                      <input type="checkbox" checked={t.blink}
+                        onChange={(e) => patchTier(t.id, { blink: e.target.checked })} />
+                      piscar
+                    </label>
+                    <button type="button" className={panel.secondaryBtn}
+                      onClick={() => setTiers((cur) => cur.filter((x) => x.id !== t.id))}>
+                      Remover
+                    </button>
+                  </div>
+                ))}
+                {tiers.length === 0 && (
+                  <span className={panel.muted} style={{ fontSize: "0.85rem" }}>Nenhuma faixa — nenhuma bolinha será exibida.</span>
+                )}
+                {tiers.length < 6 && (
+                  <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
+                    onClick={() => setTiers((cur) => [...cur, newTier()])}>
+                    + Adicionar faixa
+                  </button>
+                )}
+
+                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
 
                 <label>Desistência considerada &quot;de última hora&quot; (minutos antes do início)</label>
                 <input type="number" min={0} max={1440} step={15} value={form.shortNoticeWithdrawalMinutes}

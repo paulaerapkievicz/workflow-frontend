@@ -1,0 +1,28 @@
+.dot {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  vertical-align: middle;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset;
+}
+
+.blink {
+  animation: dotPulse 1.1s ease-in-out infinite;
+}
+
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.82); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blink { animation: none; }
+}

@@ -1,5 +1,17 @@
 import api from "@/src/services/api";
 
+/** Faixa de marcação de vaga sem colaborador (bolinha em Convocações). */
+export interface UnfilledAlertTier {
+  id: string;
+  /** Dispara quando faltam <= isto (min) para o início — 0 = na hora ou depois. */
+  minutesBefore: number;
+  /** Cor da bolinha (#RGB ou #RRGGBB). */
+  color: string;
+  label: string;
+  /** A bolinha pisca enquanto a vaga não é preenchida. */
+  blink: boolean;
+}
+
 export interface AgencySettings {
   id: string;
   /** Raio máximo (m) do endereço da filial para aceitar o check-in. */
@@ -28,6 +40,8 @@ export interface AgencySettings {
   missingCheckoutGraceMinutes: number;
   /** Antecedência (min) do aviso de vaga ainda sem colaborador. */
   unfilledAlertLeadMinutes: number;
+  /** Faixas das bolinhas de "vaga sem colaborador" na tela de Convocações (mais distante → mais urgente). */
+  unfilledAlertTiers: UnfilledAlertTier[];
   /** Abaixo desta antecedência (min) do início, uma desistência é "de última hora". */
   shortNoticeWithdrawalMinutes: number;
   /** Exige onboarding (perfil contratual + uniforme aprovado) antes de aceitar vagas. */

@@ -23,6 +23,8 @@ import { AgencyFreelancer } from "@/src/services/agencyService";
 import { useAuth } from "@/src/hooks/useAuth";
 import JobManageModal from "@/src/components/agency/JobManageModal";
 import FreelancerChip, { FreelancerProfileBody } from "@/src/components/FreelancerChip";
+import { AlertDot, AlertDots } from "@/src/components/AlertDot";
+import { orderUnfilledTiers, jobUnfilledTier } from "@/src/services/unfilledAlerts";
 
 const EVENT_LABELS: Record<string, string> = {
   "check-in": "Check-in", "check-out": "Check-out", "break-start": "Pausa",
@@ -83,6 +85,12 @@ function LeaderOrdersPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [manageJob, setManageJob] = useState<Job | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const alertTiers = settings?.unfilledAlertTiers ?? [];
 
   const [profileFreelancer, setProfileFreelancer] = useState<NonNullable<Job["assignedFreelancer"]> | null>(null);
   const [reassignTarget, setReassignTarget] = useState<Job | null>(null);
@@ -157,7 +165,7 @@ function LeaderOrdersPage() {
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead>
-                  <tr><th>Data</th><th>Supermercado</th><th>Filial</th><th>Vagas</th><th>Preenchidas</th><th>Concluídas</th><th>Status</th><th></th></tr>
+                  <tr><th>Data</th><th>Supermercado</th><th>Filial</th><th>Vagas</th><th>Preenchidas</th><th>Concluídas</th><th>Status</th><th>Atenção</th><th></th></tr>
                 </thead>
                 <tbody>
                   {rows.map((o) => {
@@ -175,11 +183,12 @@ function LeaderOrdersPage() {
                           <span className={panel.badge}>{ORDER_STATUS_LABELS[o.status]}</span>
                           {abandoned && <span className={`${panel.badge} ${panel.badgeCanceled}`} style={{ marginLeft: 6 }}>desistência</span>}
                         </td>
+                        <td><AlertDots tiers={orderUnfilledTiers(o, alertTiers, now)} /></td>
                         <td><button className={panel.ghostBtn} onClick={() => setDetailId(o.id)}>Ver vagas</button></td>
                       </tr>
                     );
                   })}
-                  {rows.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum pedido.</td></tr>}
+                  {rows.length === 0 && <tr><td colSpan={9} className={panel.muted}>Nenhum pedido.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -191,7 +200,7 @@ function LeaderOrdersPage() {
         <Modal title={`Pedido — ${detail.orderSupermarket?.name ?? ""}`} onClose={() => setDetailId(null)}>
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
-              <thead><tr><th>Vaga</th><th>Filial</th><th>Função</th><th>Turno</th><th>Horário</th><th>Colaborador</th><th>Status</th><th>Ações</th></tr></thead>
+              <thead><tr><th>Vaga</th><th>Filial</th><th>Função</th><th>Turno</th><th>Horário</th><th>Colaborador</th><th>Status</th><th>Atenção</th><th>Ações</th></tr></thead>
               <tbody>
                 {(detail.orderJobs ?? []).flatMap((j) => [
                   <tr key={j.id}>
@@ -207,6 +216,17 @@ function LeaderOrdersPage() {
                       />
                     </td>
                     <td><StatusBadge status={j.status} /></td>
+                    <td>
+                      {(() => {
+                        const tier = jobUnfilledTier(j, alertTiers, now);
+                        return tier ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <AlertDot color={tier.color} label={tier.label} blink={tier.blink} />
+                            <span className={panel.muted} style={{ fontSize: "0.8rem" }}>{tier.label}</span>
+                          </span>
+                        ) : <span className={panel.muted}>—</span>;
+                      })()}
+                    </td>
                     <td>
                       {j.status !== "canceled" && (
                         <button className={panel.ghostBtn} onClick={() => setManageJob(j)}>Gerenciar</button>
@@ -256,7 +276,7 @@ function LeaderOrdersPage() {
                     </td>
                   </tr>,
                   <tr key={`${j.id}-mov`}>
-                    <td colSpan={8} style={{ background: "var(--surface-2)" }}>
+                    <td colSpan={9} style={{ background: "var(--surface-2)" }}>
                       <details>
                         <summary style={{ cursor: "pointer", fontSize: "0.85rem" }}>Movimentações</summary>
                         <MovementLog job={j} />

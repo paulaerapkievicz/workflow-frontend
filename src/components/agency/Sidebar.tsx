@@ -12,6 +12,7 @@ export default function AgencySidebar() {
       items={[
         { href: "/agency/dashboard", label: "Dashboard", icon: "▚" },
         { href: "/agency/freelancers", label: "Colaboradores", icon: "👥" },
+        { href: "/agency/categories", label: "Funções", icon: "🏷️" },
         { href: "/agency/onboarding", label: "Onboarding", icon: "📝", badge: uniformsToShip + selfiesToReview + registrationsToApprove },
         { href: "/agency/supermarkets", label: "Gestão de Clientes", icon: "🏬", badge: branchesToApprove },
         { href: "/agency/team", label: "Equipe", icon: "🧑‍💼" },
