@@ -1,4 +1,5 @@
 import api from "@/src/services/api";
+import type { StatusColors } from "@/src/services/statusColors";
 
 /** Faixa de marcação de vaga sem colaborador (bolinha em Convocações). */
 export interface UnfilledAlertTier {
@@ -24,6 +25,14 @@ export interface AgencySettings {
   breaksEnabled: boolean;
   /** Limite de minutos de pausa por turno (null = sem limite; pode ser sobrescrito por vaga). */
   breakLimitMinutes: number | null;
+  /** Intervalo padrão (min) descontável de um turno da vaga. */
+  defaultBreakMinutes: number;
+  /** Teto de horas de um único turno (jornada legal). */
+  maxShiftHours: number;
+  /** Teto de horas somadas de todos os turnos de uma vaga (jornada legal). */
+  maxJobHours: number;
+  /** Cores dos 6 tons dos badges de status. */
+  statusColors: StatusColors;
   /** Antecedência máxima (min) para bater o check-in antes do início do turno. */
   checkinEarlyToleranceMinutes: number;
   /** Liga/desliga o controle de ocorrências das vagas (atraso, falta, saída antecipada…). */

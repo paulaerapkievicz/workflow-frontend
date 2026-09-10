@@ -28,6 +28,8 @@ export interface JobShift {
   checkInAt?: string | null;
   checkOutAt?: string | null;
   workedMinutes?: number | null;
+  /** Intervalo (min) não remunerado desse turno. */
+  breakMinutes?: number | null;
   breaks?: JobShiftBreak[];
 }
 
@@ -65,6 +67,9 @@ export interface Job {
   breaksEnabled?: boolean | null;
   breakLimitMinutes?: number | null;
   checkinEarlyToleranceMinutes?: number | null;
+  defaultBreakMinutes?: number | null;
+  maxShiftHours?: number | string | null;
+  maxJobHours?: number | string | null;
   /** @deprecated agora é configuração da agência */
   photosRequired?: boolean;
   /** @deprecated agora é configuração da agência */
@@ -105,6 +110,8 @@ export interface ShiftPayload {
   nominalPeriod?: ShiftPeriod | null;
   label?: string | null;
   custom?: boolean;
+  breakMinutes?: number;
+  useDefaultBreak?: boolean;
 }
 
 /** Edição de uma vaga ainda disponível (não aceita). */
@@ -138,6 +145,9 @@ export interface JobConfigInput {
   breaksEnabled?: boolean | null;
   breakLimitMinutes?: number | null;
   checkinEarlyToleranceMinutes?: number | null;
+  defaultBreakMinutes?: number | null;
+  maxShiftHours?: number | null;
+  maxJobHours?: number | null;
 }
 
 /** Agência edita a vaga: função/turno/título (pendente) + overrides de configuração. */
@@ -167,6 +177,14 @@ export const releaseJob = async (id: string, reason?: string): Promise<Job> =>
 
 export const registerNoShow = async (id: string, reason: string): Promise<Job> =>
   (await api.post(`/jobs/${id}/no-show`, { reason })).data;
+
+/** Agência/líder encerra uma vaga vencida que ficou sem colaborador. */
+export const closeUnfilledJob = async (id: string): Promise<Job> =>
+  (await api.post(`/agency/jobs/${id}/close-unfilled`)).data;
+
+/** Fecha em lote as vagas vencidas sem colaborador (de um pedido ou de toda a rede). */
+export const closeExpiredUnfilled = async (orderId?: string): Promise<{ closed: number }> =>
+  (await api.post(`/agency/jobs/close-expired-unfilled`, orderId ? { orderId } : {})).data;
 
 /** Agência encerra o turno em andamento no lugar do colaborador (sem exigir foto/geofence dele). */
 export const forceCheckoutJob = async (id: string, reason: string): Promise<Job> =>
@@ -285,6 +303,17 @@ export const mapUrl = (address?: string | null) =>
 
 export const mapEmbedUrl = (address?: string | null) =>
   address ? `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed` : null;
+
+/** Vaga ainda disponível (pendente, sem colaborador) cuja data de execução já passou. */
+export const isExpiredUnfilled = (
+  j: Pick<Job, "status" | "freelancerId" | "startTime"> & { assignedFreelancer?: unknown | null }
+): boolean => {
+  if (!["pending", "awaiting_approval"].includes(j.status)) return false;
+  if (j.freelancerId || j.assignedFreelancer) return false;
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  return new Date(j.startTime).getTime() < startOfToday.getTime();
+};
 
 export const STATUS_LABELS: Record<JobStatus, string> = {
   pending: "Disponível",

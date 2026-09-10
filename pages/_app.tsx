@@ -5,10 +5,12 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'react-quill-new/dist/quill.snow.css';
 import Header from '@/src/components/Header';
 import Footer from '@/src/components/Footer';
+import StatusColorVars from '@/src/components/StatusColorVars';
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <StatusColorVars />
       <Header />
       <div style={{ flex: 1, paddingTop: '64px', display: 'flex', flexDirection: 'column' }}>
         <Component {...pageProps} />

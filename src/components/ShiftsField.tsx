@@ -4,9 +4,13 @@ import {
   SHIFT_PERIODS,
   ShiftInput,
   ShiftPeriod,
+  LaborLimits,
   newShift,
   crossesMidnight,
   shiftDurationMinutes,
+  shiftNetMinutes,
+  shiftBreakMinutes,
+  totalNetMinutes,
   formatDuration,
   validateShifts,
   shiftPeriodFromTime,
@@ -23,6 +27,8 @@ interface Props {
   disabled?: boolean;
   /** Mostra a mensagem de validação embaixo (default: true). */
   showError?: boolean;
+  /** Tetos de jornada + intervalo padrão da agência. */
+  limits?: LaborLimits;
 }
 
 /**
@@ -30,14 +36,17 @@ interface Props {
  * com início/fim arbitrários (pode virar o dia), rótulo de período opcional e
  * intervalo/lacuna entre turnos. Substitui o antigo seletor de períodos fixos.
  */
-export default function ShiftsField({ value, onChange, disabled, showError = true }: Props) {
+export default function ShiftsField({ value, onChange, disabled, showError = true, limits }: Props) {
   const patch = (id: string, p: Partial<ShiftInput>) =>
     onChange(value.map((s) => (s.id === id ? { ...s, ...p } : s)));
 
   const remove = (id: string) => onChange(value.filter((s) => s.id !== id));
   const add = (period?: ShiftPeriod) => onChange([...value, newShift(period)]);
 
-  const error = useMemo(() => validateShifts(value), [value]);
+  const error = useMemo(() => validateShifts(value, limits), [value, limits]);
+  const totalNet = useMemo(() => totalNetMinutes(value, limits), [value, limits]);
+  const overJobLimit = !!limits && totalNet > limits.maxJobMinutes;
+  const hasDefaultBreak = !!limits && limits.defaultBreakMinutes > 0;
 
   const sorted = useMemo(
     () => [...value].sort((a, b) => toMin(a.startTime) - toMin(b.startTime)),
@@ -66,6 +75,8 @@ export default function ShiftsField({ value, onChange, disabled, showError = tru
       {value.map((s, idx) => {
         const wraps = crossesMidnight(s);
         const dur = shiftDurationMinutes(s);
+        const brk = shiftBreakMinutes(s, limits);
+        const net = shiftNetMinutes(s, limits);
         return (
           <div key={s.id} className={styles.row} style={{ position: "relative" }}>
             <div className={styles.field}>
@@ -115,8 +126,43 @@ export default function ShiftsField({ value, onChange, disabled, showError = tru
                 onChange={(e) => patch(s.id, { endTime: e.target.value })}
               />
             </div>
+            <div className={styles.field}>
+              <label>Intervalo (min)</label>
+              <input
+                type="number"
+                min={0}
+                max={480}
+                step={5}
+                value={s.useDefaultBreak ? limits?.defaultBreakMinutes ?? 0 : s.breakMinutes ?? 0}
+                disabled={disabled || s.useDefaultBreak}
+                onChange={(e) => patch(s.id, { breakMinutes: Math.max(0, Number(e.target.value) || 0) })}
+              />
+              {hasDefaultBreak && (
+                <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.78rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={!!s.useDefaultBreak}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      patch(s.id, {
+                        useDefaultBreak: e.target.checked,
+                        breakMinutes: e.target.checked ? limits?.defaultBreakMinutes ?? 0 : 0,
+                      })
+                    }
+                  />
+                  padrão ({limits?.defaultBreakMinutes}min)
+                </label>
+              )}
+            </div>
             <div className={styles.meta}>
-              <span>{formatDuration(dur)}</span>
+              <span>
+                {formatDuration(net)}
+                {brk > 0 && (
+                  <span className={styles.midnight} style={{ textDecoration: "line-through", marginLeft: 4 }}>
+                    {formatDuration(dur)}
+                  </span>
+                )}
+              </span>
               {wraps && <span className={styles.midnight}>vira o dia ↴</span>}
             </div>
             <button
@@ -154,6 +200,13 @@ export default function ShiftsField({ value, onChange, disabled, showError = tru
           })}
         </div>
       )}
+
+      <div className={styles.meta} style={{ marginTop: 4 }}>
+        <span style={{ color: overJobLimit ? "var(--danger)" : "var(--text)" }}>
+          Total contratado: <strong>{formatDuration(totalNet)}</strong>
+          {limits ? ` (máx. ${formatDuration(limits.maxJobMinutes)} por vaga)` : ""}
+        </span>
+      </div>
 
       {showError && error && <p className={styles.error}>{error}</p>}
     </div>

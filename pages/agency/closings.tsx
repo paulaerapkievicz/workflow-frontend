@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import StatusBadge from "@/src/components/StatusBadge";
 import panel from "@/styles/panel.module.scss";
 import { getOrders } from "@/src/services/orderService";
 import { getBranches, Branch } from "@/src/services/branchService";
@@ -204,7 +205,7 @@ function ClosingsPage() {
                     <td>{money(c.totalAmount)}</td>
                     <td>{adjTotal > 0 ? `- ${money(adjTotal)}` : "—"}</td>
                     <td><strong>{money(closingNetAmount(c))}</strong></td>
-                    <td><span className={panel.badge}>{CLOSING_STATUS_LABELS[c.status]}</span></td>
+                    <td><StatusBadge family="closing" status={c.status} label={CLOSING_STATUS_LABELS[c.status]} /></td>
                     <td>
                       <button className={panel.ghostBtn} onClick={() => openAdjustments(c)}>
                         Contestações{pend ? ` (${pend})` : ""}
@@ -242,7 +243,7 @@ function ClosingsPage() {
                     )}
                   </td>
                   <td>- {money(a.amount)}</td>
-                  <td><span className={panel.badge}>{ADJUSTMENT_STATUS_LABELS[a.status]}</span></td>
+                  <td><StatusBadge family="adjustment" status={a.status} label={ADJUSTMENT_STATUS_LABELS[a.status]} /></td>
                   <td>
                     {a.status === "pending" && (
                       <>

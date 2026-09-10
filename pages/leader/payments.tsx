@@ -3,6 +3,7 @@ import Head from "next/head";
 import Sidebar from "@/src/components/leader/Sidebar";
 import RevokedNotice from "@/src/components/leader/RevokedNotice";
 import RequireAuth from "@/src/components/RequireAuth";
+import StatusBadge from "@/src/components/StatusBadge";
 import WithdrawForm from "@/src/components/WithdrawForm";
 import panel from "@/styles/panel.module.scss";
 import {
@@ -70,7 +71,7 @@ function LeaderPayments() {
                         <td>{c.jobTitle ?? "—"}</td>
                         <td>{c.freelancerName ?? "—"}</td>
                         <td>R$ {Number(c.amount).toFixed(2)}</td>
-                        <td><span className={panel.badge}>{CREDIT_STATUS_LABELS[c.status]}</span></td>
+                        <td><StatusBadge family="credit" status={c.status} label={CREDIT_STATUS_LABELS[c.status]} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -107,7 +108,7 @@ function LeaderPayments() {
                     <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
                     <td>R$ {Number(w.amount).toFixed(2)}</td>
                     <td>{w.pixKey ?? "—"}</td>
-                    <td><span className={panel.badge}>{WITHDRAWAL_STATUS_LABELS[w.status]}</span></td>
+                    <td><StatusBadge family="withdrawal" status={w.status} label={WITHDRAWAL_STATUS_LABELS[w.status]} /></td>
                   </tr>
                 ))}
                 {withdrawals.length === 0 && <tr><td colSpan={4}>Nenhum saque solicitado.</td></tr>}

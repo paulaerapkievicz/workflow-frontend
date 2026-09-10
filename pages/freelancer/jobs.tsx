@@ -394,15 +394,24 @@ function MyJobs() {
                         <span className={panel.muted}>Todos os turnos concluídos.</span>
                       )}
 
-                      {j.status === "accepted" && (
-                        canFreelancerCancel(j, cancelWindow) ? (
-                          <button className={panel.secondaryBtn} disabled={busy === j.id} onClick={() => cancel(j.id)}>
-                            Desistir da vaga
-                          </button>
-                        ) : (
-                          <span className={panel.muted}>Fora do prazo — peça o cancelamento à agência.</span>
-                        )
-                      )}
+                      {j.status === "accepted" && (() => {
+                        const withinWindow = canFreelancerCancel(j, cancelWindow);
+                        return (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <button
+                              className={panel.secondaryBtn}
+                              disabled={!withinWindow || busy === j.id}
+                              title={withinWindow ? undefined : "Fora do prazo — peça o cancelamento à agência."}
+                              onClick={() => withinWindow && cancel(j.id)}
+                            >
+                              Desistir da vaga
+                            </button>
+                            {!withinWindow && (
+                              <span className={panel.muted}>Fora do prazo — peça o cancelamento à agência.</span>
+                            )}
+                          </span>
+                        );
+                      })()}
 
                       {j.status === "in_progress" && !hasOpenBreak(j.shifts) && (
                         <button className={panel.secondaryBtn} disabled={busy === j.id} onClick={() => giveUp(j.id)}>

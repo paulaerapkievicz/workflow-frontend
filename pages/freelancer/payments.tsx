@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import Head from "next/head";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import StatusBadge from "@/src/components/StatusBadge";
 import WithdrawForm from "@/src/components/WithdrawForm";
 import panel from "@/styles/panel.module.scss";
 import { getMyPayments, Payment, PAYMENT_STATUS_LABELS } from "@/src/services/paymentService";
@@ -49,7 +50,7 @@ function FreelancerPayments() {
                     <td>{p.paymentJob?.title ?? p.jobId.slice(0, 8)}</td>
                     <td>{p.paymentJob?.jobBranch?.name ?? "—"}</td>
                     <td>R$ {Number(p.freelancerAmount ?? 0).toFixed(2)}</td>
-                    <td><span className={panel.badge}>{PAYMENT_STATUS_LABELS[p.status]}</span></td>
+                    <td><StatusBadge family="payment" status={p.status} label={PAYMENT_STATUS_LABELS[p.status]} /></td>
                     <td>{p.releasedAt ? new Date(p.releasedAt).toLocaleDateString("pt-BR") : "—"}</td>
                   </tr>
                 ))}
@@ -68,7 +69,7 @@ function FreelancerPayments() {
                     <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
                     <td>R$ {Number(w.amount).toFixed(2)}</td>
                     <td>{w.pixKey ?? "—"}</td>
-                    <td><span className={panel.badge}>{WITHDRAWAL_STATUS_LABELS[w.status]}</span></td>
+                    <td><StatusBadge family="withdrawal" status={w.status} label={WITHDRAWAL_STATUS_LABELS[w.status]} /></td>
                   </tr>
                 ))}
                 {withdrawals.length === 0 && <tr><td colSpan={4}>Nenhum saque solicitado.</td></tr>}

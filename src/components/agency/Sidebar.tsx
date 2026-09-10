@@ -19,6 +19,7 @@ export default function AgencySidebar() {
         { href: "/agency/orders", label: "Convocações", icon: "🛒" },
         { href: "/agency/alerts", label: "Alertas", icon: "🚨", badge: alertsOpen },
         { href: "/agency/live", label: "Ao vivo", icon: "🟢" },
+        { href: "/agency/reviews", label: "Avaliações", icon: "⭐" },
         { href: "/agency/closings", label: "Fechamentos", icon: "📅", badge: contestationsToReview },
         { href: "/agency/payments", label: "Pagamentos", icon: "💳", badge: memberCreditsToReview },
         { href: "/agency/contracts", label: "Contratos", icon: "📄" },

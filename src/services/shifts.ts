@@ -58,6 +58,17 @@ export interface ShiftInput {
   custom?: boolean;
   /** Nome do turno quando `custom` (vazio = usa "Turno N" pela ordem). */
   label?: string | null;
+  /** Intervalo (min) não remunerado desse turno — descontado das horas contratadas. */
+  breakMinutes?: number;
+  /** Quando true, usa o intervalo padrão da agência (o backend resolve o valor). */
+  useDefaultBreak?: boolean;
+}
+
+/** Limites de jornada + intervalo padrão da agência (vindos de /auth/me). */
+export interface LaborLimits {
+  defaultBreakMinutes: number;
+  maxShiftMinutes: number;
+  maxJobMinutes: number;
 }
 
 /** Nome exibido de um turno da lista (personalizado, período ou "Turno N" pela ordem). */
@@ -84,7 +95,7 @@ export const newShift = (period?: ShiftPeriod): ShiftInput => {
 export const shiftFromWindow = (
   startTime: string,
   endTime: string,
-  meta?: { label?: string | null; nominalPeriod?: string | null }
+  meta?: { label?: string | null; nominalPeriod?: string | null; breakMinutes?: number | null }
 ): ShiftInput => {
   const period = shiftBound(meta?.nominalPeriod)?.value ?? shiftPeriodFromTime(startTime);
   // Turno é "personalizado" quando o rótulo salvo não bate com o nome do período nominal.
@@ -96,6 +107,7 @@ export const shiftFromWindow = (
     nominalPeriod: period,
     custom,
     label: custom ? (meta?.label ?? "").trim() : null,
+    breakMinutes: Math.max(0, Math.trunc(Number(meta?.breakMinutes) || 0)),
   };
 };
 
@@ -103,7 +115,7 @@ export const shiftFromWindow = (
 export const crossesMidnight = (s: { startTime: string; endTime: string }): boolean =>
   toMinutes(s.endTime) <= toMinutes(s.startTime);
 
-/** Duração do turno em minutos (considerando virada de dia). */
+/** Duração bruta do turno em minutos (considerando virada de dia). */
 export const shiftDurationMinutes = (s: { startTime: string; endTime: string }): number => {
   const start = toMinutes(s.startTime);
   let end = toMinutes(s.endTime);
@@ -111,14 +123,34 @@ export const shiftDurationMinutes = (s: { startTime: string; endTime: string }):
   return end - start;
 };
 
+/** Intervalo efetivo do turno (usa o padrão da agência quando `useDefaultBreak`). */
+export const shiftBreakMinutes = (s: ShiftInput, limits?: LaborLimits): number =>
+  s.useDefaultBreak ? limits?.defaultBreakMinutes ?? 0 : Math.max(0, Math.trunc(Number(s.breakMinutes) || 0));
+
+/** Duração líquida contratada do turno = janela − intervalo. */
+export const shiftNetMinutes = (s: ShiftInput, limits?: LaborLimits): number =>
+  Math.max(0, shiftDurationMinutes(s) - shiftBreakMinutes(s, limits));
+
+/** Soma das durações líquidas de todos os turnos (o "contabilizador" da vaga). */
+export const totalNetMinutes = (shifts: ShiftInput[], limits?: LaborLimits): number =>
+  shifts.reduce((acc, s) => acc + shiftNetMinutes(s, limits), 0);
+
 export const formatDuration = (minutes: number): string => {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m ? `${h}h ${m}min` : `${h}h`;
 };
 
+/** "6h 15min" a partir de minutos. */
+const fmtMin = (min: number): string => {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (!h) return `${m}min`;
+  return m ? `${h}h ${m}min` : `${h}h`;
+};
+
 /** Valida uma janela de turno: horas preenchidas, diferentes e no máximo 24h. */
-export const validateShiftInput = (s: ShiftInput): string | null => {
+export const validateShiftInput = (s: ShiftInput, limits?: LaborLimits): string | null => {
   if (!/^\d{2}:\d{2}$/.test(s.startTime) || !/^\d{2}:\d{2}$/.test(s.endTime)) {
     return "informe o horário de início e de fim.";
   }
@@ -126,14 +158,19 @@ export const validateShiftInput = (s: ShiftInput): string | null => {
   const dur = shiftDurationMinutes(s);
   if (dur <= 0) return "o horário de fim precisa ser depois do de início.";
   if (dur > 24 * 60) return "um turno não pode passar de 24 horas.";
+  const brk = shiftBreakMinutes(s, limits);
+  if (brk >= dur) return "o intervalo não pode ser igual ou maior que a duração do turno.";
+  if (limits && dur - brk > limits.maxShiftMinutes) {
+    return `passa do limite de ${fmtMin(limits.maxShiftMinutes)} por turno da agência.`;
+  }
   return null;
 };
 
-/** Valida a lista de turnos: cada janela + sem sobreposição + turno que vira o dia por último. */
-export const validateShifts = (shifts: ShiftInput[]): string | null => {
+/** Valida a lista de turnos: cada janela + sem sobreposição + turno que vira o dia por último + tetos de jornada. */
+export const validateShifts = (shifts: ShiftInput[], limits?: LaborLimits): string | null => {
   if (!shifts.length) return "adicione ao menos um turno.";
   for (const s of shifts) {
-    const err = validateShiftInput(s);
+    const err = validateShiftInput(s, limits);
     if (err) {
       const name = s.custom ? (s.label ?? "").trim() || "Turno personalizado" : shiftLabel(s.nominalPeriod);
       return `${name}: ${err}`;
@@ -151,6 +188,12 @@ export const validateShifts = (shifts: ShiftInput[]): string | null => {
       }
     }
   }
+  if (limits) {
+    const total = totalNetMinutes(shifts, limits);
+    if (total > limits.maxJobMinutes) {
+      return `a soma dos turnos (${fmtMin(total)}) passa do limite de ${fmtMin(limits.maxJobMinutes)} por vaga da agência.`;
+    }
+  }
   return null;
 };
 
@@ -164,5 +207,13 @@ export const toShiftPayload = (s: ShiftInput, index = 0) => {
   const label = s.custom
     ? (s.label ?? "").trim() || `Turno ${index + 1}`
     : (s.label ?? "").trim() || null;
-  return { startTime: s.startTime, endTime: s.endTime, nominalPeriod, label, custom: !!s.custom };
+  return {
+    startTime: s.startTime,
+    endTime: s.endTime,
+    nominalPeriod,
+    label,
+    custom: !!s.custom,
+    breakMinutes: s.useDefaultBreak ? undefined : Math.max(0, Math.trunc(Number(s.breakMinutes) || 0)),
+    useDefaultBreak: s.useDefaultBreak || undefined,
+  };
 };

@@ -15,7 +15,13 @@ import {
   setFreelancerCategoryRate,
   removeCategoryFromFreelancer,
 } from "@/src/services/freelancerService";
-import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
+import {
+  getFreelancerReputation,
+  getFreelancerReviews,
+  FreelancerReputation as Reputation,
+  Review,
+} from "@/src/services/reviewService";
+import StarRating from "@/src/components/StarRating";
 import FreelancerCategoriesEditor from "@/src/components/FreelancerCategoriesEditor";
 import { getFreelancerLeaders, AssignedLeader } from "@/src/services/agencyMemberService";
 import { FreelancerProfileBody } from "@/src/components/FreelancerChip";
@@ -36,6 +42,8 @@ function FreelancersPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editReputation, setEditReputation] = useState<Reputation | null>(null);
   const [editLeaders, setEditLeaders] = useState<AssignedLeader[] | null>(null);
+  const [editReviews, setEditReviews] = useState<Review[] | null>(null);
+  const [showEditReviews, setShowEditReviews] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", skills: "" });
   const [editError, setEditError] = useState<string | null>(null);
   const [catMsg, setCatMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -107,8 +115,11 @@ function FreelancersPage() {
     setEditId(f.id);
     setEditReputation(null);
     setEditLeaders(null);
+    setEditReviews(null);
+    setShowEditReviews(false);
     getFreelancerReputation(f.id).then(setEditReputation).catch(() => {});
     getFreelancerLeaders(f.id).then(setEditLeaders).catch(() => {});
+    getFreelancerReviews(f.id).then(setEditReviews).catch(() => setEditReviews([]));
   };
 
   const saveEdit = async () => {
@@ -296,6 +307,48 @@ function FreelancersPage() {
                 reputation={editReputation}
                 leaders={editLeaders}
               />
+              <div style={{ marginTop: 10 }}>
+                <button
+                  type="button"
+                  className={panel.ghostBtn}
+                  onClick={() => setShowEditReviews((v) => !v)}
+                >
+                  {showEditReviews ? "Ocultar avaliações" : `Ver avaliações${editReviews ? ` (${editReviews.length})` : ""}`}
+                </button>
+                {showEditReviews && (
+                  <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0, display: "grid", gap: 8 }}>
+                    {(editReviews ?? []).map((r) => (
+                      <li
+                        key={r.id}
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius, 8px)",
+                          padding: "8px 10px",
+                          background: "var(--surface-2)",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                          <StarRating value={r.rating} size={14} />
+                          <small style={{ color: "var(--text-muted)" }}>
+                            {r.authorRole === "supermarket" ? "Cliente" : r.authorRole === "agency" ? "Agência" : "—"}
+                            {" · "}
+                            {new Date(r.createdAt).toLocaleDateString("pt-BR")}
+                          </small>
+                        </div>
+                        {r.comment && <p style={{ margin: "4px 0 0" }}>{r.comment}</p>}
+                        {(r.categoryName || r.branchName || r.jobTitle) && (
+                          <small style={{ color: "var(--text-muted)" }}>
+                            {[r.jobTitle, r.categoryName, r.branchName].filter(Boolean).join(" · ")}
+                          </small>
+                        )}
+                      </li>
+                    ))}
+                    {editReviews != null && editReviews.length === 0 && (
+                      <li className={panel.muted}>Nenhuma avaliação ainda.</li>
+                    )}
+                  </ul>
+                )}
+              </div>
             </div>
             <label>Nome</label>
             <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />

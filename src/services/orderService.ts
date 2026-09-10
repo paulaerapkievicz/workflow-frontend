@@ -13,6 +13,7 @@ export interface OrderItemShift {
   startTime: string;
   endTime: string;
   label?: string | null;
+  breakMinutes?: number | null;
 }
 
 export interface OrderItem {

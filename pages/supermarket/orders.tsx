@@ -20,7 +20,7 @@ import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import { formatShifts, formatShiftPeriods } from "@/src/services/jobService";
 import { AlertDot } from "@/src/components/AlertDot";
 import { jobStartedUnfilled, orderHasStartedUnfilled } from "@/src/services/unfilledAlerts";
-import { newShift, validateShifts, shiftDisplayName, ShiftInput } from "@/src/services/shifts";
+import { newShift, validateShifts, shiftDisplayName, ShiftInput, LaborLimits } from "@/src/services/shifts";
 import ShiftsField from "@/src/components/ShiftsField";
 import { authService } from "@/src/services/authService";
 import type { SupermarketMembership } from "@/src/services/authService";
@@ -49,6 +49,16 @@ function OrdersPage() {
   const supermarketId = authService.getProfileId() ?? "";
   const { profile } = useAuth();
   const membership = (profile as { membership?: SupermarketMembership } | null)?.membership ?? null;
+  const clientAgency = (profile as {
+    clientAgency?: { defaultBreakMinutes?: number; maxShiftHours?: number | string; maxJobHours?: number | string };
+  } | null)?.clientAgency ?? null;
+  const laborLimits: LaborLimits | undefined = clientAgency
+    ? {
+        defaultBreakMinutes: Number(clientAgency.defaultBreakMinutes ?? 0),
+        maxShiftMinutes: Math.round(Number(clientAgency.maxShiftHours ?? 10) * 60),
+        maxJobMinutes: Math.round(Number(clientAgency.maxJobHours ?? 10) * 60),
+      }
+    : undefined;
   const canApprove = membership?.canApproveOrders ?? true;
   // null/[] = rede toda; 1 filial = trava a seleção; várias = limita as opções.
   const managerBranchIds = membership?.branchIds ?? null;
@@ -170,7 +180,7 @@ function OrdersPage() {
     if (!draft.categoryId) return setItemError("Selecione a função.");
     if (!draft.branchId) return setItemError("Selecione a filial.");
     if (Number(draft.quantity) < 1) return setItemError("Informe a quantidade de atendentes.");
-    const shiftError = validateShifts(draft.shifts);
+    const shiftError = validateShifts(draft.shifts, laborLimits);
     if (shiftError) return setItemError(shiftError);
     const rateWarning = unpricedWarning(draft.categoryId, draft.branchId);
     if (rateWarning) return setItemError(rateWarning);
@@ -311,7 +321,7 @@ function OrdersPage() {
                         <td>{p.done}</td>
                         <td>
                           {o.approvalStatus === "approved" ? (
-                            <span className={panel.badge}>{ORDER_STATUS_LABELS[o.status]}</span>
+                            <StatusBadge family="order" status={o.status} label={ORDER_STATUS_LABELS[o.status]} />
                           ) : (
                             <span
                               className={`${panel.badge} ${o.approvalStatus === "rejected" ? panel.badgeCanceled : panel.badgePending}`}
@@ -407,6 +417,7 @@ function OrdersPage() {
             <ShiftsField
               value={draft.shifts}
               onChange={(shifts) => setDraft((d) => ({ ...d, shifts }))}
+              limits={laborLimits}
             />
 
             <label>Pausa/intervalo no ponto</label>
@@ -423,6 +434,7 @@ function OrdersPage() {
               onClick={confirmItem}
               disabled={
                 !draft.categoryId || !draft.branchId || !draft.shifts.length ||
+                !!validateShifts(draft.shifts, laborLimits) ||
                 !!unpricedWarning(draft.categoryId, draft.branchId)
               }
             >

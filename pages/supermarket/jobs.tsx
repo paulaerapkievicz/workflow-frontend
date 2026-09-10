@@ -22,7 +22,7 @@ import StarRating from "@/src/components/StarRating";
 import { useAuth } from "@/src/hooks/useAuth";
 import { authService } from "@/src/services/authService";
 import {
-  shiftFromWindow, newShift, validateShifts, toShiftPayload, ShiftInput,
+  shiftFromWindow, newShift, validateShifts, toShiftPayload, ShiftInput, LaborLimits,
 } from "@/src/services/shifts";
 import ShiftsField from "@/src/components/ShiftsField";
 import FreelancerChip, { FreelancerProfileBody } from "@/src/components/FreelancerChip";
@@ -35,6 +35,16 @@ import { inDateRange } from "@/src/lib/dateRange";
 function JobsPage() {
   const { profile: authProfile } = useAuth();
   const reviewEnabled = !!authProfile?.clientAgency?.reviewEnabled;
+  const clientAgency = (authProfile as {
+    clientAgency?: { defaultBreakMinutes?: number; maxShiftHours?: number | string; maxJobHours?: number | string };
+  } | null)?.clientAgency ?? null;
+  const laborLimits: LaborLimits | undefined = clientAgency
+    ? {
+        defaultBreakMinutes: Number(clientAgency.defaultBreakMinutes ?? 0),
+        maxShiftMinutes: Math.round(Number(clientAgency.maxShiftHours ?? 10) * 60),
+        maxJobMinutes: Math.round(Number(clientAgency.maxJobHours ?? 10) * 60),
+      }
+    : undefined;
   const [jobs, setJobs] = useState<Job[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -93,7 +103,7 @@ function JobsPage() {
   const openEdit = (job: Job) => {
     const shifts: ShiftInput[] = [...(job.shifts ?? [])]
       .sort((a, b) => a.position - b.position)
-      .map((s) => shiftFromWindow(hhmm(s.startTime), hhmm(s.endTime), { label: s.label, nominalPeriod: s.nominalPeriod }));
+      .map((s) => shiftFromWindow(hhmm(s.startTime), hhmm(s.endTime), { label: s.label, nominalPeriod: s.nominalPeriod, breakMinutes: s.breakMinutes }));
     if (!shifts.length) shifts.push(newShift());
     setForm({
       title: job.title,
@@ -108,7 +118,7 @@ function JobsPage() {
   const saveEdit = async () => {
     if (!editJob) return;
     setEditError(null);
-    const shiftError = validateShifts(form.shifts);
+    const shiftError = validateShifts(form.shifts, laborLimits);
     if (shiftError) return setEditError(shiftError);
     const rateWarning = unpricedWarning(form.categoryId, editJob.branchId);
     if (rateWarning) return setEditError(rateWarning);
@@ -284,6 +294,7 @@ function JobsPage() {
             <ShiftsField
               value={form.shifts}
               onChange={(shifts) => setForm((f) => ({ ...f, shifts }))}
+              limits={laborLimits}
             />
             {editJob && unpricedWarning(form.categoryId, editJob.branchId) && (
               <p className={panel.error}>{unpricedWarning(form.categoryId, editJob.branchId)}</p>

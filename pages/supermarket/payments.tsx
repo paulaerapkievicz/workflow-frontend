@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/supermarket/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import StatusBadge from "@/src/components/StatusBadge";
 import panel from "@/styles/panel.module.scss";
 import {
   getBillingSummary, payClosing, syncClosingPayment, downloadClosingPdf, BillingSummary, BillingJob,
@@ -301,7 +302,7 @@ function BillingPage() {
                         <td>{money(c.totalAmount)}</td>
                         <td>{c.adjustmentsTotal > 0 ? `- ${money(c.adjustmentsTotal)}` : "—"}</td>
                         <td><strong>{money(c.netAmount)}</strong></td>
-                        <td><span className={panel.badge}>{CLOSING_STATUS_LABELS[c.status]}</span></td>
+                        <td><StatusBadge family="closing" status={c.status} label={CLOSING_STATUS_LABELS[c.status]} /></td>
                         <td>
                           {c.status === "pending" && canPayInvoices && (
                             <button className={panel.ghostBtn} onClick={() => openAdjustments(c)}>
@@ -393,7 +394,7 @@ function BillingPage() {
                       )}
                     </td>
                     <td>- {money(a.amount)}</td>
-                    <td><span className={panel.badge}>{ADJUSTMENT_STATUS_LABELS[a.status]}</span></td>
+                    <td><StatusBadge family="adjustment" status={a.status} label={ADJUSTMENT_STATUS_LABELS[a.status]} /></td>
                     <td>
                       {a.status === "pending" && (
                         <button className={panel.secondaryBtn} disabled={adjBusy} onClick={() => removeAdjustment(a.id)}>

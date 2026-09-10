@@ -8,7 +8,7 @@ import {
 import { Category } from "@/src/services/categoryService";
 import { AgencySettings } from "@/src/services/agencySettingsService";
 import {
-  shiftFromWindow, newShift, validateShifts, toShiftPayload, ShiftInput,
+  shiftFromWindow, newShift, validateShifts, toShiftPayload, ShiftInput, LaborLimits,
 } from "@/src/services/shifts";
 import ShiftsField from "@/src/components/ShiftsField";
 import { fmtTime, isoDateBR, isoToLocalInput, localInputToISO } from "@/src/lib/datetime";
@@ -49,9 +49,30 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
   const [shifts, setShifts] = useState<ShiftInput[]>(() => {
     const s = [...(job.shifts ?? [])]
       .sort((a, b) => a.position - b.position)
-      .map((x) => shiftFromWindow(fmtTime(x.startTime), fmtTime(x.endTime), { label: x.label, nominalPeriod: x.nominalPeriod }));
+      .map((x) =>
+        shiftFromWindow(fmtTime(x.startTime), fmtTime(x.endTime), {
+          label: x.label,
+          nominalPeriod: x.nominalPeriod,
+          breakMinutes: x.breakMinutes,
+        })
+      );
     return s.length ? s : [newShift()];
   });
+
+  const [defaultBreak, setDefaultBreak] = useState(job.defaultBreakMinutes?.toString() ?? "");
+  const [maxShiftHours, setMaxShiftHours] = useState(job.maxShiftHours != null ? String(job.maxShiftHours) : "");
+  const [maxJobHours, setMaxJobHours] = useState(job.maxJobHours != null ? String(job.maxJobHours) : "");
+
+  const laborLimits: LaborLimits = {
+    defaultBreakMinutes:
+      defaultBreak !== "" ? Number(defaultBreak) : Number(settings?.defaultBreakMinutes ?? 0),
+    maxShiftMinutes: Math.round(
+      (maxShiftHours !== "" ? Number(maxShiftHours) : Number(settings?.maxShiftHours ?? 10)) * 60
+    ),
+    maxJobMinutes: Math.round(
+      (maxJobHours !== "" ? Number(maxJobHours) : Number(settings?.maxJobHours ?? 10)) * 60
+    ),
+  };
 
   const [checkinRadius, setCheckinRadius] = useState(job.checkinRadius?.toString() ?? "");
   const [cancelWindow, setCancelWindow] = useState(job.cancellationWindowMinutes?.toString() ?? "");
@@ -91,13 +112,16 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
     breaksEnabled: breaks === "" ? null : breaks === "sim",
     breakLimitMinutes: breakLimit === "" ? null : Number(breakLimit),
     checkinEarlyToleranceMinutes: earlyTolerance === "" ? null : Number(earlyTolerance),
+    defaultBreakMinutes: defaultBreak === "" ? null : Number(defaultBreak),
+    maxShiftHours: maxShiftHours === "" ? null : Number(maxShiftHours),
+    maxJobHours: maxJobHours === "" ? null : Number(maxJobHours),
   });
 
   const saveConfig = async () => {
     setError(null);
     const payload: Record<string, unknown> = configPayload();
     if (canReshape) {
-      const shiftError = validateShifts(shifts);
+      const shiftError = validateShifts(shifts, laborLimits);
       if (shiftError) return setError(shiftError);
       if (pending) {
         payload.title = title.trim() || undefined;
@@ -211,7 +235,7 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
                 <label>Data</label>
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
                 <label>Turnos da vaga</label>
-                <ShiftsField value={shifts} onChange={setShifts} />
+                <ShiftsField value={shifts} onChange={setShifts} limits={laborLimits} />
                 {job.status === "accepted" && (
                   <p className={panel.muted}>
                     A vaga já foi aceita — remarcar o horário revalida a agenda do colaborador.
@@ -274,6 +298,30 @@ export default function JobManageModal({ job, categories, settings, onClose, onS
             <input type="number" min={1} max={480} value={breakLimit}
               placeholder={settings?.breakLimitMinutes != null ? String(settings.breakLimitMinutes) : "sem limite"}
               onChange={(e) => setBreakLimit(e.target.value)} />
+
+            <label>
+              Intervalo padrão do turno (min)
+              {settings ? ` — padrão ${settings.defaultBreakMinutes ?? 0}` : ""}
+            </label>
+            <input type="number" min={0} max={480} value={defaultBreak}
+              placeholder={settings ? String(settings.defaultBreakMinutes ?? 0) : "padrão"}
+              onChange={(e) => setDefaultBreak(e.target.value)} />
+
+            <label>
+              Máx. de horas por turno
+              {settings ? ` — padrão ${settings.maxShiftHours ?? 10}` : ""}
+            </label>
+            <input type="number" min={1} max={24} step={0.5} value={maxShiftHours}
+              placeholder={settings ? String(settings.maxShiftHours ?? 10) : "padrão"}
+              onChange={(e) => setMaxShiftHours(e.target.value)} />
+
+            <label>
+              Máx. de horas por vaga
+              {settings ? ` — padrão ${settings.maxJobHours ?? 10}` : ""}
+            </label>
+            <input type="number" min={1} max={24} step={0.5} value={maxJobHours}
+              placeholder={settings ? String(settings.maxJobHours ?? 10) : "padrão"}
+              onChange={(e) => setMaxJobHours(e.target.value)} />
 
             {error && <p className={panel.error}>{error}</p>}
             <button className={panel.primaryBtn} onClick={saveConfig} disabled={saving}>

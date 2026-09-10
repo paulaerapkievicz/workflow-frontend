@@ -206,20 +206,23 @@
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
-.badgePending  { background: #fef3c7; color: #92400e; border-color: transparent; }
-.badgeProgress { background: #dbeafe; color: #1e40af; border-color: transparent; }
-.badgeWaiting  { background: #fde68a; color: #92400e; border-color: transparent; }
-.badgeApproved { background: #ede9fe; color: #5b21b6; border-color: transparent; }
-.badgeDone     { background: #dcfce7; color: #166534; border-color: transparent; }
-.badgeCanceled { background: #fee2e2; color: #991b1b; border-color: transparent; }
+// As cores dos 6 tons vêm de CSS vars (`--badge-<tone>-bg/fg`) que a agência pode
+// personalizar em /agency/settings (injetadas por <StatusColorVars/>). O valor
+// depois da vírgula é o fallback (paleta padrão) quando a agência não personalizou.
+.badgePending  { background: var(--badge-pending-bg, #fef3c7);  color: var(--badge-pending-fg, #92400e);  border-color: transparent; }
+.badgeProgress { background: var(--badge-progress-bg, #dbeafe); color: var(--badge-progress-fg, #1e40af); border-color: transparent; }
+.badgeWaiting  { background: var(--badge-waiting-bg, #fde68a);  color: var(--badge-waiting-fg, #92400e);  border-color: transparent; }
+.badgeApproved { background: var(--badge-approved-bg, #ede9fe); color: var(--badge-approved-fg, #5b21b6); border-color: transparent; }
+.badgeDone     { background: var(--badge-done-bg, #dcfce7);     color: var(--badge-done-fg, #166534);     border-color: transparent; }
+.badgeCanceled { background: var(--badge-canceled-bg, #fee2e2); color: var(--badge-canceled-fg, #991b1b); border-color: transparent; }
 
 body[data-theme='dark'] {
-  .badgePending  { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
-  .badgeProgress { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
-  .badgeWaiting  { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
-  .badgeApproved { background: rgba(139, 92, 246, 0.22); color: #c4b5fd; }
-  .badgeDone     { background: rgba(34, 197, 94, 0.2); color: #86efac; }
-  .badgeCanceled { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+  .badgePending  { background: var(--badge-pending-bg, rgba(245, 158, 11, 0.18)); color: var(--badge-pending-fg, #fbbf24); }
+  .badgeProgress { background: var(--badge-progress-bg, rgba(59, 130, 246, 0.2)); color: var(--badge-progress-fg, #93c5fd); }
+  .badgeWaiting  { background: var(--badge-waiting-bg, rgba(245, 158, 11, 0.2));  color: var(--badge-waiting-fg, #fcd34d); }
+  .badgeApproved { background: var(--badge-approved-bg, rgba(139, 92, 246, 0.22)); color: var(--badge-approved-fg, #c4b5fd); }
+  .badgeDone     { background: var(--badge-done-bg, rgba(34, 197, 94, 0.2));      color: var(--badge-done-fg, #86efac); }
+  .badgeCanceled { background: var(--badge-canceled-bg, rgba(239, 68, 68, 0.2)); color: var(--badge-canceled-fg, #fca5a5); }
 }
 
 // ----- Formulários -----

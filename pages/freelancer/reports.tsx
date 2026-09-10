@@ -46,7 +46,7 @@ function ReportsPage() {
               {reputation && (
                 <div className={panel.card} style={{ marginBottom: "1rem" }}>
                   <div className={panel.tableToolbar}><strong>Minha reputação</strong></div>
-                  <FreelancerReputation reputation={reputation} />
+                  <FreelancerReputation reputation={reputation} compact />
                   <AssignedLeaders leaders={leaders} />
                 </div>
               )}

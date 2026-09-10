@@ -196,7 +196,7 @@ function AgencyPayments() {
     { key: "gross", label: "Valor pago pelo mercado", render: (p) => `R$ ${Number(p.grossAmount ?? 0).toFixed(2)}` },
     { key: "agencyAmount", label: "Fica com a agência", render: (p) => `R$ ${Number(p.agencyAmount ?? 0).toFixed(2)}` },
     { key: "freelancerAmount", label: "Valor do colaborador", render: (p) => `R$ ${Number(p.freelancerAmount ?? 0).toFixed(2)}` },
-    { key: "status", label: "Status", render: (p) => <span className={panel.badge}>{PAYMENT_STATUS_LABELS[p.status]}</span> },
+    { key: "status", label: "Status", render: (p) => <StatusBadge family="payment" status={p.status} label={PAYMENT_STATUS_LABELS[p.status]} /> },
     { key: "date", label: "Liberado em", render: (p) => (p.releasedAt ? new Date(p.releasedAt).toLocaleDateString("pt-BR") : "—") },
   ];
 
@@ -381,7 +381,7 @@ function AgencyPayments() {
                     <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
                     <td>R$ {Number(w.amount).toFixed(2)}</td>
                     <td>{w.pixKey ?? "—"}</td>
-                    <td><span className={panel.badge}>{WITHDRAWAL_STATUS_LABELS[w.status]}</span></td>
+                    <td><StatusBadge family="withdrawal" status={w.status} label={WITHDRAWAL_STATUS_LABELS[w.status]} /></td>
                   </tr>
                 ))}
                 {withdrawals.length === 0 && <tr><td colSpan={4}>Nenhum saque solicitado.</td></tr>}

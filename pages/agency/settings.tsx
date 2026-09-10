@@ -8,6 +8,9 @@ import panel from "@/styles/panel.module.scss";
 import {
   getAgencySettings, updateAgencySettings, AgencySettings, UnfilledAlertTier,
 } from "@/src/services/agencySettingsService";
+import {
+  StatusColors, STATUS_TONES, DEFAULT_STATUS_COLORS, sanitizeStatusColors,
+} from "@/src/services/statusColors";
 
 const newTier = (): UnfilledAlertTier => ({
   id: `tier-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -27,6 +30,9 @@ function SettingsPage() {
     reviewEnabled: false,
     breaksEnabled: false,
     breakLimitMinutes: "",
+    defaultBreakMinutes: "0",
+    maxShiftHours: "10",
+    maxJobHours: "10",
     alertsEnabled: true,
     notifySupermarketOnAlerts: true,
     lateCheckinToleranceMinutes: "10",
@@ -40,7 +46,11 @@ function SettingsPage() {
     allowSelfRegistration: false,
   });
   const [tiers, setTiers] = useState<UnfilledAlertTier[]>([]);
+  const [statusColors, setStatusColors] = useState<StatusColors>(DEFAULT_STATUS_COLORS);
   const [loading, setLoading] = useState(true);
+
+  const patchColor = (tone: keyof StatusColors, key: "bg" | "fg", value: string) =>
+    setStatusColors((cur) => ({ ...cur, [tone]: { ...cur[tone], [key]: value } }));
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -52,6 +62,7 @@ function SettingsPage() {
       .then((s) => {
         setSettings(s);
         setTiers(s.unfilledAlertTiers ?? []);
+        setStatusColors(sanitizeStatusColors(s.statusColors));
         setForm({
           checkinRadius: String(s.checkinRadius),
           cancellationWindowMinutes: String(s.cancellationWindowMinutes),
@@ -60,6 +71,9 @@ function SettingsPage() {
           reviewEnabled: s.reviewEnabled,
           breaksEnabled: s.breaksEnabled,
           breakLimitMinutes: s.breakLimitMinutes != null ? String(s.breakLimitMinutes) : "",
+          defaultBreakMinutes: String(s.defaultBreakMinutes ?? 0),
+          maxShiftHours: String(s.maxShiftHours ?? 10),
+          maxJobHours: String(s.maxJobHours ?? 10),
           alertsEnabled: s.alertsEnabled,
           notifySupermarketOnAlerts: s.notifySupermarketOnAlerts,
           lateCheckinToleranceMinutes: String(s.lateCheckinToleranceMinutes),
@@ -90,6 +104,10 @@ function SettingsPage() {
         reviewEnabled: form.reviewEnabled,
         breaksEnabled: form.breaksEnabled,
         breakLimitMinutes: form.breakLimitMinutes.trim() === "" ? null : Number(form.breakLimitMinutes),
+        defaultBreakMinutes: Number(form.defaultBreakMinutes) || 0,
+        maxShiftHours: Number(form.maxShiftHours),
+        maxJobHours: Number(form.maxJobHours),
+        statusColors,
         alertsEnabled: form.alertsEnabled,
         notifySupermarketOnAlerts: form.notifySupermarketOnAlerts,
         lateCheckinToleranceMinutes: Number(form.lateCheckinToleranceMinutes),
@@ -109,6 +127,7 @@ function SettingsPage() {
       });
       setSettings(s);
       setTiers(s.unfilledAlertTiers ?? []);
+      setStatusColors(sanitizeStatusColors(s.statusColors));
       setMsg({ type: "ok", text: "Configurações salvas." });
     } catch (err) {
       setMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
@@ -192,6 +211,63 @@ function SettingsPage() {
                   Depois de atingido, o colaborador não consegue abrir uma nova pausa no turno.
                   Deixe em branco para não limitar. Também pode ser sobrescrito por vaga.
                 </span>
+
+                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                <strong>Jornada (limites da vaga)</strong>
+                <span className={panel.muted}>
+                  Tetos aplicados ao lançar/editar a vaga, para não infringir a legislação
+                  trabalhista. Podem ser sobrescritos por vaga.
+                </span>
+
+                <label>Intervalo padrão do turno (minutos)</label>
+                <input type="number" min={0} max={480} step={5} value={form.defaultBreakMinutes}
+                  onChange={(e) => setForm({ ...form, defaultBreakMinutes: e.target.value })} />
+                <span className={panel.muted}>
+                  Ao montar a vaga, é possível marcar &quot;usar intervalo padrão&quot; num turno —
+                  esse tempo é descontado das horas contratadas. 0 = sem intervalo padrão.
+                </span>
+
+                <label>Máximo de horas por turno</label>
+                <input type="number" min={1} max={24} step={0.5} value={form.maxShiftHours}
+                  onChange={(e) => setForm({ ...form, maxShiftHours: e.target.value })} />
+
+                <label>Máximo de horas por vaga (soma dos turnos)</label>
+                <input type="number" min={1} max={24} step={0.5} value={form.maxJobHours}
+                  onChange={(e) => setForm({ ...form, maxJobHours: e.target.value })} />
+                <span className={panel.muted}>As horas são contadas já líquidas de intervalo.</span>
+
+                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                <strong>Cores das tags de status</strong>
+                <span className={panel.muted}>
+                  Um tom por situação — vale para os badges de vaga, pedido, fatura e pagamento em
+                  todas as áreas (sua, dos líderes, dos colaboradores e dos supermercados-clientes).
+                </span>
+                {STATUS_TONES.map(({ tone, label }) => (
+                  <div key={tone} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <span
+                      className={panel.badge}
+                      style={{ background: statusColors[tone].bg, color: statusColors[tone].fg, borderColor: "transparent", minWidth: 150 }}
+                    >
+                      {label}
+                    </span>
+                    <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.8rem" }}>
+                      fundo
+                      <input type="color" value={statusColors[tone].bg}
+                        onChange={(e) => patchColor(tone, "bg", e.target.value)}
+                        style={{ width: 40, height: 30, padding: 0 }} />
+                    </label>
+                    <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.8rem" }}>
+                      texto
+                      <input type="color" value={statusColors[tone].fg}
+                        onChange={(e) => patchColor(tone, "fg", e.target.value)}
+                        style={{ width: 40, height: 30, padding: 0 }} />
+                    </label>
+                  </div>
+                ))}
+                <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
+                  onClick={() => setStatusColors(DEFAULT_STATUS_COLORS)}>
+                  Restaurar cores padrão
+                </button>
 
                 <hr style={{ width: "100%", borderColor: "var(--border)" }} />
                 <strong>Alertas de ocorrência</strong>
