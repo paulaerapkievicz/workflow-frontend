@@ -15,6 +15,9 @@ import {
 import { createInvite } from "@/src/services/inviteService";
 import BranchScopeField from "@/src/components/supermarket/BranchScopeField";
 import TeamRolesManager from "@/src/components/TeamRolesManager";
+import FormField from "@/src/components/FormField";
+import { validateForm } from "@/src/lib/validators";
+import { maskCnpj } from "@/src/lib/masks";
 import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getCategories, Category } from "@/src/services/categoryService";
 import {
@@ -111,6 +114,15 @@ function SupermarketsPage() {
 
   const saveMarket = async () => {
     setMarketError(null);
+    const errs = validateForm([
+      { name: "cnpj", value: marketForm.cnpj, kind: "cnpj", required: true },
+      { name: "phone", value: marketForm.phone, kind: "phone" },
+      ...(marketForm.id ? [] : [{ name: "email", value: marketForm.email, kind: "email" as const, required: true }]),
+    ]);
+    if (Object.keys(errs).length) {
+      setMarketError("Confira os campos destacados antes de salvar.");
+      return;
+    }
     try {
       if (marketForm.id) {
         await updateSupermarket(marketForm.id, {
@@ -154,6 +166,10 @@ function SupermarketsPage() {
   const saveBranch = async () => {
     if (!branchesOf) return;
     setBranchError(null);
+    if (Object.keys(validateForm([{ name: "phone", value: branchForm.phone, kind: "phone" }])).length) {
+      setBranchError("Telefone inválido.");
+      return;
+    }
     const payload = { name: branchForm.name, address: branchForm.address, phone: branchForm.phone, regeocode: true };
     try {
       if (branchForm.id) await updateBranch(branchForm.id, payload);
@@ -213,6 +229,10 @@ function SupermarketsPage() {
   const saveMember = async () => {
     if (!teamOf) return;
     setMemberError(null);
+    if (!editMemberId) {
+      const errs = validateForm([{ name: "email", value: memberForm.email, kind: "email", required: true }]);
+      if (Object.keys(errs).length) { setMemberError("Informe um e-mail válido para o gerente."); return; }
+    }
     const perms = {
       branchIds: memberForm.branchIds,
       teamRoleId: memberForm.teamRoleId || null,
@@ -335,7 +355,7 @@ function SupermarketsPage() {
                   {markets.map((m) => (
                     <tr key={m.id}>
                       <td>{m.name}</td>
-                      <td>{m.cnpj}</td>
+                      <td>{maskCnpj(m.cnpj)}</td>
                       <td>{m.owner?.email ?? "—"}</td>
                       <td>
                         {branchesForMarket(m.id).length}
@@ -388,16 +408,16 @@ function SupermarketsPage() {
           <div className={panel.form}>
             <label>Nome</label>
             <input value={marketForm.name} onChange={(e) => setMarketForm({ ...marketForm, name: e.target.value })} />
-            <label>CNPJ</label>
-            <input value={marketForm.cnpj} onChange={(e) => setMarketForm({ ...marketForm, cnpj: e.target.value })} />
+            <FormField label="CNPJ" kind="cnpj" required placeholder="00.000.000/0000-00"
+              value={marketForm.cnpj} onChange={(v) => setMarketForm({ ...marketForm, cnpj: v })} />
             <label>Endereço (matriz)</label>
             <input value={marketForm.address} onChange={(e) => setMarketForm({ ...marketForm, address: e.target.value })} />
-            <label>Telefone</label>
-            <input value={marketForm.phone} onChange={(e) => setMarketForm({ ...marketForm, phone: e.target.value })} />
+            <FormField label="Telefone" kind="phone" placeholder="(00) 00000-0000"
+              value={marketForm.phone} onChange={(v) => setMarketForm({ ...marketForm, phone: v })} />
             {!marketForm.id && (
               <>
-                <label>E-mail de acesso</label>
-                <input type="email" value={marketForm.email} onChange={(e) => setMarketForm({ ...marketForm, email: e.target.value })} />
+                <FormField label="E-mail de acesso" kind="email" required
+                  value={marketForm.email} onChange={(v) => setMarketForm({ ...marketForm, email: v })} />
                 <label>Senha de acesso</label>
                 <input type="password" minLength={4} value={marketForm.password} onChange={(e) => setMarketForm({ ...marketForm, password: e.target.value })} />
               </>
@@ -548,8 +568,8 @@ function SupermarketsPage() {
               <>
                 <label>Nome</label>
                 <input value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} />
-                <label>E-mail</label>
-                <input type="email" value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} />
+                <FormField label="E-mail" kind="email" required value={memberForm.email}
+                  onChange={(v) => setMemberForm({ ...memberForm, email: v })} />
                 <label>Senha de acesso</label>
                 <input type="password" minLength={4} value={memberForm.password} onChange={(e) => setMemberForm({ ...memberForm, password: e.target.value })} />
               </>
@@ -651,8 +671,8 @@ function SupermarketsPage() {
               {geoBusy ? "Buscando…" : "Buscar localização pelo endereço"}
             </button>
             {geoMsg && <p className={geoMsg.type === "ok" ? panel.success : panel.error}>{geoMsg.text}</p>}
-            <label>Telefone</label>
-            <input value={branchForm.phone} onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })} />
+            <FormField label="Telefone" kind="phone" placeholder="(00) 00000-0000"
+              value={branchForm.phone} onChange={(v) => setBranchForm({ ...branchForm, phone: v })} />
             {branchError && <p className={panel.error}>{branchError}</p>}
             <button className={panel.primaryBtn} onClick={saveBranch} disabled={!branchForm.name || !branchForm.address}>Salvar</button>
           </div>

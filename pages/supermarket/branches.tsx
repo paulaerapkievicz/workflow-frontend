@@ -12,6 +12,8 @@ import {
   getBranchProfile, updateBranchProfile, uploadBranchImage, ResolvedBranchProfile,
 } from "@/src/services/supermarketProfileService";
 import ProfileImageField from "@/src/components/ProfileImageField";
+import FormField from "@/src/components/FormField";
+import { validateForm } from "@/src/lib/validators";
 import { authService } from "@/src/services/authService";
 
 const emptyForm = {
@@ -70,6 +72,15 @@ function BranchesPage() {
 
   const save = async () => {
     setError(null);
+    const errs = validateForm([
+      { name: "phone", value: form.phone, kind: "phone" },
+      { name: "cnpj", value: form.cnpj, kind: "cnpj" },
+      { name: "email", value: form.email, kind: "email" },
+    ]);
+    if (Object.keys(errs).length) {
+      setError("Confira os campos destacados antes de salvar.");
+      return;
+    }
     try {
       if (form.id) {
         await updateBranchProfile(form.id, {
@@ -145,8 +156,8 @@ function BranchesPage() {
               {geoBusy ? "Buscando…" : "Buscar localização pelo endereço"}
             </button>
             {geoMsg && <p className={geoMsg.type === "ok" ? panel.success : panel.error}>{geoMsg.text}</p>}
-            <label>Telefone</label>
-            <input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+            <FormField label="Telefone" kind="phone" placeholder="(00) 00000-0000"
+              value={form.phone} onChange={(v) => set("phone", v)} />
 
             {form.id && (
               <>
@@ -157,11 +168,9 @@ function BranchesPage() {
                 <label>Razão social</label>
                 <input value={form.legalName} onChange={(e) => set("legalName", e.target.value)}
                   placeholder={resolved?.inherited.includes("legalName") ? `matriz: ${resolved?.legalName ?? ""}` : ""} />
-                <label>CNPJ</label>
-                <input value={form.cnpj} onChange={(e) => set("cnpj", e.target.value)}
-                  placeholder={resolved?.inherited.includes("cnpj") ? `matriz: ${resolved?.cnpj ?? ""}` : ""} />
-                <label>E-mail</label>
-                <input value={form.email} onChange={(e) => set("email", e.target.value)}
+                <FormField label="CNPJ" kind="cnpj" value={form.cnpj} onChange={(v) => set("cnpj", v)}
+                  placeholder={resolved?.inherited.includes("cnpj") ? `matriz: ${resolved?.cnpj ?? ""}` : "00.000.000/0000-00"} />
+                <FormField label="E-mail" kind="email" value={form.email} onChange={(v) => set("email", v)}
                   placeholder={resolved?.inherited.includes("email") ? `matriz: ${resolved?.email ?? ""}` : ""} />
 
                 {editingBranch && (

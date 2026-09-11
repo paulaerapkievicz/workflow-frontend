@@ -6,6 +6,8 @@ import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import BranchScopeField from "@/src/components/supermarket/BranchScopeField";
 import TeamRolesManager from "@/src/components/TeamRolesManager";
+import FormField from "@/src/components/FormField";
+import { isValidEmail } from "@/src/lib/validators";
 import panel from "@/styles/panel.module.scss";
 import {
   getMembers, addMember, updateMember, deleteMember, SupermarketMember,
@@ -52,6 +54,10 @@ function TeamPage() {
 
   const save = async () => {
     setError(null);
+    if (!isValidEmail(form.email)) {
+      setError("Informe um e-mail válido para o gerente.");
+      return;
+    }
     try {
       await addMember(supermarketId, {
         name: form.name,
@@ -191,8 +197,8 @@ function TeamPage() {
           <div className={panel.form}>
             <label>Nome</label>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <label>E-mail</label>
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <FormField label="E-mail" kind="email" required value={form.email}
+              onChange={(v) => setForm({ ...form, email: v })} />
             <label>Senha de acesso</label>
             <input type="password" minLength={4} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             <label>Cargo na equipe</label>

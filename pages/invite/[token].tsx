@@ -6,6 +6,8 @@ import axios from "axios";
 import s from "@/styles/auth.module.scss";
 import { authService, RegisterPayload } from "@/src/services/authService";
 import { getInvite, InvitePreview } from "@/src/services/inviteService";
+import FormField from "@/src/components/FormField";
+import { validateForm } from "@/src/lib/validators";
 
 const ROLE_LABELS: Record<string, string> = {
   supermarket: "supermercado",
@@ -23,6 +25,15 @@ function FreelancerInviteForm({ token, agencyName }: { token: string; agencyName
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const errs = validateForm([
+      { name: "email", value: form.email, kind: "email", required: true },
+      { name: "phone", value: form.phone, kind: "phone", required: true },
+      { name: "document", value: form.document, kind: "cpf", required: true },
+    ]);
+    if (Object.keys(errs).length) {
+      setError("Confira os campos destacados antes de continuar.");
+      return;
+    }
     setLoading(true);
     const payload: RegisterPayload = {
       name: form.name,
@@ -64,22 +75,16 @@ function FreelancerInviteForm({ token, agencyName }: { token: string; agencyName
           <label>Nome completo</label>
           <input value={form.name} onChange={(e) => set("name", e.target.value)} required />
         </div>
-        <div className={s.field}>
-          <label>E-mail</label>
-          <input type="email" autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} required />
-        </div>
+        <FormField wrapperClassName={s.field} label="E-mail" kind="email" required autoComplete="email"
+          value={form.email} onChange={(v) => set("email", v)} />
         <div className={s.field}>
           <label>Senha</label>
           <input type="password" autoComplete="new-password" minLength={4} value={form.password} onChange={(e) => set("password", e.target.value)} required />
         </div>
-        <div className={s.field}>
-          <label>Telefone</label>
-          <input value={form.phone} onChange={(e) => set("phone", e.target.value)} required />
-        </div>
-        <div className={s.field}>
-          <label>Documento (CPF)</label>
-          <input value={form.document} onChange={(e) => set("document", e.target.value)} required />
-        </div>
+        <FormField wrapperClassName={s.field} label="Telefone" kind="phone" required placeholder="(00) 00000-0000"
+          value={form.phone} onChange={(v) => set("phone", v)} />
+        <FormField wrapperClassName={s.field} label="Documento (CPF)" kind="cpf" required placeholder="000.000.000-00"
+          value={form.document} onChange={(v) => set("document", v)} />
         {error && <p className={s.error}>{error}</p>}
         <button className={s.submit} type="submit" disabled={loading}>
           {loading ? "Enviando…" : "Criar conta"}
@@ -99,6 +104,14 @@ function LeaderInviteForm({ token, agencyName }: { token: string; agencyName: st
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const errs = validateForm([
+      { name: "email", value: form.email, kind: "email", required: true },
+      { name: "phone", value: form.phone, kind: "phone", required: true },
+    ]);
+    if (Object.keys(errs).length) {
+      setError("Confira os campos destacados antes de continuar.");
+      return;
+    }
     setLoading(true);
     const payload: RegisterPayload = {
       name: form.name,
@@ -139,18 +152,14 @@ function LeaderInviteForm({ token, agencyName }: { token: string; agencyName: st
           <label>Nome completo</label>
           <input value={form.name} onChange={(e) => set("name", e.target.value)} required />
         </div>
-        <div className={s.field}>
-          <label>E-mail</label>
-          <input type="email" autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} required />
-        </div>
+        <FormField wrapperClassName={s.field} label="E-mail" kind="email" required autoComplete="email"
+          value={form.email} onChange={(v) => set("email", v)} />
         <div className={s.field}>
           <label>Senha</label>
           <input type="password" autoComplete="new-password" minLength={6} value={form.password} onChange={(e) => set("password", e.target.value)} required />
         </div>
-        <div className={s.field}>
-          <label>Telefone</label>
-          <input value={form.phone} onChange={(e) => set("phone", e.target.value)} required />
-        </div>
+        <FormField wrapperClassName={s.field} label="Telefone" kind="phone" required placeholder="(00) 00000-0000"
+          value={form.phone} onChange={(v) => set("phone", v)} />
         {error && <p className={s.error}>{error}</p>}
         <button className={s.submit} type="submit" disabled={loading}>
           {loading ? "Enviando…" : "Criar conta"}
@@ -170,6 +179,15 @@ function SupermarketInviteForm({ token, agencyName }: { token: string; agencyNam
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const errs = validateForm([
+      { name: "cnpj", value: form.cnpj, kind: "cnpj", required: true },
+      { name: "email", value: form.email, kind: "email", required: true },
+      { name: "phone", value: form.phone, kind: "phone", required: true },
+    ]);
+    if (Object.keys(errs).length) {
+      setError("Confira os campos destacados antes de continuar.");
+      return;
+    }
     setLoading(true);
     const payload: RegisterPayload = {
       name: form.companyName,
@@ -215,18 +233,12 @@ function SupermarketInviteForm({ token, agencyName }: { token: string; agencyNam
           <label>Razão social</label>
           <input value={form.legalName} onChange={(e) => set("legalName", e.target.value)} />
         </div>
-        <div className={s.field}>
-          <label>CNPJ</label>
-          <input value={form.cnpj} onChange={(e) => set("cnpj", e.target.value)} required />
-        </div>
-        <div className={s.field}>
-          <label>E-mail de acesso</label>
-          <input type="email" autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} required />
-        </div>
-        <div className={s.field}>
-          <label>Telefone</label>
-          <input value={form.phone} onChange={(e) => set("phone", e.target.value)} required />
-        </div>
+        <FormField wrapperClassName={s.field} label="CNPJ" kind="cnpj" required placeholder="00.000.000/0000-00"
+          value={form.cnpj} onChange={(v) => set("cnpj", v)} />
+        <FormField wrapperClassName={s.field} label="E-mail de acesso" kind="email" required autoComplete="email"
+          value={form.email} onChange={(v) => set("email", v)} />
+        <FormField wrapperClassName={s.field} label="Telefone" kind="phone" required placeholder="(00) 00000-0000"
+          value={form.phone} onChange={(v) => set("phone", v)} />
         <div className={s.field}>
           <label>Endereço (matriz)</label>
           <input value={form.address} onChange={(e) => set("address", e.target.value)} required />

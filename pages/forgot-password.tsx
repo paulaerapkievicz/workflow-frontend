@@ -2,6 +2,8 @@ import { useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import s from "@/styles/auth.module.scss";
+import FormField from "@/src/components/FormField";
+import { isValidEmail } from "@/src/lib/validators";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -9,6 +11,7 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) return;
     // Sem envio de e-mail configurado no ambiente: confirmamos sem revelar se a conta existe.
     setSent(true);
   };
@@ -49,19 +52,20 @@ export default function ForgotPasswordPage() {
             ) : (
               <>
                 <form className={s.form} onSubmit={handleSubmit}>
-                  <div className={s.field}>
-                    <label htmlFor="email">E-mail</label>
-                    <input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      placeholder="voce@empresa.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <button className={s.submit} type="submit">Enviar instruções</button>
+                  <FormField
+                    wrapperClassName={s.field}
+                    id="email"
+                    label="E-mail"
+                    kind="email"
+                    required
+                    autoComplete="email"
+                    placeholder="voce@empresa.com"
+                    value={email}
+                    onChange={setEmail}
+                  />
+                  <button className={s.submit} type="submit" disabled={!isValidEmail(email)}>
+                    Enviar instruções
+                  </button>
                 </form>
 
                 <div className={s.divider}>ou</div>

@@ -4,6 +4,9 @@ import axios from "axios";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import ContractDocument from "@/src/components/contract/ContractDocument";
+import FormField from "@/src/components/FormField";
+import { isValidCpf } from "@/src/lib/validators";
+import { maskCpf } from "@/src/lib/masks";
 import panel from "@/styles/panel.module.scss";
 import {
   getMyAgreement, signMyContract, myContractDocumentUrl, openProtectedPdf, FreelancerAgreement,
@@ -35,6 +38,10 @@ function ContractPage() {
 
   const sign = async () => {
     setMsg(null);
+    if (!isValidCpf(signerCpf)) {
+      setMsg({ type: "err", text: "Informe um CPF válido para assinar." });
+      return;
+    }
     setBusy(true);
     try {
       await signMyContract({ accepted, signerName, signerCpf });
@@ -71,7 +78,7 @@ function ContractPage() {
                   <span className={`${panel.badge} ${panel.badgeApproved}`}>Assinado</span>
                   <p style={{ marginTop: "0.5rem" }}>
                     Assinado em <strong>{fmt(data.signature.signedAt)}</strong> por {data.signature.signerName}
-                    {" "}(CPF {data.signature.signerCpf}).
+                    {" "}(CPF {maskCpf(data.signature.signerCpf)}).
                   </p>
                   <p className={panel.muted}>Código de verificação: <code>{data.signature.contentHash.slice(0, 24)}…</code></p>
                   <button className={panel.primaryBtn} onClick={() => openProtectedPdf(myContractDocumentUrl())}>
@@ -100,10 +107,8 @@ function ContractPage() {
                       <span>Nome completo</span>
                       <input value={signerName} onChange={(e) => setSignerName(e.target.value)} />
                     </label>
-                    <label className={panel.filterField}>
-                      <span>CPF</span>
-                      <input value={signerCpf} onChange={(e) => setSignerCpf(e.target.value)} />
-                    </label>
+                    <FormField label="CPF" kind="cpf" required placeholder="000.000.000-00"
+                      value={signerCpf} onChange={setSignerCpf} />
                     <label className={panel.toggleRow}>
                       <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
                       {data.acceptanceText}

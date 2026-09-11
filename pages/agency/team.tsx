@@ -12,6 +12,8 @@ import {
 import { createInvite } from "@/src/services/inviteService";
 import TeamRolesManager from "@/src/components/TeamRolesManager";
 import ScopePicker from "@/src/components/ScopePicker";
+import FormField from "@/src/components/FormField";
+import { validateForm } from "@/src/lib/validators";
 import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
 import { getBranches, Branch } from "@/src/services/branchService";
@@ -86,6 +88,11 @@ function TeamPage() {
     const amount = Number(form.payAmount);
     if (!form.name || !form.email || !form.password) { setCreateError("Preencha nome, e-mail e senha."); return; }
     if (!(amount > 0)) { setCreateError("Informe o valor de pagamento do líder."); return; }
+    const errs = validateForm([
+      { name: "email", value: form.email, kind: "email", required: true },
+      { name: "phone", value: form.phone, kind: "phone" },
+    ]);
+    if (Object.keys(errs).length) { setCreateError("Confira o e-mail e o telefone."); return; }
     try {
       await createAgencyMember({
         name: form.name, email: form.email, password: form.password, phone: form.phone || undefined,
@@ -260,12 +267,12 @@ function TeamPage() {
           <div className={panel.form}>
             <label>Nome</label>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <label>E-mail</label>
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <FormField label="E-mail" kind="email" required value={form.email}
+              onChange={(v) => setForm({ ...form, email: v })} />
             <label>Senha de acesso</label>
             <input type="password" minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-            <label>Telefone</label>
-            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <FormField label="Telefone" kind="phone" placeholder="(00) 00000-0000" value={form.phone}
+              onChange={(v) => setForm({ ...form, phone: v })} />
             <label>Cargo na equipe</label>
             <select value={form.teamRoleId} onChange={(e) => setForm({ ...form, teamRoleId: e.target.value })}>
               <option value="">— sem cargo —</option>

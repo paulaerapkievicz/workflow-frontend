@@ -6,6 +6,9 @@ import RequireAuth from "@/src/components/RequireAuth";
 import Modal from "@/src/components/common/Modal";
 import panel from "@/styles/panel.module.scss";
 import { listAgencies, createAgency, updateAgency, AdminAgency } from "@/src/services/adminService";
+import FormField from "@/src/components/FormField";
+import { validateForm } from "@/src/lib/validators";
+import { maskCnpj } from "@/src/lib/masks";
 
 const EMPTY = {
   name: "", legalName: "", cnpj: "", address: "", phone: "", email: "",
@@ -37,6 +40,16 @@ function AdminAgenciesPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
+    const errs = validateForm([
+      { name: "cnpj", value: form.cnpj, kind: "cnpj", required: true },
+      { name: "email", value: form.email, kind: "email" },
+      { name: "phone", value: form.phone, kind: "phone" },
+      { name: "ownerEmail", value: form.ownerEmail, kind: "email", required: true },
+    ]);
+    if (Object.keys(errs).length) {
+      setMsg({ type: "err", text: "Confira os campos destacados antes de salvar." });
+      return;
+    }
     setCreating(true);
     try {
       const { owner } = await createAgency({
@@ -92,15 +105,15 @@ function AdminAgenciesPage() {
                   <input value={form.name} onChange={(e) => set("name", e.target.value)} required /></label>
                 <label className={panel.filterField}><span>Razão social</span>
                   <input value={form.legalName} onChange={(e) => set("legalName", e.target.value)} /></label>
-                <label className={panel.filterField}><span>CNPJ *</span>
-                  <input value={form.cnpj} onChange={(e) => set("cnpj", e.target.value)} required /></label>
-                <label className={panel.filterField}><span>Telefone</span>
-                  <input value={form.phone} onChange={(e) => set("phone", e.target.value)} /></label>
+                <FormField label="CNPJ" kind="cnpj" required placeholder="00.000.000/0000-00"
+                  value={form.cnpj} onChange={(v) => set("cnpj", v)} />
+                <FormField label="Telefone" kind="phone" placeholder="(00) 00000-0000"
+                  value={form.phone} onChange={(v) => set("phone", v)} />
                 <label className={panel.filterField} style={{ gridColumn: "1 / -1" }}><span>Endereço *</span>
                   <input value={form.address} onChange={(e) => set("address", e.target.value)}
                     placeholder="Rua Dirceu Sander, 719, Passo Fundo RS" required /></label>
-                <label className={panel.filterField} style={{ gridColumn: "1 / -1" }}><span>E-mail de contato</span>
-                  <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></label>
+                <FormField label="E-mail de contato" kind="email" style={{ gridColumn: "1 / -1" }}
+                  value={form.email} onChange={(v) => set("email", v)} />
               </div>
 
               <hr style={{ width: "100%", borderColor: "var(--border)" }} />
@@ -109,8 +122,8 @@ function AdminAgenciesPage() {
                 <label className={panel.filterField}><span>Nome do responsável</span>
                   <input value={form.ownerName} onChange={(e) => set("ownerName", e.target.value)}
                     placeholder="(usa o nome fantasia se vazio)" /></label>
-                <label className={panel.filterField}><span>E-mail de acesso *</span>
-                  <input type="email" value={form.ownerEmail} onChange={(e) => set("ownerEmail", e.target.value)} required /></label>
+                <FormField label="E-mail de acesso" kind="email" required
+                  value={form.ownerEmail} onChange={(v) => set("ownerEmail", v)} />
                 <label className={panel.filterField}><span>Senha inicial *</span>
                   <input type="text" minLength={4} value={form.password}
                     onChange={(e) => set("password", e.target.value)} required /></label>
@@ -137,7 +150,7 @@ function AdminAgenciesPage() {
                       <strong>{a.name}</strong>
                       {a.legalName && <><br /><span className={panel.muted}>{a.legalName}</span></>}
                     </td>
-                    <td>{a.cnpj}</td>
+                    <td>{maskCnpj(a.cnpj)}</td>
                     <td>{a.owner?.email ?? "—"}</td>
                     <td>{a.supermarketCount ?? 0}</td>
                     <td>{a.freelancerCount ?? 0}</td>
@@ -184,6 +197,15 @@ function EditAgencyModal({ agency, onClose, onSaved }: {
 
   const save = async () => {
     setErr(null);
+    const errs = validateForm([
+      { name: "cnpj", value: form.cnpj, kind: "cnpj", required: true },
+      { name: "phone", value: form.phone, kind: "phone" },
+      { name: "email", value: form.email, kind: "email" },
+    ]);
+    if (Object.keys(errs).length) {
+      setErr("Confira os campos destacados antes de salvar.");
+      return;
+    }
     setSaving(true);
     try {
       await updateAgency(agency.id, {
@@ -201,13 +223,16 @@ function EditAgencyModal({ agency, onClose, onSaved }: {
   return (
     <Modal title={`Editar ${agency.name}`} onClose={onClose}>
       <div className={panel.form}>
-        {([["name", "Nome fantasia"], ["legalName", "Razão social"], ["cnpj", "CNPJ"],
-          ["address", "Endereço"], ["phone", "Telefone"], ["email", "E-mail de contato"]] as const).map(([k, label]) => (
+        {([["name", "Nome fantasia"], ["legalName", "Razão social"],
+          ["address", "Endereço"]] as const).map(([k, label]) => (
           <label key={k} className={panel.filterField}>
             <span>{label}</span>
             <input value={form[k]} onChange={(e) => set(k, e.target.value)} />
           </label>
         ))}
+        <FormField label="CNPJ" kind="cnpj" required value={form.cnpj} onChange={(v) => set("cnpj", v)} />
+        <FormField label="Telefone" kind="phone" value={form.phone} onChange={(v) => set("phone", v)} />
+        <FormField label="E-mail de contato" kind="email" value={form.email} onChange={(v) => set("email", v)} />
         {err && <p className={panel.error}>{err}</p>}
         <button className={panel.primaryBtn} onClick={save} disabled={saving}>
           {saving ? "Salvando…" : "Salvar"}

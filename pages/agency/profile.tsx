@@ -5,18 +5,20 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import ProfileImageField from "@/src/components/ProfileImageField";
+import FormField, { type FieldKind } from "@/src/components/FormField";
 import panel from "@/styles/panel.module.scss";
+import { validateForm } from "@/src/lib/validators";
 import {
   getAgencyProfile, updateAgencyProfile, uploadAgencyLogo, uploadAgencyPhoto, AgencyProfile,
 } from "@/src/services/agencyProfileService";
 
-const FIELDS: { key: keyof AgencyProfile; label: string; required?: boolean }[] = [
+const FIELDS: { key: keyof AgencyProfile; label: string; required?: boolean; kind?: FieldKind }[] = [
   { key: "name", label: "Nome fantasia", required: true },
   { key: "legalName", label: "Razão social" },
-  { key: "cnpj", label: "CNPJ", required: true },
+  { key: "cnpj", label: "CNPJ", required: true, kind: "cnpj" },
   { key: "address", label: "Endereço", required: true },
-  { key: "phone", label: "Telefone" },
-  { key: "email", label: "E-mail de contato" },
+  { key: "phone", label: "Telefone", kind: "phone" },
+  { key: "email", label: "E-mail de contato", kind: "email" },
 ];
 
 function AgencyProfilePage() {
@@ -40,6 +42,15 @@ function AgencyProfilePage() {
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
+    const errs = validateForm(
+      FIELDS.filter((f) => f.kind).map((f) => ({
+        name: String(f.key), value: form[f.key] ?? "", kind: f.kind!, required: f.required,
+      }))
+    );
+    if (Object.keys(errs).length) {
+      setMsg({ type: "err", text: "Confira os campos destacados antes de salvar." });
+      return;
+    }
     setSaving(true);
     try {
       const p = await updateAgencyProfile({
@@ -78,14 +89,20 @@ function AgencyProfilePage() {
               <form className={panel.card} onSubmit={save} style={{ maxWidth: 560 }}>
                 <div className={panel.form}>
                   {FIELDS.map((f) => (
-                    <label key={f.key} className={panel.filterField}>
-                      <span>{f.label}{f.required ? " *" : ""}</span>
-                      <input
+                    f.kind ? (
+                      <FormField key={f.key} label={f.label} kind={f.kind} required={f.required}
                         value={form[f.key] ?? ""}
-                        required={f.required}
-                        onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))}
-                      />
-                    </label>
+                        onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
+                    ) : (
+                      <label key={f.key} className={panel.filterField}>
+                        <span>{f.label}{f.required ? " *" : ""}</span>
+                        <input
+                          value={form[f.key] ?? ""}
+                          required={f.required}
+                          onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))}
+                        />
+                      </label>
+                    )
                   ))}
                   {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
                   <button className={panel.primaryBtn} type="submit" disabled={saving}>

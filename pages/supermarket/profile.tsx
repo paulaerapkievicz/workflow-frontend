@@ -4,20 +4,22 @@ import axios from "axios";
 import Sidebar from "@/src/components/supermarket/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import ProfileImageField from "@/src/components/ProfileImageField";
+import FormField, { type FieldKind } from "@/src/components/FormField";
 import panel from "@/styles/panel.module.scss";
 import { useAuth } from "@/src/hooks/useAuth";
+import { validateForm } from "@/src/lib/validators";
 import {
   updateSupermarketProfile, uploadSupermarketImage,
 } from "@/src/services/supermarketProfileService";
 
-const FIELDS = [
+const FIELDS: { key: string; label: string; required?: boolean; kind?: FieldKind }[] = [
   { key: "name", label: "Nome fantasia", required: true },
   { key: "legalName", label: "Razão social" },
-  { key: "cnpj", label: "CNPJ", required: true },
+  { key: "cnpj", label: "CNPJ", required: true, kind: "cnpj" },
   { key: "address", label: "Endereço", required: true },
-  { key: "phone", label: "Telefone" },
-  { key: "email", label: "E-mail de contato" },
-] as const;
+  { key: "phone", label: "Telefone", kind: "phone" },
+  { key: "email", label: "E-mail de contato", kind: "email" },
+];
 
 function SupermarketProfilePage() {
   const { profile, refresh } = useAuth();
@@ -37,6 +39,15 @@ function SupermarketProfilePage() {
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
+    const errs = validateForm(
+      FIELDS.filter((f) => f.kind).map((f) => ({
+        name: f.key, value: form[f.key] ?? "", kind: f.kind!, required: f.required,
+      }))
+    );
+    if (Object.keys(errs).length) {
+      setMsg({ type: "err", text: "Confira os campos destacados antes de salvar." });
+      return;
+    }
     setSaving(true);
     try {
       await updateSupermarketProfile(supermarketId, {
@@ -68,12 +79,17 @@ function SupermarketProfilePage() {
           <form className={panel.card} onSubmit={save} style={{ maxWidth: 560 }}>
             <div className={panel.form}>
               {FIELDS.map((f) => (
-                <label key={f.key} className={panel.filterField}>
-                  <span>{f.label}{"required" in f && f.required ? " *" : ""}</span>
-                  <input value={form[f.key] ?? ""} disabled={!canEdit}
-                    required={"required" in f && f.required}
-                    onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))} />
-                </label>
+                f.kind ? (
+                  <FormField key={f.key} label={f.label} kind={f.kind} required={f.required}
+                    disabled={!canEdit} value={form[f.key] ?? ""}
+                    onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
+                ) : (
+                  <label key={f.key} className={panel.filterField}>
+                    <span>{f.label}{f.required ? " *" : ""}</span>
+                    <input value={form[f.key] ?? ""} disabled={!canEdit} required={f.required}
+                      onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))} />
+                  </label>
+                )
               ))}
               {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
               <button className={panel.primaryBtn} type="submit" disabled={saving || !canEdit}>

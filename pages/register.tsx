@@ -5,6 +5,8 @@ import axios from "axios";
 import s from "@/styles/auth.module.scss";
 import { authService, RegisterPayload } from "@/src/services/authService";
 import { getAgencies, Agency } from "@/src/services/agencyService";
+import FormField from "@/src/components/FormField";
+import { validateForm } from "@/src/lib/validators";
 
 export default function RegisterPage() {
   const [show, setShow] = useState(false);
@@ -29,6 +31,15 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const errs = validateForm([
+      { name: "email", value: form.email, kind: "email", required: true },
+      { name: "phone", value: form.phone, kind: "phone", required: true },
+      { name: "document", value: form.document, kind: "cpf", required: true },
+    ]);
+    if (Object.keys(errs).length) {
+      setError("Confira os campos destacados antes de continuar.");
+      return;
+    }
     setLoading(true);
     const payload: RegisterPayload = {
       name: form.name,
@@ -111,10 +122,15 @@ export default function RegisterPage() {
                     <label>Nome completo</label>
                     <input value={form.name} onChange={(e) => set("name", e.target.value)} required />
                   </div>
-                  <div className={s.field}>
-                    <label>E-mail</label>
-                    <input type="email" autoComplete="email" value={form.email} onChange={(e) => set("email", e.target.value)} required />
-                  </div>
+                  <FormField
+                    wrapperClassName={s.field}
+                    label="E-mail"
+                    kind="email"
+                    required
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={(v) => set("email", v)}
+                  />
                   <div className={s.field}>
                     <label>Senha</label>
                     <div className={s.passwordWrap}>
@@ -129,14 +145,25 @@ export default function RegisterPage() {
                       <button type="button" onClick={() => setShow((v) => !v)}>{show ? "Ocultar" : "Mostrar"}</button>
                     </div>
                   </div>
-                  <div className={s.field}>
-                    <label>Telefone</label>
-                    <input value={form.phone} onChange={(e) => set("phone", e.target.value)} required />
-                  </div>
-                  <div className={s.field}>
-                    <label>Documento (CPF)</label>
-                    <input value={form.document} onChange={(e) => set("document", e.target.value)} required />
-                  </div>
+                  <FormField
+                    wrapperClassName={s.field}
+                    label="Telefone"
+                    kind="phone"
+                    required
+                    autoComplete="tel"
+                    placeholder="(00) 00000-0000"
+                    value={form.phone}
+                    onChange={(v) => set("phone", v)}
+                  />
+                  <FormField
+                    wrapperClassName={s.field}
+                    label="Documento (CPF)"
+                    kind="cpf"
+                    required
+                    placeholder="000.000.000-00"
+                    value={form.document}
+                    onChange={(v) => set("document", v)}
+                  />
                   <div className={s.field}>
                     <label>Agência</label>
                     <select value={form.agencyId} onChange={(e) => set("agencyId", e.target.value)} required>

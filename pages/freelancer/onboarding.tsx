@@ -12,19 +12,30 @@ import { photoUrl } from "@/src/services/jobPhotoService";
 import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
 import { useAuth } from "@/src/hooks/useAuth";
 import Link from "next/link";
+import FormField, { type FieldKind } from "@/src/components/FormField";
+import { validateForm } from "@/src/lib/validators";
 
-type Field = { key: string; label: string; type?: "text" | "date" | "number"; required?: boolean };
+type Field = {
+  key: string;
+  label: string;
+  type?: "text" | "date" | "number";
+  required?: boolean;
+  /** Campo tipado: máscara + validação. */
+  kind?: FieldKind;
+  /** Limite de dígitos (kind="digits"). */
+  maxLength?: number;
+};
 
 const SECTIONS: { title: string; fields: Field[] }[] = [
   {
     title: "Dados pessoais",
     fields: [
       { key: "fullName", label: "Nome completo", required: true },
-      { key: "cpf", label: "CPF", required: true },
+      { key: "cpf", label: "CPF", required: true, kind: "cpf" },
       { key: "rg", label: "RG", required: true },
       { key: "rgIssuer", label: "Órgão emissor" },
-      { key: "pisNis", label: "PIS/NIS", required: true },
-      { key: "birthDate", label: "Data de nascimento", type: "date", required: true },
+      { key: "pisNis", label: "PIS/NIS", required: true, kind: "digits", maxLength: 11 },
+      { key: "birthDate", label: "Data de nascimento", type: "date", required: true, kind: "birthdate" },
       { key: "gender", label: "Gênero" },
       { key: "maritalStatus", label: "Estado civil", required: true },
       { key: "nationality", label: "Nacionalidade", required: true },
@@ -38,21 +49,21 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
   {
     title: "Endereço",
     fields: [
-      { key: "addressCep", label: "CEP", required: true },
+      { key: "addressCep", label: "CEP", required: true, kind: "cep" },
       { key: "addressStreet", label: "Rua", required: true },
       { key: "addressNumber", label: "Número", required: true },
       { key: "addressComplement", label: "Complemento" },
       { key: "addressNeighborhood", label: "Bairro", required: true },
       { key: "addressCity", label: "Cidade", required: true },
-      { key: "addressState", label: "UF", required: true },
+      { key: "addressState", label: "UF", required: true, kind: "uf" },
     ],
   },
   {
     title: "Dados bancários",
     fields: [
       { key: "bankName", label: "Banco", required: true },
-      { key: "bankBranch", label: "Agência", required: true },
-      { key: "bankAccount", label: "Conta", required: true },
+      { key: "bankBranch", label: "Agência", required: true, kind: "digits" },
+      { key: "bankAccount", label: "Conta", required: true, kind: "digits" },
       { key: "bankAccountType", label: "Tipo de conta" },
       { key: "pixKey", label: "Chave Pix" },
     ],
@@ -61,7 +72,7 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
     title: "Contato de emergência",
     fields: [
       { key: "emergencyContactName", label: "Nome", required: true },
-      { key: "emergencyContactPhone", label: "Telefone", required: true },
+      { key: "emergencyContactPhone", label: "Telefone", required: true, kind: "phone" },
     ],
   },
 ];
@@ -119,6 +130,15 @@ function OnboardingPage() {
   const save = async () => {
     setMsg(null);
     setShowErrors(true);
+    const fieldErrs = validateForm(
+      ALL_FIELDS.filter((f) => f.kind).map((f) => ({
+        name: f.key, value: values[f.key] ?? "", kind: f.kind!, required: f.required,
+      }))
+    );
+    if (Object.keys(fieldErrs).length) {
+      setMsg({ type: "err", text: "Confira os campos destacados — há valores inválidos." });
+      return;
+    }
     setSaving(true);
     try {
       const c = await saveContract(values);
@@ -225,6 +245,20 @@ function OnboardingPage() {
                       {sec.fields.map((f) => {
                         const invalid =
                           showErrors && f.required && !(values[f.key] ?? "").trim();
+                        if (f.kind) {
+                          return (
+                            <FormField
+                              key={f.key}
+                              label={f.label}
+                              kind={f.kind}
+                              required={f.required}
+                              maxLength={f.maxLength}
+                              value={values[f.key] ?? ""}
+                              onChange={(v) => set(f.key, v)}
+                              error={invalid ? "Campo obrigatório" : undefined}
+                            />
+                          );
+                        }
                         return (
                           <label key={f.key} className={panel.filterField}>
                             <span>
