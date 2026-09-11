@@ -37,6 +37,8 @@ export interface AuthProfile {
   payType?: "hora" | "diaria" | "mensal" | null;
   payAmount?: number | null;
   availableBalance?: number;
+  /** Agência/supermercado: ordem personalizada do menu lateral (lista de hrefs). */
+  sidebarOrder?: string[] | null;
   [key: string]: unknown;
 }
 

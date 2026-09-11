@@ -11,6 +11,8 @@ import {
 import {
   StatusColors, STATUS_TONES, DEFAULT_STATUS_COLORS, sanitizeStatusColors,
 } from "@/src/services/statusColors";
+import SidebarOrderEditor from "@/src/components/SidebarOrderEditor";
+import { AGENCY_SIDEBAR_ITEMS } from "@/src/config/sidebarItems";
 
 const newTier = (): UnfilledAlertTier => ({
   id: `tier-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -47,6 +49,7 @@ function SettingsPage() {
   });
   const [tiers, setTiers] = useState<UnfilledAlertTier[]>([]);
   const [statusColors, setStatusColors] = useState<StatusColors>(DEFAULT_STATUS_COLORS);
+  const [sidebarOrder, setSidebarOrder] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   const patchColor = (tone: keyof StatusColors, key: "bg" | "fg", value: string) =>
@@ -63,6 +66,7 @@ function SettingsPage() {
         setSettings(s);
         setTiers(s.unfilledAlertTiers ?? []);
         setStatusColors(sanitizeStatusColors(s.statusColors));
+        setSidebarOrder(s.sidebarOrder ?? null);
         setForm({
           checkinRadius: String(s.checkinRadius),
           cancellationWindowMinutes: String(s.cancellationWindowMinutes),
@@ -108,6 +112,7 @@ function SettingsPage() {
         maxShiftHours: Number(form.maxShiftHours),
         maxJobHours: Number(form.maxJobHours),
         statusColors,
+        sidebarOrder,
         alertsEnabled: form.alertsEnabled,
         notifySupermarketOnAlerts: form.notifySupermarketOnAlerts,
         lateCheckinToleranceMinutes: Number(form.lateCheckinToleranceMinutes),
@@ -128,6 +133,7 @@ function SettingsPage() {
       setSettings(s);
       setTiers(s.unfilledAlertTiers ?? []);
       setStatusColors(sanitizeStatusColors(s.statusColors));
+      setSidebarOrder(s.sidebarOrder ?? null);
       setMsg({ type: "ok", text: "Configurações salvas." });
     } catch (err) {
       setMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
@@ -268,6 +274,19 @@ function SettingsPage() {
                   onClick={() => setStatusColors(DEFAULT_STATUS_COLORS)}>
                   Restaurar cores padrão
                 </button>
+
+                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                <strong>Ordem do menu lateral</strong>
+                <span className={panel.muted}>
+                  Reorganize os itens do seu menu lateral na ordem que preferir.
+                </span>
+                <SidebarOrderEditor items={AGENCY_SIDEBAR_ITEMS} order={sidebarOrder} onChange={setSidebarOrder} />
+                {sidebarOrder && (
+                  <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
+                    onClick={() => setSidebarOrder(null)}>
+                    Restaurar ordem padrão
+                  </button>
+                )}
 
                 <hr style={{ width: "100%", borderColor: "var(--border)" }} />
                 <strong>Alertas de ocorrência</strong>

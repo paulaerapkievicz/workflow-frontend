@@ -36,8 +36,8 @@
 // Tema claro: logo completo (texto escuro sobre fundo claro).
 .logoImg {
   display: block;
-  height: 40px;
-  width: 72px; // logo.png é 1920x1080 -> 40 * 16/9 ≈ 71
+  height: 48px;
+  width: 85px; // logo.png é 1920x1080 -> 48 * 16/9 ≈ 85
   background: url("/logo.png") left center / contain no-repeat;
 }
 
@@ -47,7 +47,7 @@ body[data-theme="dark"] .logoImg {
 }
 
 @media (max-width: 460px) {
-  .logoImg { height: 32px; width: 57px; }
+  .logoImg { height: 38px; width: 68px; }
 }
 
 .nav {

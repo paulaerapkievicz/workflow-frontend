@@ -37,6 +37,12 @@ export const updateSupermarketProfile = async (
   patch: ProfilePatch
 ): Promise<SupermarketProfile> => (await api.put(`/supermarkets/${id}/profile`, patch)).data;
 
+/** Ordem personalizada do menu lateral — só o responsável pela rede. */
+export const updateSupermarketSidebarOrder = async (
+  sidebarOrder: string[] | null
+): Promise<{ sidebarOrder: string[] | null }> =>
+  (await api.put("/supermarket/sidebar-order", { sidebarOrder })).data;
+
 export const getBranchProfile = async (
   id: string
 ): Promise<{ branch: BranchProfileFields & { id: string }; profile: ResolvedBranchProfile }> =>

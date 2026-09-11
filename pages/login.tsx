@@ -59,13 +59,13 @@ export default function LoginPage() {
             <div className={s.brandMark}><img src="/logo-white.png" alt="WorkFlow" /></div>
             <h1 className={s.brandTitle}>Bem-vindo de volta</h1>
             <p className={s.brandText}>
-              A plataforma que conecta supermercados, agências e colaboradores — do pedido de vagas
-              ao pagamento, com controle em tempo real.
+              A plataforma que conecta supermercados, agências e colaboradores em uma única
+              operação — organizada, conectada e sob controle.
             </p>
             <ul className={s.brandList}>
-              <li><span className={s.check}>✓</span> Pedidos de vagas em poucos cliques</li>
-              <li><span className={s.check}>✓</span> Check-in por geolocalização e comprovação por foto</li>
-              <li><span className={s.check}>✓</span> Faturamento e fechamento mensal automáticos</li>
+              <li><span className={s.check}>✓</span> Tudo o que a sua operação precisa, em um só lugar</li>
+              <li><span className={s.check}>✓</span> Processos conectados de ponta a ponta</li>
+              <li><span className={s.check}>✓</span> Decisões com dados em tempo real</li>
             </ul>
           </div>
         </aside>

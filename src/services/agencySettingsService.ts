@@ -32,7 +32,9 @@ export interface AgencySettings {
   /** Teto de horas somadas de todos os turnos de uma vaga (jornada legal). */
   maxJobHours: number;
   /** Cores dos 6 tons dos badges de status. */
-  statusColors: StatusColors;
+  statusColors: StatusColors
+  /** Ordem personalizada do menu lateral (lista de hrefs). null = ordem padrão. */
+  sidebarOrder: string[] | null;
   /** Antecedência máxima (min) para bater o check-in antes do início do turno. */
   checkinEarlyToleranceMinutes: number;
   /** Liga/desliga o controle de ocorrências das vagas (atraso, falta, saída antecipada…). */

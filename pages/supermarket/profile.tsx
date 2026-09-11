@@ -9,8 +9,10 @@ import panel from "@/styles/panel.module.scss";
 import { useAuth } from "@/src/hooks/useAuth";
 import { validateForm } from "@/src/lib/validators";
 import {
-  updateSupermarketProfile, uploadSupermarketImage,
+  updateSupermarketProfile, uploadSupermarketImage, updateSupermarketSidebarOrder,
 } from "@/src/services/supermarketProfileService";
+import SidebarOrderEditor from "@/src/components/SidebarOrderEditor";
+import { SUPERMARKET_SIDEBAR_ITEMS } from "@/src/config/sidebarItems";
 
 const FIELDS: { key: string; label: string; required?: boolean; kind?: FieldKind }[] = [
   { key: "name", label: "Nome fantasia", required: true },
@@ -30,11 +32,30 @@ function SupermarketProfilePage() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [sidebarOrder, setSidebarOrder] = useState<string[] | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [orderMsg, setOrderMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   useEffect(() => {
     if (!profile) return;
     setForm(Object.fromEntries(FIELDS.map((f) => [f.key, (profile[f.key] as string | null | undefined) ?? ""])));
+    setSidebarOrder((profile.sidebarOrder as string[] | null | undefined) ?? null);
   }, [profile]);
+
+  const saveSidebarOrder = async (next: string[] | null) => {
+    setSidebarOrder(next);
+    setOrderMsg(null);
+    setSavingOrder(true);
+    try {
+      const { sidebarOrder: saved } = await updateSupermarketSidebarOrder(next);
+      setSidebarOrder(saved);
+      await refresh();
+    } catch (err) {
+      setOrderMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
+    } finally {
+      setSavingOrder(false);
+    }
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +118,29 @@ function SupermarketProfilePage() {
               </button>
             </div>
           </form>
+
+          {canEdit && (
+            <div className={panel.card} style={{ maxWidth: 400, marginTop: "1rem" }}>
+              <strong>Ordem do menu lateral</strong>
+              <p className={panel.muted} style={{ marginTop: "0.3rem" }}>
+                Reorganize os itens do seu menu na ordem que preferir.
+              </p>
+              <div style={{ marginTop: "0.6rem" }}>
+                <SidebarOrderEditor
+                  items={SUPERMARKET_SIDEBAR_ITEMS}
+                  order={sidebarOrder}
+                  onChange={saveSidebarOrder}
+                />
+              </div>
+              {orderMsg && <p className={orderMsg.type === "ok" ? panel.success : panel.error}>{orderMsg.text}</p>}
+              {sidebarOrder && (
+                <button type="button" className={panel.ghostBtn} style={{ marginTop: "0.6rem" }} disabled={savingOrder}
+                  onClick={() => saveSidebarOrder(null)}>
+                  Restaurar ordem padrão
+                </button>
+              )}
+            </div>
+          )}
 
           {canEdit && supermarketId && (
             <div className={panel.card} style={{ maxWidth: 560, marginTop: "1rem", display: "grid", gap: "1.25rem" }}>
