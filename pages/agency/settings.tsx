@@ -46,6 +46,8 @@ function SettingsPage() {
     onboardingRequired: false,
     uniformPrice: "0",
     allowSelfRegistration: false,
+    appPaymentEnabledForSupermarkets: true,
+    appPaymentEnabledForFreelancers: true,
   });
   const [tiers, setTiers] = useState<UnfilledAlertTier[]>([]);
   const [statusColors, setStatusColors] = useState<StatusColors>(DEFAULT_STATUS_COLORS);
@@ -89,6 +91,8 @@ function SettingsPage() {
           onboardingRequired: s.onboardingRequired,
           uniformPrice: String(s.uniformPrice),
           allowSelfRegistration: s.allowSelfRegistration,
+          appPaymentEnabledForSupermarkets: s.appPaymentEnabledForSupermarkets,
+          appPaymentEnabledForFreelancers: s.appPaymentEnabledForFreelancers,
         });
       })
       .catch(() => {})
@@ -129,6 +133,8 @@ function SettingsPage() {
         onboardingRequired: form.onboardingRequired,
         uniformPrice: Number(form.uniformPrice),
         allowSelfRegistration: form.allowSelfRegistration,
+        appPaymentEnabledForSupermarkets: form.appPaymentEnabledForSupermarkets,
+        appPaymentEnabledForFreelancers: form.appPaymentEnabledForFreelancers,
       });
       setSettings(s);
       setTiers(s.unfilledAlertTiers ?? []);
@@ -404,6 +410,28 @@ function SettingsPage() {
                 <input type="number" min={0} step={0.01} value={form.uniformPrice}
                   onChange={(e) => setForm({ ...form, uniformPrice: e.target.value })} />
                 <span className={panel.muted}>Cobrado do colaborador no Mercado Pago ao comprar o uniforme.</span>
+
+                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                <label className={panel.toggleRow}>
+                  <input type="checkbox" checked={form.appPaymentEnabledForSupermarkets}
+                    onChange={(e) => setForm({ ...form, appPaymentEnabledForSupermarkets: e.target.checked })} />
+                  Permitir que os mercados-clientes paguem a fatura pelo app
+                </label>
+                <span className={panel.muted}>
+                  Quando desligado, o botão de pagar some pro mercado; você dá baixa manual em{" "}
+                  <strong>Fechamentos</strong> depois de receber por fora. Escolha quais clientes veem a
+                  opção em <strong>Gestão de Clientes</strong>.
+                </span>
+
+                <label className={panel.toggleRow}>
+                  <input type="checkbox" checked={form.appPaymentEnabledForFreelancers}
+                    onChange={(e) => setForm({ ...form, appPaymentEnabledForFreelancers: e.target.checked })} />
+                  Permitir que os colaboradores comprem o uniforme pelo app
+                </label>
+                <span className={panel.muted}>
+                  Quando desligado, o colaborador registra o pedido sem gerar link de pagamento; você
+                  dá baixa manual em <strong>Onboarding</strong> depois de receber por fora.
+                </span>
 
                 {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
                 <button className={panel.primaryBtn} type="submit" disabled={saving}>

@@ -61,6 +61,10 @@ export interface AgencySettings {
   uniformPrice: number;
   /** Permite que colaboradores se autocadastrem nesta agência (com aprovação depois). */
   allowSelfRegistration: boolean;
+  /** Chave-mestra: libera o pagamento da fatura pelo app pros mercados-clientes (escolha por cliente em cada cadastro). */
+  appPaymentEnabledForSupermarkets: boolean;
+  /** Libera a compra do uniforme pelo app pros colaboradores (tudo ou nada). */
+  appPaymentEnabledForFreelancers: boolean;
 }
 
 export const getAgencySettings = async (): Promise<AgencySettings> =>

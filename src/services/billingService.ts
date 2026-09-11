@@ -170,6 +170,10 @@ export const payClosing = async (id: string): Promise<MonthlyClosing> =>
 export const syncClosingPayment = async (id: string): Promise<MonthlyClosing> =>
   (await api.post(`/invoices/${id}/sync-payment`)).data;
 
+/** Baixa manual da agência — usada quando o pagamento pelo app está desligado (no geral ou pro cliente). */
+export const markClosingPaid = async (id: string): Promise<MonthlyClosing> =>
+  (await api.post(`/invoices/${id}/mark-paid`)).data;
+
 // Baixa o PDF do fechamento e aciona o download no navegador.
 export const downloadClosingPdf = async (id: string, referenceMonth?: string | null): Promise<void> => {
   const response = await api.get(`/closings/${id}/pdf`, { responseType: "blob" });

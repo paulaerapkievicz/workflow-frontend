@@ -6,9 +6,10 @@ import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import {
-  getSupermarkets, createSupermarketAsAgency, updateSupermarket, Supermarket,
+  getSupermarkets, createSupermarketAsAgency, updateSupermarket, setSupermarketAppPayment, Supermarket,
   getMembers, addMember, updateMember, deleteMember, SupermarketMember,
 } from "@/src/services/supermarketService";
+import { getAgencySettings } from "@/src/services/agencySettingsService";
 import {
   getBranches, createBranch, updateBranch, deleteBranch, geocodeAddress, branchHasLocation, approveBranch, Branch,
 } from "@/src/services/branchService";
@@ -68,19 +69,33 @@ function SupermarketsPage() {
   const [branchError, setBranchError] = useState<string | null>(null);
   const [geoMsg, setGeoMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [geoBusy, setGeoBusy] = useState(false);
+  const [appPaymentMasterEnabled, setAppPaymentMasterEnabled] = useState(true);
+  const [appPaymentBusy, setAppPaymentBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [m, b, c] = await Promise.all([getSupermarkets(), getBranches(), getCategories()]);
+      const [m, b, c, settings] = await Promise.all([
+        getSupermarkets(), getBranches(), getCategories(), getAgencySettings(),
+      ]);
       setMarkets(m);
       setBranches(b);
       setCategories(c);
+      setAppPaymentMasterEnabled(settings.appPaymentEnabledForSupermarkets);
     } finally {
       setLoading(false);
     }
   }, []);
   useEffect(() => { load().catch(() => {}); }, [load]);
+
+  const toggleAppPayment = async (m: Supermarket) => {
+    setAppPaymentBusy(m.id);
+    try {
+      const { appPaymentEnabled } = await setSupermarketAppPayment(m.id, !m.appPaymentEnabled);
+      setMarkets((cur) => cur.map((x) => (x.id === m.id ? { ...x, appPaymentEnabled } : x)));
+    } catch { /* vazio */ }
+    finally { setAppPaymentBusy(null); }
+  };
 
   const branchesForMarket = useMemo(
     () => (id: string) => branches.filter((b) => b.supermarketId === id),
@@ -350,7 +365,7 @@ function SupermarketsPage() {
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
-                <thead><tr><th>Nome</th><th>CNPJ</th><th>Acesso</th><th>Filiais</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nome</th><th>CNPJ</th><th>Acesso</th><th>Filiais</th><th>Pagamento pelo app</th><th>Ações</th></tr></thead>
                 <tbody>
                   {markets.map((m) => (
                     <tr key={m.id}>
@@ -366,6 +381,20 @@ function SupermarketsPage() {
                         )}
                       </td>
                       <td>
+                        <label
+                          title={!appPaymentMasterEnabled ? "Habilite em Configurações primeiro" : undefined}
+                          style={{ display: "flex", alignItems: "center", gap: 6, opacity: appPaymentMasterEnabled ? 1 : 0.5 }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={m.appPaymentEnabled}
+                            disabled={!appPaymentMasterEnabled || appPaymentBusy === m.id}
+                            onChange={() => toggleAppPayment(m)}
+                          />
+                          {m.appPaymentEnabled ? "Ligado" : "Desligado"}
+                        </label>
+                      </td>
+                      <td>
                         <button className={panel.ghostBtn} onClick={() => setBranchesOf(m)}>Filiais</button>
                         <button className={panel.ghostBtn} onClick={() => openRates(m)}>Valores/hora</button>
                         <button className={panel.ghostBtn} onClick={() => openTeam(m)}>Equipe</button>
@@ -373,7 +402,7 @@ function SupermarketsPage() {
                       </td>
                     </tr>
                   ))}
-                  {markets.length === 0 && <tr><td colSpan={5} className={panel.muted}>Nenhum supermercado cadastrado.</td></tr>}
+                  {markets.length === 0 && <tr><td colSpan={6} className={panel.muted}>Nenhum supermercado cadastrado.</td></tr>}
                 </tbody>
               </table>
             </div>

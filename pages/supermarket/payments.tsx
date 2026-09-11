@@ -41,6 +41,10 @@ function BillingPage() {
   const membership = (profile as { membership?: SupermarketMembership } | null)?.membership ?? null;
   const canViewInvoices = membership ? membership.isOwner || membership.canViewInvoices : true;
   const canPayInvoices = membership ? membership.isOwner || membership.canPayInvoices : true;
+  const appPaymentEnabled =
+    (profile as { clientAgency?: { appPaymentEnabledForSupermarkets?: boolean } | null; appPaymentEnabled?: boolean } | null)
+      ?.clientAgency?.appPaymentEnabledForSupermarkets === true &&
+    (profile as { appPaymentEnabled?: boolean } | null)?.appPaymentEnabled === true;
 
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -309,7 +313,7 @@ function BillingPage() {
                               Contestar
                             </button>
                           )}
-                          {c.status === "pending" && canPayInvoices && !c.paymentUrl && (
+                          {c.status === "pending" && canPayInvoices && appPaymentEnabled && !c.paymentUrl && (
                             <button
                               className={panel.primaryBtn}
                               disabled={busy === c.id || blockPay}
@@ -328,6 +332,11 @@ function BillingPage() {
                                 {busy === c.id ? "…" : "Já paguei — atualizar"}
                               </button>
                             </>
+                          )}
+                          {c.status === "pending" && canPayInvoices && !appPaymentEnabled && !c.paymentUrl && (
+                            <p className={panel.muted} style={{ margin: 0 }}>
+                              Combine o pagamento com a agência — ela confirma manualmente.
+                            </p>
                           )}
                           <button className={panel.ghostBtn} disabled={pdfBusyId === c.id} onClick={() => baixarPdf(c.id, c.referenceMonth)}>
                             {pdfBusyId === c.id ? "Baixando…" : "Baixar PDF"}

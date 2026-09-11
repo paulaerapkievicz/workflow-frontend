@@ -9,7 +9,7 @@ import panel from "@/styles/panel.module.scss";
 import { getOrders } from "@/src/services/orderService";
 import { getBranches, Branch } from "@/src/services/branchService";
 import {
-  getClosings, previewClosing, createClosing, downloadClosingPdf, MonthlyClosing, ClosingPreview,
+  getClosings, previewClosing, createClosing, downloadClosingPdf, markClosingPaid, MonthlyClosing, ClosingPreview,
   InvoiceAdjustment, getInvoiceAdjustments, approveInvoiceAdjustment, rejectInvoiceAdjustment,
   revertInvoiceAdjustment, ADJUSTMENT_STATUS_LABELS, closingNetAmount,
   CLOSING_STATUS_LABELS, monthName, money,
@@ -122,6 +122,15 @@ function ClosingsPage() {
     finally { setPdfBusyId(null); }
   };
 
+  const [markPaidBusyId, setMarkPaidBusyId] = useState<string | null>(null);
+  const markPaid = async (c: MonthlyClosing) => {
+    if (!confirm(`Marcar a fatura de ${c.invoiceSupermarket?.name ?? "—"} (${monthName(c.referenceMonth)}) como paga? Use só depois de receber o valor por fora.`)) return;
+    setMarkPaidBusyId(c.id);
+    try { await markClosingPaid(c.id); await load(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+    finally { setMarkPaidBusyId(null); }
+  };
+
   return (
     <>
       <Head><title>Fechamentos | Agência</title></Head>
@@ -213,6 +222,16 @@ function ClosingsPage() {
                       <button className={panel.ghostBtn} disabled={pdfBusyId === c.id} onClick={() => baixarPdf(c)}>
                         {pdfBusyId === c.id ? "Baixando…" : "Baixar PDF"}
                       </button>
+                      {c.status === "pending" && (
+                        <button
+                          className={panel.ghostBtn}
+                          disabled={markPaidBusyId === c.id}
+                          title="Use quando o pagamento pelo app está desligado e você já recebeu por fora."
+                          onClick={() => markPaid(c)}
+                        >
+                          {markPaidBusyId === c.id ? "…" : "Marcar como paga"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                   );

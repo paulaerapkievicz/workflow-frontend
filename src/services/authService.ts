@@ -29,7 +29,15 @@ export interface AuthProfile {
   /** Só para papel supermarket: permissões do usuário (dono ou gerente de loja). */
   membership?: SupermarketMembership | null;
   /** Só para papel supermarket: a agência que atende este supermercado. */
-  clientAgency?: { id: string; name: string; reviewEnabled: boolean } | null;
+  clientAgency?: {
+    id: string;
+    name: string;
+    reviewEnabled: boolean;
+    /** Chave-mestra da agência pro pagamento da fatura pelo app (override por cliente em `appPaymentEnabled`). */
+    appPaymentEnabledForSupermarkets?: boolean;
+  } | null;
+  /** Só para papel supermarket: override por cliente do pagamento da fatura pelo app. */
+  appPaymentEnabled?: boolean;
   /** Só para papel leader: dados do líder de agência. */
   agencyId?: string;
   agencyName?: string | null;

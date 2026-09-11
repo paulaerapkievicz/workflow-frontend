@@ -95,6 +95,9 @@ function OnboardingPage() {
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [profilePhotoErr, setProfilePhotoErr] = useState<string | null>(null);
   const profilePhotoUrl = (profile?.profilePhotoUrl as string | null | undefined) ?? null;
+  const appPaymentEnabledForFreelancers =
+    (profile as { affiliatedAgency?: { appPaymentEnabledForFreelancers?: boolean } } | null)
+      ?.affiliatedAgency?.appPaymentEnabledForFreelancers !== false;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -201,9 +204,11 @@ function OnboardingPage() {
             'Pagamento liberado. Se a aba não abriu, clique em "Ir para o pagamento" abaixo.'
           );
         }
-      } else {
+      } else if (appPaymentEnabledForFreelancers) {
         setUniformErr("Não recebemos o link de pagamento. Tente novamente em instantes.");
       }
+      // Sem paymentUrl e com o pagamento pelo app desligado: pedido registrado, sem erro —
+      // a agência confirma manualmente (ver mensagem no card abaixo).
     } catch (err) {
       setUniformErr(
         axios.isAxiosError(err)
@@ -315,9 +320,11 @@ function OnboardingPage() {
                 ) : !uniform ? (
                   <div style={{ marginTop: "0.5rem" }}>
                     <p className={panel.muted}>
-                      {values.shirtSize
+                      {!values.shirtSize
+                        ? "Escolha o tamanho da camiseta no perfil acima para liberar a compra."
+                        : appPaymentEnabledForFreelancers
                         ? "Finalize a compra para receber o link de pagamento."
-                        : "Escolha o tamanho da camiseta no perfil acima para liberar a compra."}
+                        : "Confirme o tamanho — a agência vai combinar o pagamento com você por fora."}
                     </p>
                     <button className={panel.primaryBtn} disabled={busy || !values.shirtSize} onClick={buyUniform}>
                       {busy ? "Processando…" : "Comprar uniforme"}
@@ -332,23 +339,27 @@ function OnboardingPage() {
                     {uniform.trackingCode && <p className={panel.muted}>Rastreio: {uniform.trackingCode}</p>}
                     {uniform.rejectionReason && <p className={panel.error}>Motivo da recusa: {uniform.rejectionReason}</p>}
 
-                    {uniform.status === "pending_payment" && (
+                    {uniform.status === "pending_payment" && uniform.paymentUrl && (
                       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
-                        {uniform.paymentUrl && (
-                          <a
-                            className={panel.primaryBtn}
-                            href={uniform.paymentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ textDecoration: "none" }}
-                          >
-                            Ir para o pagamento
-                          </a>
-                        )}
+                        <a
+                          className={panel.primaryBtn}
+                          href={uniform.paymentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: "none" }}
+                        >
+                          Ir para o pagamento
+                        </a>
                         <button className={panel.ghostBtn} disabled={busy} onClick={buyUniform}>
                           {busy ? "Processando…" : "Gerar novo link"}
                         </button>
                       </div>
+                    )}
+                    {uniform.status === "pending_payment" && !uniform.paymentUrl && (
+                      <p className={panel.muted} style={{ marginTop: "0.5rem" }}>
+                        Pedido registrado — combine o pagamento com a agência e aguarde ela confirmar
+                        o recebimento por aqui.
+                      </p>
                     )}
                     {uniform.status === "shipped" && (
                       <button className={panel.primaryBtn} disabled={busy} onClick={() => act(() => confirmUniformReceived(uniform.id))}>

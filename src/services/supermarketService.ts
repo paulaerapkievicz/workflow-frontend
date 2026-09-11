@@ -8,6 +8,8 @@ export interface Supermarket {
   phone?: string | null;
   ownerId: string;
   owner?: { id: string; name: string; email: string } | null;
+  /** Override por cliente do pagamento da fatura pelo app — só tem efeito se a chave-mestra da agência estiver ligada. */
+  appPaymentEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +39,13 @@ export const updateSupermarket = async (
   id: string,
   patch: Partial<Pick<Supermarket, "name" | "cnpj" | "address" | "phone">>
 ): Promise<Supermarket> => (await api.put(`/supermarkets/${id}`, patch)).data;
+
+// Liga/desliga o pagamento da fatura pelo app pra este cliente
+export const setSupermarketAppPayment = async (
+  id: string,
+  enabled: boolean
+): Promise<{ id: string; appPaymentEnabled: boolean }> =>
+  (await api.put(`/supermarkets/${id}/app-payment`, { enabled })).data;
 
 // Excluir supermercado
 export const deleteSupermarket = async (id: string): Promise<void> => {

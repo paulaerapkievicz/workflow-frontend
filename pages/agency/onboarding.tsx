@@ -6,7 +6,7 @@ import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import {
-  getAgencyUniforms, shipUniform, reviewUniform, UNIFORM_STATUS_LABELS, UniformOrder,
+  getAgencyUniforms, shipUniform, reviewUniform, markUniformPaid, UNIFORM_STATUS_LABELS, UniformOrder,
 } from "@/src/services/onboardingService";
 import {
   getPendingFreelancers, approveFreelancer, rejectFreelancer, PendingFreelancer,
@@ -37,6 +37,7 @@ function OnboardingPage() {
     finally { setBusy(null); }
   };
 
+  const awaitingPayment = orders.filter((o) => o.status === "pending_payment" && !o.paymentUrl);
   const toShip = orders.filter((o) => o.status === "paid");
   const toReview = orders.filter((o) => o.status === "photo_submitted");
 
@@ -83,6 +84,33 @@ function OnboardingPage() {
                       </tr>
                     ))}
                     {pending.length === 0 && <tr><td colSpan={5} className={panel.muted}>Nenhum cadastro pendente.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+
+              <h2 style={{ fontSize: "1.05rem", marginTop: "1.5rem" }}>Uniformes aguardando pagamento ({awaitingPayment.length})</h2>
+              <p className={panel.muted}>
+                Pedidos de colaboradores com o pagamento pelo app desligado. Confirme com o colaborador que
+                você recebeu o valor por fora antes de marcar como pago.
+              </p>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead><tr><th>Colaborador</th><th>Tamanho</th><th>Valor</th><th>Ação</th></tr></thead>
+                  <tbody>
+                    {awaitingPayment.map((o) => (
+                      <tr key={o.id}>
+                        <td>{o.freelancerName ?? "—"}</td>
+                        <td>{o.shirtSize}</td>
+                        <td>R$ {Number(o.amount).toFixed(2)}</td>
+                        <td>
+                          <button className={panel.primaryBtn} disabled={busy === o.id}
+                            onClick={() => act(o.id, () => markUniformPaid(o.id))}>
+                            Marcar como pago
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {awaitingPayment.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nada aguardando pagamento.</td></tr>}
                   </tbody>
                 </table>
               </div>

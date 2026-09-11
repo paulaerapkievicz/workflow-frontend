@@ -70,6 +70,10 @@ export const submitUniformSelfie = async (id: string, file: File): Promise<Unifo
 export const getAgencyUniforms = async (): Promise<UniformOrder[]> =>
   (await api.get("/agency/uniforms")).data;
 
+/** Baixa manual — usada quando o pagamento pelo app está desligado pra colaboradores. */
+export const markUniformPaid = async (id: string): Promise<UniformOrder> =>
+  (await api.post(`/agency/uniforms/${id}/mark-paid`)).data;
+
 export const shipUniform = async (id: string, trackingCode?: string): Promise<UniformOrder> =>
   (await api.post(`/agency/uniforms/${id}/ship`, { trackingCode })).data;
 
