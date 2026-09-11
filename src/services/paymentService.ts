@@ -1,4 +1,5 @@
 import api from "@/src/services/api";
+import type { JobShift } from "@/src/services/jobService";
 
 export type PaymentStatus = "settled" | "canceled";
 
@@ -20,10 +21,21 @@ export interface Payment {
     id: string;
     title: string;
     status: string;
+    startTime?: string;
+    endTime?: string;
+    contractedMinutes?: number | null;
+    workedMinutes?: number | null;
     jobBranch?: { id: string; name: string } | null;
     jobCategory?: { id: string; name: string } | null;
+    /** Só vem preenchido no relatório de pagamento da agência (`listForAgency`). */
+    shifts?: JobShift[];
   } | null;
-  paymentFreelancer?: { id: string; name: string } | null;
+  paymentFreelancer?: {
+    id: string;
+    name: string;
+    /** Chave Pix do onboarding — só vem preenchida no relatório de pagamento da agência. */
+    contract?: { pixKey?: string | null } | null;
+  } | null;
 }
 
 export interface Invoice {

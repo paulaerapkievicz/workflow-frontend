@@ -331,6 +331,16 @@ export const formatShifts = (shifts?: JobShift[] | null): string => {
     .join(", ");
 };
 
+/** Horários reais de entrada/saída batidos pelo colaborador, um par por turno. */
+export const formatActualPunches = (shifts?: JobShift[] | null): string => {
+  if (!shifts?.length) return "—";
+  const withPunch = [...shifts]
+    .sort((a, b) => a.position - b.position)
+    .filter((s) => s.checkInAt || s.checkOutAt);
+  if (!withPunch.length) return "—";
+  return withPunch.map((s) => `${fmtTime(s.checkInAt)}–${fmtTime(s.checkOutAt)}`).join(", ");
+};
+
 /** Nome(s) do(s) turno(s) de uma vaga — deriva dos turnos quando há mais de um. */
 export const formatShiftPeriods = (job: {
   shiftPeriod?: ShiftPeriod | string | null;

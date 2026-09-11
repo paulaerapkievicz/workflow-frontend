@@ -7,32 +7,54 @@ import RequireAuth from "@/src/components/RequireAuth";
 import StatusBadge from "@/src/components/StatusBadge";
 import DataTable, { Column } from "@/src/components/DataTable";
 import FilterBar, { FilterFieldDef } from "@/src/components/FilterBar";
+import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import panel from "@/styles/panel.module.scss";
-import { getMyPayments, Payment, PAYMENT_STATUS_LABELS } from "@/src/services/paymentService";
+import { getMyPayments, Payment } from "@/src/services/paymentService";
 import {
-  getJobs, reviewDelivery, getPendingSettlementJobs, releaseJobPayment, minutesToHours, Job,
+  getJobs, reviewDelivery, getPendingSettlementJobs, releaseJobPayment, minutesToHours,
+  formatShifts, formatActualPunches, Job,
 } from "@/src/services/jobService";
 import { getAgencySettings } from "@/src/services/agencySettingsService";
-import {
-  getMyWithdrawals, Withdrawal, WITHDRAWAL_STATUS_LABELS,
-} from "@/src/services/withdrawalService";
 import WithdrawForm from "@/src/components/WithdrawForm";
 import { useAuth } from "@/src/hooks/useAuth";
 import { matchesFilter, RowFilter } from "@/src/lib/filterRows";
+import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
+import { inDateRange, resolveDateBounds } from "@/src/lib/dateRange";
+import { fmtDate, fmtWindow } from "@/src/lib/datetime";
+import { buildCsv, downloadCsv } from "@/src/lib/csv";
 import {
   getAgencyMembers, registerAgencyMemberPayment, AgencyMember, PAY_TYPE_LABELS,
   getMemberJobCredits, releaseMemberJobCredit, cancelMemberJobCredit, LeaderJobCredit,
 } from "@/src/services/agencyMemberService";
+
+/** R$/hora efetivo do colaborador na vaga, calculado a partir do que foi liquidado (histórico correto mesmo se o valor/hora mudou depois). */
+const effectiveHourlyRate = (p: Payment): number | null => {
+  const minutes = p.paymentJob?.workedMinutes;
+  const amount = p.freelancerAmount;
+  if (!minutes || amount == null) return null;
+  return amount / (minutes / 60);
+};
+
+/** Janela solicitada (turnos da vaga) — cai para o horário geral quando os turnos não vieram. */
+const scheduledWindow = (p: Payment): string => {
+  if (p.paymentJob?.shifts?.length) return formatShifts(p.paymentJob.shifts);
+  if (p.paymentJob?.startTime && p.paymentJob?.endTime) {
+    return fmtWindow(p.paymentJob.startTime, p.paymentJob.endTime);
+  }
+  return "—";
+};
+
+const money = (v: number) => v.toFixed(2).replace(".", ",");
 
 function AgencyPayments() {
   const { profile, refresh } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [heldJobs, setHeldJobs] = useState<Job[]>([]);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [heldMsg, setHeldMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [releasingId, setReleasingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<RowFilter>({});
+  const [payrollRange, setPayrollRange] = useDateRangeFilter("agency-payroll");
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [rv, setRv] = useState({ rating: 5, comment: "", approved: true });
   const [rvError, setRvError] = useState<string | null>(null);
@@ -51,16 +73,15 @@ function AgencyPayments() {
   const [reviewEnabled, setReviewEnabled] = useState(false);
 
   const load = useCallback(async () => {
-    const [p, j, h, w, s, m, c] = await Promise.all([
+    const [p, j, h, s, m, c] = await Promise.all([
       getMyPayments(), getJobs(), getPendingSettlementJobs().catch(() => []),
-      getMyWithdrawals(), getAgencySettings().catch(() => null),
+      getAgencySettings().catch(() => null),
       getAgencyMembers().catch(() => []),
       getMemberJobCredits("pending").catch(() => []),
     ]);
     setPayments(p);
     setJobs(j);
     setHeldJobs(h);
-    setWithdrawals(w);
     setReviewEnabled(s?.reviewEnabled ?? false);
     setMembers(m);
     setPendingCredits(c);
@@ -167,38 +188,118 @@ function AgencyPayments() {
 
   const rows = useMemo(
     () =>
-      payments.filter((p) =>
-        matchesFilter(
-          {
-            status: p.status,
-            freelancerName: p.paymentFreelancer?.name,
-            branchName: p.paymentJob?.jobBranch?.name,
-            title: p.paymentJob?.title,
-            categoryName: p.paymentJob?.jobCategory?.name,
-            date: p.releasedAt ?? p.createdAt,
-          },
-          filter
+      payments
+        .filter((p) =>
+          matchesFilter(
+            {
+              status: p.status,
+              freelancerName: p.paymentFreelancer?.name,
+              branchName: p.paymentJob?.jobBranch?.name,
+              title: p.paymentJob?.title,
+              categoryName: p.paymentJob?.jobCategory?.name,
+            },
+            filter
+          )
         )
-      ),
-    [payments, filter]
+        .filter((p) => inDateRange(p.paymentJob?.startTime, payrollRange)),
+    [payments, filter, payrollRange]
   );
 
   const filterFields: FilterFieldDef[] = [
     { key: "title", label: "Vaga", type: "text" },
     { key: "freelancer", label: "Colaborador", type: "text" },
     { key: "branch", label: "Filial", type: "text" },
-    { key: "date", label: "Data", type: "date" },
   ];
 
   const columns: Column<Payment>[] = [
     { key: "title", label: "Vaga", render: (p) => p.paymentJob?.title ?? p.jobId.slice(0, 8) },
     { key: "freelancer", label: "Colaborador", render: (p) => p.paymentFreelancer?.name ?? "—" },
-    { key: "gross", label: "Valor pago pelo mercado", render: (p) => `R$ ${Number(p.grossAmount ?? 0).toFixed(2)}` },
-    { key: "agencyAmount", label: "Fica com a agência", render: (p) => `R$ ${Number(p.agencyAmount ?? 0).toFixed(2)}` },
-    { key: "freelancerAmount", label: "Valor do colaborador", render: (p) => `R$ ${Number(p.freelancerAmount ?? 0).toFixed(2)}` },
-    { key: "status", label: "Status", render: (p) => <StatusBadge family="payment" status={p.status} label={PAYMENT_STATUS_LABELS[p.status]} /> },
-    { key: "date", label: "Liberado em", render: (p) => (p.releasedAt ? new Date(p.releasedAt).toLocaleDateString("pt-BR") : "—") },
+    { key: "date", label: "Data", render: (p) => fmtDate(p.paymentJob?.startTime) },
+    { key: "branch", label: "Filial trabalhada", render: (p) => p.paymentJob?.jobBranch?.name ?? "—" },
+    { key: "requested", label: "Solicitado", render: (p) => scheduledWindow(p) },
+    { key: "punches", label: "Checkin/Checkout", render: (p) => formatActualPunches(p.paymentJob?.shifts) },
+    { key: "workedMinutes", label: "Horas trab.", render: (p) => minutesToHours(p.paymentJob?.workedMinutes) },
+    {
+      key: "hourlyRate",
+      label: "Valor H",
+      render: (p) => { const r = effectiveHourlyRate(p); return r != null ? `R$ ${money(r)}` : "—"; },
+    },
+    { key: "freelancerAmount", label: "Total a pagar", render: (p) => `R$ ${money(Number(p.freelancerAmount ?? 0))}` },
+    { key: "pixKey", label: "Chave Pix", render: (p) => p.paymentFreelancer?.contract?.pixKey ?? "—" },
   ];
+
+  interface PayrollSummaryRow {
+    freelancerId: string;
+    freelancerName: string;
+    pixKey: string;
+    jobsCount: number;
+    workedMinutes: number;
+    total: number;
+  }
+
+  const summaryRows = useMemo<PayrollSummaryRow[]>(() => {
+    const map = new Map<string, PayrollSummaryRow>();
+    for (const p of rows) {
+      const id = p.freelancerId;
+      const minutes = p.paymentJob?.workedMinutes ?? 0;
+      const total = Number(p.freelancerAmount ?? 0);
+      const existing = map.get(id);
+      if (existing) {
+        existing.jobsCount += 1;
+        existing.workedMinutes += minutes;
+        existing.total += total;
+      } else {
+        map.set(id, {
+          freelancerId: id,
+          freelancerName: p.paymentFreelancer?.name ?? "—",
+          pixKey: p.paymentFreelancer?.contract?.pixKey ?? "—",
+          jobsCount: 1,
+          workedMinutes: minutes,
+          total,
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => a.freelancerName.localeCompare(b.freelancerName));
+  }, [rows]);
+
+  const payrollTotal = useMemo(() => summaryRows.reduce((acc, r) => acc + r.total, 0), [summaryRows]);
+
+  const payrollFileSuffix = useMemo(() => {
+    const { from, to } = resolveDateBounds(payrollRange);
+    if (!from && !to) return "todas-as-datas";
+    return `${from ?? "inicio"}_a_${to ?? "hoje"}`;
+  }, [payrollRange]);
+
+  const exportDetailedCsv = () => {
+    const headers = [
+      "Vaga", "Colaborador", "Data", "Filial Trabalhada", "Solicitado",
+      "Checkin/Checkout", "Horas trab.", "Valor H", "Total a pagar", "Chave Pix",
+    ];
+    const csvRows = rows.map((p) => {
+      const rate = effectiveHourlyRate(p);
+      return [
+        p.paymentJob?.title ?? p.jobId.slice(0, 8),
+        p.paymentFreelancer?.name ?? "—",
+        fmtDate(p.paymentJob?.startTime),
+        p.paymentJob?.jobBranch?.name ?? "—",
+        scheduledWindow(p),
+        formatActualPunches(p.paymentJob?.shifts),
+        minutesToHours(p.paymentJob?.workedMinutes),
+        rate != null ? money(rate) : "—",
+        money(Number(p.freelancerAmount ?? 0)),
+        p.paymentFreelancer?.contract?.pixKey ?? "—",
+      ];
+    });
+    downloadCsv(`pagamento-colaboradores-detalhado-${payrollFileSuffix}.csv`, buildCsv(headers, csvRows));
+  };
+
+  const exportSummaryCsv = () => {
+    const headers = ["Colaborador", "Chave Pix", "Vagas", "Horas trab.", "Total a pagar"];
+    const csvRows = summaryRows.map((r) => [
+      r.freelancerName, r.pixKey, r.jobsCount, minutesToHours(r.workedMinutes), money(r.total),
+    ]);
+    downloadCsv(`pagamento-colaboradores-resumo-${payrollFileSuffix}.csv`, buildCsv(headers, csvRows));
+  };
 
   return (
     <>
@@ -283,9 +384,51 @@ function AgencyPayments() {
             </>
           )}
 
-          <h2 style={{ fontSize: "1.1rem" }}>Pagamentos dos colaboradores</h2>
+          <h2 style={{ fontSize: "1.1rem" }}>Pagamento aos colaboradores</h2>
+          <DateRangeQuickFilter
+            value={payrollRange}
+            onChange={setPayrollRange}
+            presets={["todas", "hoje", "semana", "mes", "custom"]}
+            label="Dias a pagar"
+          />
           <FilterBar fields={filterFields} value={filter} onChange={setFilter} />
-          <DataTable columns={columns} rows={rows} rowKey={(p) => p.id} storageKey="agency-payments" empty="Nenhum pagamento ainda." />
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", margin: "0.5rem 0" }}>
+            <button className={panel.ghostBtn} onClick={exportDetailedCsv} disabled={rows.length === 0}>
+              Exportar detalhado (CSV)
+            </button>
+            <button className={panel.ghostBtn} onClick={exportSummaryCsv} disabled={summaryRows.length === 0}>
+              Exportar resumo por colaborador (CSV)
+            </button>
+          </div>
+          <DataTable columns={columns} rows={rows} rowKey={(p) => p.id} storageKey="agency-payroll" empty="Nenhum pagamento no período selecionado." />
+
+          {summaryRows.length > 0 && (
+            <>
+              <h3 style={{ fontSize: "1rem", marginTop: "1.25rem" }}>Resumo por colaborador (período selecionado)</h3>
+              <div style={{ overflowX: "auto" }}>
+                <table className={panel.table}>
+                  <thead>
+                    <tr><th>Colaborador</th><th>Chave Pix</th><th>Vagas</th><th>Horas trab.</th><th>Total a pagar</th></tr>
+                  </thead>
+                  <tbody>
+                    {summaryRows.map((r) => (
+                      <tr key={r.freelancerId}>
+                        <td>{r.freelancerName}</td>
+                        <td>{r.pixKey}</td>
+                        <td>{r.jobsCount}</td>
+                        <td>{minutesToHours(r.workedMinutes)}</td>
+                        <td>R$ {money(r.total)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: "right", fontWeight: 600 }}>Total geral</td>
+                      <td style={{ fontWeight: 600 }}>R$ {money(payrollTotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           {(pendingCredits.length > 0 || creditMsg) && (
             <>
@@ -371,23 +514,6 @@ function AgencyPayments() {
             </>
           )}
 
-          <h2 style={{ fontSize: "1.1rem" }}>Meus saques</h2>
-          <div style={{ overflowX: "auto" }}>
-            <table className={panel.table}>
-              <thead><tr><th>Data</th><th>Valor</th><th>Chave Pix</th><th>Status</th></tr></thead>
-              <tbody>
-                {withdrawals.map((w) => (
-                  <tr key={w.id}>
-                    <td>{new Date(w.requestedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
-                    <td>R$ {Number(w.amount).toFixed(2)}</td>
-                    <td>{w.pixKey ?? "—"}</td>
-                    <td><StatusBadge family="withdrawal" status={w.status} label={WITHDRAWAL_STATUS_LABELS[w.status]} /></td>
-                  </tr>
-                ))}
-                {withdrawals.length === 0 && <tr><td colSpan={4}>Nenhum saque solicitado.</td></tr>}
-              </tbody>
-            </table>
-          </div>
         </section>
       </main>
 
