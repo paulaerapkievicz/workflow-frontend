@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import Head from "next/head";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import { getLiveJobs, Job } from "@/src/services/jobService";
 import ShiftLog from "@/src/components/ShiftLog";
@@ -90,8 +91,10 @@ function LivePage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <LivePage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="vagas">
+        <LivePage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

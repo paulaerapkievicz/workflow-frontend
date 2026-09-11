@@ -42,6 +42,17 @@ export const deleteFreelancer = async (id: string): Promise<void> => {
   await api.delete(`/freelancers/${id}`);
 };
 
+export interface PasswordResetResult {
+  /** E-mail de login (útil quando a agência usa o padrão nomesobrenome@workflow.com). */
+  email: string;
+  /** Senha nova — só aparece nesta resposta, repassar por fora (WhatsApp etc.). */
+  password: string;
+}
+
+// Redefine a senha do colaborador (agência/líder ou sócio com permissão de colaboradores)
+export const resetFreelancerPassword = async (id: string): Promise<PasswordResetResult> =>
+  (await api.post(`/freelancers/${id}/reset-password`)).data;
+
 export interface JobFreelancerProfile {
   name: string;
   phone: string | null;

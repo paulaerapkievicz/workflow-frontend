@@ -13,6 +13,7 @@ const ROLE_LABELS: Record<string, string> = {
   supermarket: "supermercado",
   freelancer: "colaborador",
   leader: "líder de agência",
+  partner: "sócio de agência",
 };
 
 function FreelancerInviteForm({ token, agencyName }: { token: string; agencyName: string | null }) {
@@ -147,6 +148,81 @@ function LeaderInviteForm({ token, agencyName }: { token: string; agencyName: st
     <>
       <h2 className={s.title}>Criar conta de líder</h2>
       <p className={s.subtitle}>Você foi convidado por {agencyName ?? "uma agência"} para gerenciar vagas e colaboradores.</p>
+      <form className={`${s.form} ${s.scrollForm}`} onSubmit={handleSubmit}>
+        <div className={s.field}>
+          <label>Nome completo</label>
+          <input value={form.name} onChange={(e) => set("name", e.target.value)} required />
+        </div>
+        <FormField wrapperClassName={s.field} label="E-mail" kind="email" required autoComplete="email"
+          value={form.email} onChange={(v) => set("email", v)} />
+        <div className={s.field}>
+          <label>Senha</label>
+          <input type="password" autoComplete="new-password" minLength={6} value={form.password} onChange={(e) => set("password", e.target.value)} required />
+        </div>
+        <FormField wrapperClassName={s.field} label="Telefone" kind="phone" required placeholder="(00) 00000-0000"
+          value={form.phone} onChange={(v) => set("phone", v)} />
+        {error && <p className={s.error}>{error}</p>}
+        <button className={s.submit} type="submit" disabled={loading}>
+          {loading ? "Enviando…" : "Criar conta"}
+        </button>
+      </form>
+    </>
+  );
+}
+
+function PartnerInviteForm({ token, agencyName }: { token: string; agencyName: string | null }) {
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const errs = validateForm([
+      { name: "email", value: form.email, kind: "email", required: true },
+      { name: "phone", value: form.phone, kind: "phone", required: true },
+    ]);
+    if (Object.keys(errs).length) {
+      setError("Confira os campos destacados antes de continuar.");
+      return;
+    }
+    setLoading(true);
+    const payload: RegisterPayload = {
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      phone: form.phone || undefined,
+      role: "partner",
+      inviteToken: token,
+    };
+    try {
+      await authService.register(payload);
+      setDone(true);
+    } catch (err) {
+      setError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Não foi possível cadastrar." : "Não foi possível cadastrar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <>
+        <h2 className={s.title}>Cadastro concluído</h2>
+        <p className={s.success}>Tudo certo! Você já pode entrar no painel da agência.</p>
+        <p className={s.foot} style={{ marginTop: "1.25rem" }}>
+          <Link href="/login" className={s.link}>Ir para o login</Link>
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h2 className={s.title}>Criar conta de sócio</h2>
+      <p className={s.subtitle}>Você foi convidado por {agencyName ?? "uma agência"} para acessar o painel dela.</p>
       <form className={`${s.form} ${s.scrollForm}`} onSubmit={handleSubmit}>
         <div className={s.field}>
           <label>Nome completo</label>
@@ -304,6 +380,8 @@ export default function InvitePage() {
               <SupermarketInviteForm token={token} agencyName={invite.agencyName} />
             ) : invite.role === "leader" ? (
               <LeaderInviteForm token={token} agencyName={invite.agencyName} />
+            ) : invite.role === "partner" ? (
+              <PartnerInviteForm token={token} agencyName={invite.agencyName} />
             ) : (
               <>
                 <h2 className={s.title}>Em breve</h2>

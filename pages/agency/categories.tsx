@@ -3,6 +3,7 @@ import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import {
   getManagedCategories, createCategory, updateCategory, deleteCategory, Category,
@@ -135,8 +136,10 @@ function CategoriesPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <CategoriesPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="colaboradores">
+        <CategoriesPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

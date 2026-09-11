@@ -3,6 +3,7 @@ import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import Modal from "@/src/components/common/Modal";
 import RichTextEditor from "@/src/components/RichTextEditor";
 import ContractDocument from "@/src/components/contract/ContractDocument";
@@ -237,8 +238,10 @@ function ContractsPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <ContractsPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="configuracoes">
+        <ContractsPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

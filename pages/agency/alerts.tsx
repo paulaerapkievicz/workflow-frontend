@@ -1,6 +1,7 @@
 import Head from "next/head";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import AlertsView from "@/src/components/alerts/AlertsView";
 
@@ -27,8 +28,10 @@ function AlertsPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <AlertsPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="vagas">
+        <AlertsPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

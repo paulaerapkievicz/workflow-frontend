@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import {
   getAgencyUniforms, shipUniform, reviewUniform, markUniformPaid, UNIFORM_STATUS_LABELS, UniformOrder,
@@ -205,8 +206,10 @@ function OnboardingPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <OnboardingPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="colaboradores">
+        <OnboardingPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

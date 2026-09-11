@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import StatusBadge from "@/src/components/StatusBadge";
 import panel from "@/styles/panel.module.scss";
 import { getOrders } from "@/src/services/orderService";
@@ -215,7 +216,7 @@ function ClosingsPage() {
                     <td>{adjTotal > 0 ? `- ${money(adjTotal)}` : "—"}</td>
                     <td><strong>{money(closingNetAmount(c))}</strong></td>
                     <td><StatusBadge family="closing" status={c.status} label={CLOSING_STATUS_LABELS[c.status]} /></td>
-                    <td>
+                    <td className={panel.actionsStack}>
                       <button className={panel.ghostBtn} onClick={() => openAdjustments(c)}>
                         Contestações{pend ? ` (${pend})` : ""}
                       </button>
@@ -299,8 +300,10 @@ function ClosingsPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <ClosingsPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="financeiro">
+        <ClosingsPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

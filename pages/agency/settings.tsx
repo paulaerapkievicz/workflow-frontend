@@ -4,6 +4,7 @@ import Link from "next/link";
 import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import {
   getAgencySettings, updateAgencySettings, AgencySettings, UnfilledAlertTier,
@@ -12,6 +13,8 @@ import {
   StatusColors, STATUS_TONES, DEFAULT_STATUS_COLORS, sanitizeStatusColors,
 } from "@/src/services/statusColors";
 import SidebarOrderEditor from "@/src/components/SidebarOrderEditor";
+import Switch from "@/src/components/common/Switch";
+import Tabs from "@/src/components/panel/Tabs";
 import { AGENCY_SIDEBAR_ITEMS } from "@/src/config/sidebarItems";
 
 const newTier = (): UnfilledAlertTier => ({
@@ -22,7 +25,19 @@ const newTier = (): UnfilledAlertTier => ({
   blink: false,
 });
 
+const TABS = [
+  { id: "vagas", label: "Vagas" },
+  { id: "notificacoes", label: "Notificações" },
+  { id: "colaborador", label: "Colaborador" },
+  { id: "clientes", label: "Clientes" },
+  { id: "pagamento", label: "Pagamento" },
+  { id: "equipe", label: "Equipe" },
+  { id: "status", label: "Status" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
 function SettingsPage() {
+  const [tab, setTab] = useState<TabId>("vagas");
   const [settings, setSettings] = useState<AgencySettings | null>(null);
   const [form, setForm] = useState({
     checkinRadius: "300",
@@ -48,6 +63,7 @@ function SettingsPage() {
     allowSelfRegistration: false,
     appPaymentEnabledForSupermarkets: true,
     appPaymentEnabledForFreelancers: true,
+    loginEmailPolicy: "informed" as "informed" | "pattern",
   });
   const [tiers, setTiers] = useState<UnfilledAlertTier[]>([]);
   const [statusColors, setStatusColors] = useState<StatusColors>(DEFAULT_STATUS_COLORS);
@@ -93,6 +109,7 @@ function SettingsPage() {
           allowSelfRegistration: s.allowSelfRegistration,
           appPaymentEnabledForSupermarkets: s.appPaymentEnabledForSupermarkets,
           appPaymentEnabledForFreelancers: s.appPaymentEnabledForFreelancers,
+          loginEmailPolicy: s.loginEmailPolicy ?? "informed",
         });
       })
       .catch(() => {})
@@ -135,6 +152,7 @@ function SettingsPage() {
         allowSelfRegistration: form.allowSelfRegistration,
         appPaymentEnabledForSupermarkets: form.appPaymentEnabledForSupermarkets,
         appPaymentEnabledForFreelancers: form.appPaymentEnabledForFreelancers,
+        loginEmailPolicy: form.loginEmailPolicy,
       });
       setSettings(s);
       setTiers(s.unfilledAlertTiers ?? []);
@@ -174,269 +192,332 @@ function SettingsPage() {
           {loading || !settings ? (
             <p>Carregando…</p>
           ) : (
-            <form className={panel.card} onSubmit={save} style={{ maxWidth: 480 }}>
-              <div className={panel.form}>
-                <label>Raio permitido para check-in (metros)</label>
-                <input type="number" min={20} max={5000} step={10} value={form.checkinRadius}
-                  onChange={(e) => setForm({ ...form, checkinRadius: e.target.value })} />
-                <span className={panel.muted}>Distância máxima entre o colaborador e o endereço da filial.</span>
+            <form onSubmit={save} style={{ maxWidth: 560 }}>
+              <Tabs tabs={TABS as unknown as { id: string; label: string }[]} active={tab} onChange={(id) => setTab(id as TabId)} />
 
-                <label>Prazo para o colaborador cancelar sozinho (minutos antes do início)</label>
-                <input type="number" min={0} max={1440} step={5} value={form.cancellationWindowMinutes}
-                  onChange={(e) => setForm({ ...form, cancellationWindowMinutes: e.target.value })} />
-                <span className={panel.muted}>Depois desse prazo, só a agência libera/repassa a vaga.</span>
+              <div className={panel.card}>
+                {tab === "vagas" && (
+                  <div className={panel.form}>
+                    <label>Raio permitido para check-in (metros)</label>
+                    <input type="number" min={20} max={5000} step={10} value={form.checkinRadius}
+                      onChange={(e) => setForm({ ...form, checkinRadius: e.target.value })} />
+                    <span className={panel.muted}>Distância máxima entre o colaborador e o endereço da filial.</span>
 
-                <label>Antecedência máxima para o check-in (minutos antes do início do turno)</label>
-                <input type="number" min={0} max={240} step={5} value={form.checkinEarlyToleranceMinutes}
-                  onChange={(e) => setForm({ ...form, checkinEarlyToleranceMinutes: e.target.value })} />
-                <span className={panel.muted}>
-                  Antes disso o ponto não abre — vale para todos os turnos da vaga, então o turno
-                  seguinte só libera perto do horário dele, mesmo que o colaborador já tenha encerrado
-                  o anterior. Atraso nunca é bloqueado. Pode ser sobrescrito por vaga.
-                </span>
+                    <label>Prazo para o colaborador cancelar sozinho (minutos antes do início)</label>
+                    <input type="number" min={0} max={1440} step={5} value={form.cancellationWindowMinutes}
+                      onChange={(e) => setForm({ ...form, cancellationWindowMinutes: e.target.value })} />
+                    <span className={panel.muted}>Depois desse prazo, só a agência libera/repassa a vaga.</span>
 
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.requireCheckoutPhoto}
-                    onChange={(e) => setForm({ ...form, requireCheckoutPhoto: e.target.checked })} />
-                  Exigir foto de comprovação no check-out
-                </label>
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.reviewEnabled}
-                    onChange={(e) => setForm({ ...form, reviewEnabled: e.target.checked })} />
-                  Avaliar a entrega dos colaboradores após a conclusão
-                </label>
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.breaksEnabled}
-                    onChange={(e) => setForm({ ...form, breaksEnabled: e.target.checked })} />
-                  Permitir pausa/intervalo no ponto (pausar e retomar sem abandonar a vaga)
-                </label>
-                <span className={panel.muted}>
-                  O tempo de pausa não conta como hora trabalhada. Pode ser liberado ou bloqueado
-                  por vaga no lançamento do pedido.
-                </span>
-
-                <label>Limite de pausa por turno (minutos)</label>
-                <input type="number" min={1} max={480} step={5} placeholder="sem limite"
-                  value={form.breakLimitMinutes}
-                  onChange={(e) => setForm({ ...form, breakLimitMinutes: e.target.value })} />
-                <span className={panel.muted}>
-                  Depois de atingido, o colaborador não consegue abrir uma nova pausa no turno.
-                  Deixe em branco para não limitar. Também pode ser sobrescrito por vaga.
-                </span>
-
-                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-                <strong>Jornada (limites da vaga)</strong>
-                <span className={panel.muted}>
-                  Tetos aplicados ao lançar/editar a vaga, para não infringir a legislação
-                  trabalhista. Podem ser sobrescritos por vaga.
-                </span>
-
-                <label>Intervalo padrão do turno (minutos)</label>
-                <input type="number" min={0} max={480} step={5} value={form.defaultBreakMinutes}
-                  onChange={(e) => setForm({ ...form, defaultBreakMinutes: e.target.value })} />
-                <span className={panel.muted}>
-                  Ao montar a vaga, é possível marcar &quot;usar intervalo padrão&quot; num turno —
-                  esse tempo é descontado das horas contratadas. 0 = sem intervalo padrão.
-                </span>
-
-                <label>Máximo de horas por turno</label>
-                <input type="number" min={1} max={24} step={0.5} value={form.maxShiftHours}
-                  onChange={(e) => setForm({ ...form, maxShiftHours: e.target.value })} />
-
-                <label>Máximo de horas por vaga (soma dos turnos)</label>
-                <input type="number" min={1} max={24} step={0.5} value={form.maxJobHours}
-                  onChange={(e) => setForm({ ...form, maxJobHours: e.target.value })} />
-                <span className={panel.muted}>As horas são contadas já líquidas de intervalo.</span>
-
-                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-                <strong>Cores das tags de status</strong>
-                <span className={panel.muted}>
-                  Um tom por situação — vale para os badges de vaga, pedido, fatura e pagamento em
-                  todas as áreas (sua, dos líderes, dos colaboradores e dos supermercados-clientes).
-                </span>
-                {STATUS_TONES.map(({ tone, label }) => (
-                  <div key={tone} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <span
-                      className={panel.badge}
-                      style={{ background: statusColors[tone].bg, color: statusColors[tone].fg, borderColor: "transparent", minWidth: 150 }}
-                    >
-                      {label}
+                    <label>Antecedência máxima para o check-in (minutos antes do início do turno)</label>
+                    <input type="number" min={0} max={240} step={5} value={form.checkinEarlyToleranceMinutes}
+                      onChange={(e) => setForm({ ...form, checkinEarlyToleranceMinutes: e.target.value })} />
+                    <span className={panel.muted}>
+                      Antes disso o ponto não abre — vale para todos os turnos da vaga, então o turno
+                      seguinte só libera perto do horário dele, mesmo que o colaborador já tenha encerrado
+                      o anterior. Atraso nunca é bloqueado. Pode ser sobrescrito por vaga.
                     </span>
-                    <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.8rem" }}>
-                      fundo
-                      <input type="color" value={statusColors[tone].bg}
-                        onChange={(e) => patchColor(tone, "bg", e.target.value)}
-                        style={{ width: 40, height: 30, padding: 0 }} />
-                    </label>
-                    <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.8rem" }}>
-                      texto
-                      <input type="color" value={statusColors[tone].fg}
-                        onChange={(e) => patchColor(tone, "fg", e.target.value)}
-                        style={{ width: 40, height: 30, padding: 0 }} />
-                    </label>
-                  </div>
-                ))}
-                <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
-                  onClick={() => setStatusColors(DEFAULT_STATUS_COLORS)}>
-                  Restaurar cores padrão
-                </button>
 
-                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-                <strong>Ordem do menu lateral</strong>
-                <span className={panel.muted}>
-                  Reorganize os itens do seu menu lateral na ordem que preferir.
-                </span>
-                <SidebarOrderEditor items={AGENCY_SIDEBAR_ITEMS} order={sidebarOrder} onChange={setSidebarOrder} />
-                {sidebarOrder && (
-                  <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
-                    onClick={() => setSidebarOrder(null)}>
-                    Restaurar ordem padrão
-                  </button>
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.requireCheckoutPhoto}
+                        onChange={(v) => setForm({ ...form, requireCheckoutPhoto: v })} />
+                      Exigir foto de comprovação no check-out
+                    </label>
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.reviewEnabled}
+                        onChange={(v) => setForm({ ...form, reviewEnabled: v })} />
+                      Avaliar a entrega dos colaboradores após a conclusão
+                    </label>
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.breaksEnabled}
+                        onChange={(v) => setForm({ ...form, breaksEnabled: v })} />
+                      Permitir pausa/intervalo no ponto (pausar e retomar sem abandonar a vaga)
+                    </label>
+                    <span className={panel.muted}>
+                      O tempo de pausa não conta como hora trabalhada. Pode ser liberado ou bloqueado
+                      por vaga no lançamento do pedido.
+                    </span>
+
+                    <label>Limite de pausa por turno (minutos)</label>
+                    <input type="number" min={1} max={480} step={5} placeholder="sem limite"
+                      value={form.breakLimitMinutes}
+                      onChange={(e) => setForm({ ...form, breakLimitMinutes: e.target.value })} />
+                    <span className={panel.muted}>
+                      Depois de atingido, o colaborador não consegue abrir uma nova pausa no turno.
+                      Deixe em branco para não limitar. Também pode ser sobrescrito por vaga.
+                    </span>
+
+                    <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                    <strong>Jornada (limites da vaga)</strong>
+                    <span className={panel.muted}>
+                      Tetos aplicados ao lançar/editar a vaga, para não infringir a legislação
+                      trabalhista. Podem ser sobrescritos por vaga.
+                    </span>
+
+                    <label>Intervalo padrão do turno (minutos)</label>
+                    <input type="number" min={0} max={480} step={5} value={form.defaultBreakMinutes}
+                      onChange={(e) => setForm({ ...form, defaultBreakMinutes: e.target.value })} />
+                    <span className={panel.muted}>
+                      Ao montar a vaga, é possível marcar &quot;usar intervalo padrão&quot; num turno —
+                      esse tempo é descontado das horas contratadas. 0 = sem intervalo padrão.
+                    </span>
+
+                    <label>Máximo de horas por turno</label>
+                    <input type="number" min={1} max={24} step={0.5} value={form.maxShiftHours}
+                      onChange={(e) => setForm({ ...form, maxShiftHours: e.target.value })} />
+
+                    <label>Máximo de horas por vaga (soma dos turnos)</label>
+                    <input type="number" min={1} max={24} step={0.5} value={form.maxJobHours}
+                      onChange={(e) => setForm({ ...form, maxJobHours: e.target.value })} />
+                    <span className={panel.muted}>As horas são contadas já líquidas de intervalo.</span>
+
+                    <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+
+                    <label>Desistência considerada &quot;de última hora&quot; (minutos antes do início)</label>
+                    <input type="number" min={0} max={1440} step={15} value={form.shortNoticeWithdrawalMinutes}
+                      onChange={(e) => setForm({ ...form, shortNoticeWithdrawalMinutes: e.target.value })} />
+
+                    <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                    <strong>Marcações de vaga sem colaborador (Convocações)</strong>
+                    <span className={panel.muted}>
+                      Bolinhas coloridas nas vagas ainda <strong>disponíveis</strong> conforme se
+                      aproximam do horário de início. Aparecem por vaga e somadas no pedido, na tela de
+                      Convocações. Configure de menos urgente (mais minutos antes) para mais urgente.
+                    </span>
+                    {tiers.map((t) => (
+                      <div key={t.id} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <input
+                          type="number" min={0} max={1440} step={5}
+                          style={{ width: 84 }}
+                          value={t.minutesBefore}
+                          onChange={(e) => patchTier(t.id, { minutesBefore: Number(e.target.value) })}
+                          aria-label="Minutos antes do início"
+                        />
+                        <span className={panel.muted} style={{ fontSize: "0.8rem" }}>min antes</span>
+                        <input
+                          type="color"
+                          value={/^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : "#F97316"}
+                          onChange={(e) => patchTier(t.id, { color: e.target.value })}
+                          style={{ width: 42, height: 32, padding: 0 }}
+                          aria-label="Cor"
+                        />
+                        <input
+                          type="text" maxLength={40} placeholder="Rótulo (ex.: Falta 30 min)"
+                          style={{ flex: "1 1 140px", minWidth: 120 }}
+                          value={t.label}
+                          onChange={(e) => patchTier(t.id, { label: e.target.value })}
+                        />
+                        <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.85rem" }}>
+                          <input type="checkbox" checked={t.blink}
+                            onChange={(e) => patchTier(t.id, { blink: e.target.checked })} />
+                          piscar
+                        </label>
+                        <button type="button" className={panel.secondaryBtn}
+                          onClick={() => setTiers((cur) => cur.filter((x) => x.id !== t.id))}>
+                          Remover
+                        </button>
+                      </div>
+                    ))}
+                    {tiers.length === 0 && (
+                      <span className={panel.muted} style={{ fontSize: "0.85rem" }}>Nenhuma faixa — nenhuma bolinha será exibida.</span>
+                    )}
+                    {tiers.length < 6 && (
+                      <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
+                        onClick={() => setTiers((cur) => [...cur, newTier()])}>
+                        + Adicionar faixa
+                      </button>
+                    )}
+                  </div>
                 )}
 
-                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-                <strong>Alertas de ocorrência</strong>
-                <span className={panel.muted}>
-                  Avisos automáticos de problemas na execução das vagas, na página <strong>Alertas</strong>.
-                </span>
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.alertsEnabled}
-                    onChange={(e) => setForm({ ...form, alertsEnabled: e.target.checked })} />
-                  Ativar o controle de ocorrências
-                </label>
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.notifySupermarketOnAlerts}
-                    onChange={(e) => setForm({ ...form, notifySupermarketOnAlerts: e.target.checked })} />
-                  Mostrar ao supermercado-cliente os alertas que afetam a entrega
-                </label>
-
-                <label>Atraso tolerado no check-in (minutos)</label>
-                <input type="number" min={0} max={120} step={1} value={form.lateCheckinToleranceMinutes}
-                  onChange={(e) => setForm({ ...form, lateCheckinToleranceMinutes: e.target.value })} />
-                <span className={panel.muted}>Passado esse atraso sem check-in, abre um alerta.</span>
-
-                <label>Atraso no check-in que vira crítico (minutos)</label>
-                <input type="number" min={5} max={240} step={1} value={form.lateCheckinCriticalMinutes}
-                  onChange={(e) => setForm({ ...form, lateCheckinCriticalMinutes: e.target.value })} />
-
-                <label>Margem de saída antecipada (minutos)</label>
-                <input type="number" min={0} max={120} step={1} value={form.earlyCheckoutToleranceMinutes}
-                  onChange={(e) => setForm({ ...form, earlyCheckoutToleranceMinutes: e.target.value })} />
-                <span className={panel.muted}>Check-out mais cedo que isso, em relação ao fim do turno, vira alerta.</span>
-
-                <label>Folga após o fim do turno sem check-out (minutos)</label>
-                <input type="number" min={0} max={240} step={1} value={form.missingCheckoutGraceMinutes}
-                  onChange={(e) => setForm({ ...form, missingCheckoutGraceMinutes: e.target.value })} />
-
-                <label>Antecedência do aviso de vaga sem colaborador (minutos)</label>
-                <input type="number" min={15} max={1440} step={15} value={form.unfilledAlertLeadMinutes}
-                  onChange={(e) => setForm({ ...form, unfilledAlertLeadMinutes: e.target.value })} />
-                <span className={panel.muted}>Alimenta a página <strong>Alertas</strong>.</span>
-
-                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-                <strong>Marcações de vaga sem colaborador (Convocações)</strong>
-                <span className={panel.muted}>
-                  Bolinhas coloridas nas vagas ainda <strong>disponíveis</strong> conforme se
-                  aproximam do horário de início. Aparecem por vaga e somadas no pedido, na tela de
-                  Convocações. Configure de menos urgente (mais minutos antes) para mais urgente.
-                </span>
-                {tiers.map((t) => (
-                  <div key={t.id} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    <input
-                      type="number" min={0} max={1440} step={5}
-                      style={{ width: 84 }}
-                      value={t.minutesBefore}
-                      onChange={(e) => patchTier(t.id, { minutesBefore: Number(e.target.value) })}
-                      aria-label="Minutos antes do início"
-                    />
-                    <span className={panel.muted} style={{ fontSize: "0.8rem" }}>min antes</span>
-                    <input
-                      type="color"
-                      value={/^#[0-9a-fA-F]{6}$/.test(t.color) ? t.color : "#F97316"}
-                      onChange={(e) => patchTier(t.id, { color: e.target.value })}
-                      style={{ width: 42, height: 32, padding: 0 }}
-                      aria-label="Cor"
-                    />
-                    <input
-                      type="text" maxLength={40} placeholder="Rótulo (ex.: Falta 30 min)"
-                      style={{ flex: "1 1 140px", minWidth: 120 }}
-                      value={t.label}
-                      onChange={(e) => patchTier(t.id, { label: e.target.value })}
-                    />
-                    <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.85rem" }}>
-                      <input type="checkbox" checked={t.blink}
-                        onChange={(e) => patchTier(t.id, { blink: e.target.checked })} />
-                      piscar
+                {tab === "notificacoes" && (
+                  <div className={panel.form}>
+                    <strong>Alertas de ocorrência</strong>
+                    <span className={panel.muted}>
+                      Avisos automáticos de problemas na execução das vagas, na página <strong>Alertas</strong>.
+                    </span>
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.alertsEnabled}
+                        onChange={(v) => setForm({ ...form, alertsEnabled: v })} />
+                      Ativar o controle de ocorrências
                     </label>
-                    <button type="button" className={panel.secondaryBtn}
-                      onClick={() => setTiers((cur) => cur.filter((x) => x.id !== t.id))}>
-                      Remover
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.notifySupermarketOnAlerts}
+                        onChange={(v) => setForm({ ...form, notifySupermarketOnAlerts: v })} />
+                      Mostrar ao supermercado-cliente os alertas que afetam a entrega
+                    </label>
+
+                    <label>Atraso tolerado no check-in (minutos)</label>
+                    <input type="number" min={0} max={120} step={1} value={form.lateCheckinToleranceMinutes}
+                      onChange={(e) => setForm({ ...form, lateCheckinToleranceMinutes: e.target.value })} />
+                    <span className={panel.muted}>Passado esse atraso sem check-in, abre um alerta.</span>
+
+                    <label>Atraso no check-in que vira crítico (minutos)</label>
+                    <input type="number" min={5} max={240} step={1} value={form.lateCheckinCriticalMinutes}
+                      onChange={(e) => setForm({ ...form, lateCheckinCriticalMinutes: e.target.value })} />
+
+                    <label>Margem de saída antecipada (minutos)</label>
+                    <input type="number" min={0} max={120} step={1} value={form.earlyCheckoutToleranceMinutes}
+                      onChange={(e) => setForm({ ...form, earlyCheckoutToleranceMinutes: e.target.value })} />
+                    <span className={panel.muted}>Check-out mais cedo que isso, em relação ao fim do turno, vira alerta.</span>
+
+                    <label>Folga após o fim do turno sem check-out (minutos)</label>
+                    <input type="number" min={0} max={240} step={1} value={form.missingCheckoutGraceMinutes}
+                      onChange={(e) => setForm({ ...form, missingCheckoutGraceMinutes: e.target.value })} />
+
+                    <label>Antecedência do aviso de vaga sem colaborador (minutos)</label>
+                    <input type="number" min={15} max={1440} step={15} value={form.unfilledAlertLeadMinutes}
+                      onChange={(e) => setForm({ ...form, unfilledAlertLeadMinutes: e.target.value })} />
+                    <span className={panel.muted}>Alimenta a página <strong>Alertas</strong>.</span>
+                  </div>
+                )}
+
+                {tab === "colaborador" && (
+                  <div className={panel.form}>
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.allowSelfRegistration}
+                        onChange={(v) => setForm({ ...form, allowSelfRegistration: v })} />
+                      Permitir que colaboradores se autocadastrem nesta agência
+                    </label>
+                    <span className={panel.muted}>
+                      Quando ligado, aparece um formulário simples de cadastro. Cada cadastro fica
+                      pendente até você aprovar em <strong>Cadastros pendentes</strong>.
+                    </span>
+
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.onboardingRequired}
+                        onChange={(v) => setForm({ ...form, onboardingRequired: v })} />
+                      Exigir onboarding (perfil contratual + uniforme aprovado) antes de aceitar vagas
+                    </label>
+                    <label>Preço do kit uniforme (R$)</label>
+                    <input type="number" min={0} step={0.01} value={form.uniformPrice}
+                      onChange={(e) => setForm({ ...form, uniformPrice: e.target.value })} />
+                    <span className={panel.muted}>Cobrado do colaborador no Mercado Pago ao comprar o uniforme.</span>
+
+                    <label>E-mail de login das contas da rede</label>
+                    <label className={panel.toggleRow}>
+                      <input type="radio" name="loginEmailPolicy" checked={form.loginEmailPolicy === "informed"}
+                        onChange={() => setForm({ ...form, loginEmailPolicy: "informed" })} />
+                      E-mail informado no cadastro
+                    </label>
+                    <label className={panel.toggleRow}>
+                      <input type="radio" name="loginEmailPolicy" checked={form.loginEmailPolicy === "pattern"}
+                        onChange={() => setForm({ ...form, loginEmailPolicy: "pattern" })} />
+                      Padrão nomesobrenome@workflow.com
+                    </label>
+                    <span className={panel.muted}>
+                      Vale para freelancer, supermercado-cliente, líder e sócio cadastrados a partir de
+                      agora (não muda contas já existentes). No padrão, a pessoa não tem uma caixa de
+                      e-mail real pra recuperar sozinha — se esquecer a senha, só você consegue
+                      redefinir (botão &quot;Redefinir senha&quot; em cada cadastro).
+                    </span>
+                  </div>
+                )}
+
+                {tab === "clientes" && (
+                  <div className={panel.form}>
+                    <p className={panel.muted} style={{ marginTop: 0 }}>
+                      O cadastro dos supermercados-clientes, filiais, valores/hora e equipe de cada
+                      um fica em <strong>Gestão de Clientes</strong> — inclusive o pagamento pelo app
+                      ligado/desligado por cliente.
+                    </p>
+                    <Link href="/agency/supermarkets" className={panel.primaryBtn} style={{ alignSelf: "flex-start", textDecoration: "none" }}>
+                      Abrir Gestão de Clientes
+                    </Link>
+                  </div>
+                )}
+
+                {tab === "pagamento" && (
+                  <div className={panel.form}>
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.appPaymentEnabledForSupermarkets}
+                        onChange={(v) => setForm({ ...form, appPaymentEnabledForSupermarkets: v })} />
+                      Permitir que os mercados-clientes paguem a fatura pelo app
+                    </label>
+                    <span className={panel.muted}>
+                      Quando desligado, o botão de pagar some pro mercado; você dá baixa manual em{" "}
+                      <strong>Fechamentos</strong> depois de receber por fora. Escolha quais clientes veem a
+                      opção em <strong>Gestão de Clientes</strong>.
+                    </span>
+
+                    <label className={panel.toggleRow}>
+                      <Switch checked={form.appPaymentEnabledForFreelancers}
+                        onChange={(v) => setForm({ ...form, appPaymentEnabledForFreelancers: v })} />
+                      Permitir que os colaboradores comprem o uniforme pelo app
+                    </label>
+                    <span className={panel.muted}>
+                      Quando desligado, o colaborador registra o pedido sem gerar link de pagamento; você
+                      dá baixa manual em <strong>Onboarding</strong> depois de receber por fora.
+                    </span>
+                  </div>
+                )}
+
+                {tab === "equipe" && (
+                  <div className={panel.form}>
+                    <p className={panel.muted} style={{ marginTop: 0 }}>
+                      Líderes (poderes operacionais fixos) e sócios (acesso amplo e configurável por
+                      área) ficam centralizados em <strong>Equipe</strong>.
+                    </p>
+                    <Link href="/agency/team" className={panel.primaryBtn} style={{ alignSelf: "flex-start", textDecoration: "none" }}>
+                      Abrir Equipe
+                    </Link>
+                  </div>
+                )}
+
+                {tab === "status" && (
+                  <div className={panel.form}>
+                    <strong>Cores das tags de status</strong>
+                    <span className={panel.muted}>
+                      Um tom por situação — vale para os badges de vaga, pedido, fatura e pagamento em
+                      todas as áreas (sua, dos líderes, dos colaboradores e dos supermercados-clientes).
+                    </span>
+                    {STATUS_TONES.map(({ tone, label }) => (
+                      <div key={tone} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span
+                          className={panel.badge}
+                          style={{ background: statusColors[tone].bg, color: statusColors[tone].fg, borderColor: "transparent", minWidth: 150 }}
+                        >
+                          {label}
+                        </span>
+                        <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.8rem" }}>
+                          fundo
+                          <input type="color" value={statusColors[tone].bg}
+                            onChange={(e) => patchColor(tone, "bg", e.target.value)}
+                            style={{ width: 40, height: 30, padding: 0 }} />
+                        </label>
+                        <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.8rem" }}>
+                          texto
+                          <input type="color" value={statusColors[tone].fg}
+                            onChange={(e) => patchColor(tone, "fg", e.target.value)}
+                            style={{ width: 40, height: 30, padding: 0 }} />
+                        </label>
+                      </div>
+                    ))}
+                    <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
+                      onClick={() => setStatusColors(DEFAULT_STATUS_COLORS)}>
+                      Restaurar cores padrão
                     </button>
+
+                    <hr style={{ width: "100%", borderColor: "var(--border)" }} />
+                    <strong>Ordem do menu lateral</strong>
+                    <span className={panel.muted}>
+                      Reorganize os itens do seu menu lateral na ordem que preferir.
+                    </span>
+                    <SidebarOrderEditor items={AGENCY_SIDEBAR_ITEMS} order={sidebarOrder} onChange={setSidebarOrder} />
+                    {sidebarOrder && (
+                      <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
+                        onClick={() => setSidebarOrder(null)}>
+                        Restaurar ordem padrão
+                      </button>
+                    )}
                   </div>
-                ))}
-                {tiers.length === 0 && (
-                  <span className={panel.muted} style={{ fontSize: "0.85rem" }}>Nenhuma faixa — nenhuma bolinha será exibida.</span>
                 )}
-                {tiers.length < 6 && (
-                  <button type="button" className={panel.ghostBtn} style={{ alignSelf: "flex-start" }}
-                    onClick={() => setTiers((cur) => [...cur, newTier()])}>
-                    + Adicionar faixa
+
+                <div className={panel.form} style={{ marginTop: "1rem" }}>
+                  {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
+                  <button className={panel.primaryBtn} type="submit" disabled={saving} style={{ alignSelf: "flex-start" }}>
+                    {saving ? "Salvando…" : "Salvar configurações"}
                   </button>
-                )}
-
-                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-
-                <label>Desistência considerada &quot;de última hora&quot; (minutos antes do início)</label>
-                <input type="number" min={0} max={1440} step={15} value={form.shortNoticeWithdrawalMinutes}
-                  onChange={(e) => setForm({ ...form, shortNoticeWithdrawalMinutes: e.target.value })} />
-
-                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.allowSelfRegistration}
-                    onChange={(e) => setForm({ ...form, allowSelfRegistration: e.target.checked })} />
-                  Permitir que colaboradores se autocadastrem nesta agência
-                </label>
-                <span className={panel.muted}>
-                  Quando ligado, aparece um formulário simples de cadastro. Cada cadastro fica
-                  pendente até você aprovar em <strong>Cadastros pendentes</strong>.
-                </span>
-
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.onboardingRequired}
-                    onChange={(e) => setForm({ ...form, onboardingRequired: e.target.checked })} />
-                  Exigir onboarding (perfil contratual + uniforme aprovado) antes de aceitar vagas
-                </label>
-                <label>Preço do kit uniforme (R$)</label>
-                <input type="number" min={0} step={0.01} value={form.uniformPrice}
-                  onChange={(e) => setForm({ ...form, uniformPrice: e.target.value })} />
-                <span className={panel.muted}>Cobrado do colaborador no Mercado Pago ao comprar o uniforme.</span>
-
-                <hr style={{ width: "100%", borderColor: "var(--border)" }} />
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.appPaymentEnabledForSupermarkets}
-                    onChange={(e) => setForm({ ...form, appPaymentEnabledForSupermarkets: e.target.checked })} />
-                  Permitir que os mercados-clientes paguem a fatura pelo app
-                </label>
-                <span className={panel.muted}>
-                  Quando desligado, o botão de pagar some pro mercado; você dá baixa manual em{" "}
-                  <strong>Fechamentos</strong> depois de receber por fora. Escolha quais clientes veem a
-                  opção em <strong>Gestão de Clientes</strong>.
-                </span>
-
-                <label className={panel.toggleRow}>
-                  <input type="checkbox" checked={form.appPaymentEnabledForFreelancers}
-                    onChange={(e) => setForm({ ...form, appPaymentEnabledForFreelancers: e.target.checked })} />
-                  Permitir que os colaboradores comprem o uniforme pelo app
-                </label>
-                <span className={panel.muted}>
-                  Quando desligado, o colaborador registra o pedido sem gerar link de pagamento; você
-                  dá baixa manual em <strong>Onboarding</strong> depois de receber por fora.
-                </span>
-
-                {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
-                <button className={panel.primaryBtn} type="submit" disabled={saving}>
-                  {saving ? "Salvando…" : "Salvar configurações"}
-                </button>
+                </div>
               </div>
             </form>
           )}
@@ -448,8 +529,10 @@ function SettingsPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <SettingsPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="configuracoes">
+        <SettingsPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

@@ -1,6 +1,6 @@
 import api from "@/src/services/api";
 
-export type InviteRole = "supermarket" | "freelancer" | "leader";
+export type InviteRole = "supermarket" | "freelancer" | "leader" | "partner";
 
 export interface InvitePreview {
   agencyName: string | null;

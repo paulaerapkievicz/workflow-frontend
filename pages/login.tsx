@@ -13,6 +13,7 @@ const ROLE_HOME: Record<string, string> = {
   supermarket: "/supermarket/dashboard",
   agency: "/agency/dashboard",
   leader: "/leader/dashboard",
+  partner: "/agency/dashboard",
   freelancer: "/freelancer/dashboard",
 };
 

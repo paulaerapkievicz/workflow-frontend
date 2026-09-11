@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import StarRating from "@/src/components/StarRating";
 import { getAgencyReviews, AgencyReviewRow } from "@/src/services/reviewService";
@@ -141,8 +142,10 @@ function ReviewsPage() {
 
 export default function AgencyReviews() {
   return (
-    <RequireAuth role="agency">
-      <ReviewsPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="colaboradores">
+        <ReviewsPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

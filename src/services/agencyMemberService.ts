@@ -89,6 +89,17 @@ export const setAgencyMemberScope = async (
 export const deactivateAgencyMember = async (id: string): Promise<AgencyMember> =>
   (await api.delete(`/agency/members/${id}`)).data;
 
+export interface PasswordResetResult {
+  /** E-mail de login (útil quando a agência usa o padrão nomesobrenome@workflow.com). */
+  email: string;
+  /** Senha nova — só aparece nesta resposta, repassar por fora (WhatsApp etc.). */
+  password: string;
+}
+
+// Redefine a senha do líder
+export const resetAgencyMemberPassword = async (id: string): Promise<PasswordResetResult> =>
+  (await api.post(`/agency/members/${id}/reset-password`)).data;
+
 export const registerAgencyMemberPayment = async (
   id: string,
   payload: { amount: number; referenceMonth?: string | null; note?: string | null }

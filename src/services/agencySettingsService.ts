@@ -65,6 +65,9 @@ export interface AgencySettings {
   appPaymentEnabledForSupermarkets: boolean;
   /** Libera a compra do uniforme pelo app pros colaboradores (tudo ou nada). */
   appPaymentEnabledForFreelancers: boolean;
+  /** E-mail de login das contas criadas sob a agência: o que a pessoa informou, ou o padrão
+   *  nomesobrenome@workflow.com (nesse caso só a agência redefine a senha se esquecer). */
+  loginEmailPolicy: "informed" | "pattern";
 }
 
 export const getAgencySettings = async (): Promise<AgencySettings> =>

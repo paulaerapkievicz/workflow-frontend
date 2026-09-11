@@ -4,15 +4,23 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import {
   getAgencyMembers, createAgencyMember, updateAgencyMember, setAgencyMemberScope,
-  deactivateAgencyMember, AgencyMember, LeaderPayType, PAY_TYPE_LABELS,
+  deactivateAgencyMember, resetAgencyMemberPassword, AgencyMember, LeaderPayType, PAY_TYPE_LABELS,
 } from "@/src/services/agencyMemberService";
+import {
+  getAgencyPartners, createAgencyPartner, updateAgencyPartner, deactivateAgencyPartner,
+  resetAgencyPartnerPassword, AgencyPartner, AgencyPartnerPermissions, AGENCY_PARTNER_FEATURES,
+  AGENCY_PARTNER_FEATURE_LABELS,
+} from "@/src/services/agencyPartnerService";
+import ResetPasswordAction from "@/src/components/ResetPasswordAction";
 import { createInvite } from "@/src/services/inviteService";
 import TeamRolesManager from "@/src/components/TeamRolesManager";
 import ScopePicker from "@/src/components/ScopePicker";
 import FormField from "@/src/components/FormField";
+import Switch from "@/src/components/common/Switch";
 import { validateForm } from "@/src/lib/validators";
 import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
@@ -60,19 +68,35 @@ function TeamPage() {
   const [payForm, setPayForm] = useState({ payType: "mensal" as LeaderPayType, payAmount: "" });
   const [payError, setPayError] = useState<string | null>(null);
 
+  const [partners, setPartners] = useState<AgencyPartner[]>([]);
+  const [partnerCreateOpen, setPartnerCreateOpen] = useState(false);
+  const [partnerForm, setPartnerForm] = useState({ name: "", email: "", password: "", phone: "", teamRoleId: "" });
+  const [partnerCreateError, setPartnerCreateError] = useState<string | null>(null);
+
+  const [partnerInviteOpen, setPartnerInviteOpen] = useState(false);
+  const [partnerInviteLink, setPartnerInviteLink] = useState<string | null>(null);
+  const [partnerInviteError, setPartnerInviteError] = useState<string | null>(null);
+  const [partnerInviteCopied, setPartnerInviteCopied] = useState(false);
+
+  const [permMember, setPermMember] = useState<AgencyPartner | null>(null);
+  const [permDraft, setPermDraft] = useState<AgencyPartnerPermissions | null>(null);
+  const [permError, setPermError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
-    const [m, fl, b, sm, r] = await Promise.all([
+    const [m, fl, b, sm, r, p] = await Promise.all([
       getAgencyMembers(),
       agencyId ? getMyFreelancers(agencyId) : Promise.resolve([]),
       getBranches().catch(() => []),
       getSupermarkets().catch(() => []),
       getTeamRoles().catch(() => []),
+      getAgencyPartners().catch(() => []),
     ]);
     setMembers(m);
     setFreelancers(fl);
     setBranches(b);
     setSupermarkets(sm);
     setRoles(r);
+    setPartners(p);
   }, [agencyId]);
 
   useEffect(() => { load().catch(() => {}); }, [load]);
@@ -185,14 +209,106 @@ function TeamPage() {
     }
   };
 
+  const submitCreatePartner = async () => {
+    setPartnerCreateError(null);
+    if (!partnerForm.name || !partnerForm.email || !partnerForm.password) {
+      setPartnerCreateError("Preencha nome, e-mail e senha.");
+      return;
+    }
+    const errs = validateForm([
+      { name: "email", value: partnerForm.email, kind: "email", required: true },
+      { name: "phone", value: partnerForm.phone, kind: "phone" },
+    ]);
+    if (Object.keys(errs).length) { setPartnerCreateError("Confira o e-mail e o telefone."); return; }
+    try {
+      await createAgencyPartner({
+        name: partnerForm.name, email: partnerForm.email, password: partnerForm.password,
+        phone: partnerForm.phone || undefined, teamRoleId: partnerForm.teamRoleId || null,
+      });
+      setPartnerCreateOpen(false);
+      setPartnerForm({ name: "", email: "", password: "", phone: "", teamRoleId: "" });
+      setMsg({ type: "success", text: "Sócio cadastrado com acesso total — ajuste as permissões se quiser." });
+      await load();
+    } catch (err) {
+      setPartnerCreateError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    }
+  };
+
+  const openInvitePartner = () => {
+    setPartnerInviteLink(null);
+    setPartnerInviteError(null);
+    setPartnerInviteCopied(false);
+    setPartnerInviteOpen(true);
+  };
+
+  const generateInvitePartner = async () => {
+    setPartnerInviteError(null);
+    try {
+      const { token } = await createInvite("partner");
+      setPartnerInviteLink(`${window.location.origin}/invite/${token}`);
+    } catch (err) {
+      setPartnerInviteError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao gerar convite." : "Erro ao gerar convite.");
+    }
+  };
+
+  const copyInvitePartner = async () => {
+    if (!partnerInviteLink) return;
+    try { await navigator.clipboard.writeText(partnerInviteLink); setPartnerInviteCopied(true); } catch { /* ignore */ }
+  };
+
+  const openPermissions = (p: AgencyPartner) => {
+    setPermMember(p);
+    setPermDraft({ ...p.permissions });
+    setPermError(null);
+  };
+
+  const savePermissions = async () => {
+    if (!permMember || !permDraft) return;
+    setPermError(null);
+    try {
+      await updateAgencyPartner(permMember.id, { permissions: permDraft });
+      setPermMember(null);
+      await load();
+    } catch (err) {
+      setPermError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    }
+  };
+
+  const togglePartnerActive = async (p: AgencyPartner) => {
+    try {
+      if (p.active) {
+        if (!confirm(`Desativar o acesso de ${p.name}?`)) return;
+        await deactivateAgencyPartner(p.id);
+      } else {
+        await updateAgencyPartner(p.id, { active: true });
+      }
+      await load();
+    } catch (err) {
+      alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    }
+  };
+
+  const permissionSummary = (p: AgencyPartner) => {
+    const off = AGENCY_PARTNER_FEATURES.filter((f) => !p.permissions[f]);
+    if (off.length === 0) return "Acesso total";
+    return `Sem: ${off.map((f) => AGENCY_PARTNER_FEATURE_LABELS[f]).join(", ")}`;
+  };
+
   return (
     <>
       <Head><title>Equipe | Agência</title></Head>
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
+          <h1 style={{ margin: 0 }}>Equipe da agência</h1>
+          <p className={panel.muted} style={{ marginTop: "-0.5rem" }}>
+            Todos os perfis com acesso ao painel da agência, além do seu, ficam centralizados
+            aqui: <strong>líderes</strong> (poderes operacionais fixos, sem financeiro) e{" "}
+            <strong>sócios</strong> (acesso amplo e configurável por área).
+          </p>
+
           <header className={panel.header}>
-            <h1>Líderes da agência</h1>
+            <h1 style={{ fontSize: "1.15rem" }}>Líderes</h1>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button className={panel.ghostBtn} onClick={() => setRolesOpen(true)}>Cargos</button>
               <button className={panel.ghostBtn} onClick={openInvite}>Convidar líder</button>
@@ -246,9 +362,10 @@ function TeamPage() {
                         {m.active ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td>
+                    <td className={panel.actionsStack}>
                       <button className={panel.ghostBtn} onClick={() => openScope(m)}>Escopo</button>
                       <button className={panel.ghostBtn} onClick={() => openPay(m)}>Pagamento</button>
+                      <ResetPasswordAction label={m.name ?? "este líder"} onReset={() => resetAgencyMemberPassword(m.id)} />
                       <button className={panel.secondaryBtn} onClick={() => toggleActive(m)}>
                         {m.active ? "Desativar" : "Reativar"}
                       </button>
@@ -256,6 +373,63 @@ function TeamPage() {
                   </tr>
                 ))}
                 {members.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhum líder cadastrado.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <header className={panel.header} style={{ marginTop: "1rem" }}>
+            <h1 style={{ fontSize: "1.15rem" }}>Sócios</h1>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button className={panel.ghostBtn} onClick={openInvitePartner}>Convidar sócio</button>
+              <button className={panel.primaryBtn} onClick={() => { setPartnerCreateError(null); setPartnerCreateOpen(true); }}>
+                Cadastrar sócio
+              </button>
+            </div>
+          </header>
+          <p className={panel.muted}>
+            Sócio nasce com <strong>acesso total</strong> ao painel da agência — mesmas telas do
+            dono. Restrinja por área quando quiser em &quot;Permissões&quot;. Só o dono da agência
+            gerencia sócios (nem outro sócio pode).
+          </p>
+
+          <div style={{ overflowX: "auto" }}>
+            <table className={panel.table}>
+              <thead>
+                <tr><th>Nome</th><th>Cargo</th><th>E-mail</th><th>Permissões</th><th>Status</th><th>Ações</th></tr>
+              </thead>
+              <tbody>
+                {partners.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.name ?? "—"}</td>
+                    <td>
+                      <select
+                        value={p.teamRoleId ?? ""}
+                        onChange={async (e) => {
+                          try { await updateAgencyPartner(p.id, { teamRoleId: e.target.value || null }); await load(); }
+                          catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+                        }}
+                      >
+                        <option value="">— sem cargo —</option>
+                        {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                    </td>
+                    <td>{p.email ?? "—"}</td>
+                    <td>{permissionSummary(p)}</td>
+                    <td>
+                      <span className={`${panel.badge} ${p.active ? "" : panel.badgeCanceled}`}>
+                        {p.active ? "Ativo" : "Inativo"}
+                      </span>
+                    </td>
+                    <td className={panel.actionsStack}>
+                      <button className={panel.ghostBtn} onClick={() => openPermissions(p)}>Permissões</button>
+                      <ResetPasswordAction label={p.name ?? "este sócio"} onReset={() => resetAgencyPartnerPassword(p.id)} />
+                      <button className={panel.secondaryBtn} onClick={() => togglePartnerActive(p)}>
+                        {p.active ? "Desativar" : "Reativar"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {partners.length === 0 && <tr><td colSpan={6} className={panel.muted}>Nenhum sócio cadastrado.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -366,6 +540,73 @@ function TeamPage() {
         </Modal>
       )}
 
+      {partnerCreateOpen && (
+        <Modal title="Cadastrar sócio" onClose={() => setPartnerCreateOpen(false)}>
+          <div className={panel.form}>
+            <label>Nome</label>
+            <input value={partnerForm.name} onChange={(e) => setPartnerForm({ ...partnerForm, name: e.target.value })} />
+            <FormField label="E-mail" kind="email" required value={partnerForm.email}
+              onChange={(v) => setPartnerForm({ ...partnerForm, email: v })} />
+            <label>Senha de acesso</label>
+            <input type="password" minLength={6} value={partnerForm.password} onChange={(e) => setPartnerForm({ ...partnerForm, password: e.target.value })} />
+            <FormField label="Telefone" kind="phone" placeholder="(00) 00000-0000" value={partnerForm.phone}
+              onChange={(v) => setPartnerForm({ ...partnerForm, phone: v })} />
+            <label>Cargo na equipe</label>
+            <select value={partnerForm.teamRoleId} onChange={(e) => setPartnerForm({ ...partnerForm, teamRoleId: e.target.value })}>
+              <option value="">— sem cargo —</option>
+              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+            <p className={panel.muted} style={{ fontSize: "0.8rem" }}>
+              Nasce com acesso total às telas da agência. Ajuste as permissões depois, se quiser.
+            </p>
+            {partnerCreateError && <p className={panel.error}>{partnerCreateError}</p>}
+            <button className={panel.primaryBtn} onClick={submitCreatePartner}>Cadastrar</button>
+          </div>
+        </Modal>
+      )}
+
+      {partnerInviteOpen && (
+        <Modal title="Convidar sócio" onClose={() => setPartnerInviteOpen(false)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              Gere o link e envie pro sócio (WhatsApp, e-mail…). Ao se cadastrar, ele já entra com
+              acesso total ao painel da agência — ajuste as permissões depois, aqui na tela.
+            </p>
+            {partnerInviteError && <p className={panel.error}>{partnerInviteError}</p>}
+            {!partnerInviteLink ? (
+              <button className={panel.primaryBtn} onClick={generateInvitePartner}>Gerar link</button>
+            ) : (
+              <>
+                <input readOnly value={partnerInviteLink} onFocus={(e) => e.target.select()} />
+                <button className={panel.primaryBtn} onClick={copyInvitePartner}>{partnerInviteCopied ? "Copiado!" : "Copiar link"}</button>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {permMember && permDraft && (
+        <Modal title={`Permissões — ${permMember.name ?? ""}`} onClose={() => setPermMember(null)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              Áreas do painel que este sócio pode acessar. Desligar uma área bloqueia as telas e
+              rotas dela — inclusive se ele tentar acessar direto pelo link.
+            </p>
+            {AGENCY_PARTNER_FEATURES.map((f) => (
+              <label key={f} className={panel.toggleRow}>
+                <Switch
+                  checked={permDraft[f]}
+                  onChange={(v) => setPermDraft({ ...permDraft, [f]: v })}
+                />
+                {AGENCY_PARTNER_FEATURE_LABELS[f]}
+              </label>
+            ))}
+            {permError && <p className={panel.error}>{permError}</p>}
+            <button className={panel.primaryBtn} onClick={savePermissions}>Salvar permissões</button>
+          </div>
+        </Modal>
+      )}
+
       {rolesOpen && (
         <TeamRolesManager roles={roles} onClose={() => setRolesOpen(false)} onChange={load} />
       )}
@@ -375,8 +616,10 @@ function TeamPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <TeamPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="equipe">
+        <TeamPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

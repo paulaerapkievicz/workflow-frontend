@@ -4,17 +4,21 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import {
   getSupermarkets, createSupermarketAsAgency, updateSupermarket, setSupermarketAppPayment, Supermarket,
   getMembers, addMember, updateMember, deleteMember, SupermarketMember,
+  resetSupermarketOwnerPassword, resetMemberPassword,
 } from "@/src/services/supermarketService";
+import ResetPasswordAction from "@/src/components/ResetPasswordAction";
 import { getAgencySettings } from "@/src/services/agencySettingsService";
 import {
   getBranches, createBranch, updateBranch, deleteBranch, geocodeAddress, branchHasLocation, approveBranch, Branch,
 } from "@/src/services/branchService";
 import { createInvite } from "@/src/services/inviteService";
 import BranchScopeField from "@/src/components/supermarket/BranchScopeField";
+import Switch from "@/src/components/common/Switch";
 import TeamRolesManager from "@/src/components/TeamRolesManager";
 import FormField from "@/src/components/FormField";
 import { validateForm } from "@/src/lib/validators";
@@ -365,7 +369,11 @@ function SupermarketsPage() {
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
-                <thead><tr><th>Nome</th><th>CNPJ</th><th>Acesso</th><th>Filiais</th><th>Pagamento pelo app</th><th>Ações</th></tr></thead>
+                <thead><tr>
+                  <th>Nome</th><th>CNPJ</th><th>Acesso</th><th>Filiais</th>
+                  <th title="Pagamento pelo app (Mercado Pago) para este cliente">App</th>
+                  <th>Ações</th>
+                </tr></thead>
                 <tbody>
                   {markets.map((m) => (
                     <tr key={m.id}>
@@ -380,21 +388,22 @@ function SupermarketsPage() {
                           </span>
                         )}
                       </td>
-                      <td>
-                        <label
-                          title={!appPaymentMasterEnabled ? "Habilite em Configurações primeiro" : undefined}
-                          style={{ display: "flex", alignItems: "center", gap: 6, opacity: appPaymentMasterEnabled ? 1 : 0.5 }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={m.appPaymentEnabled}
-                            disabled={!appPaymentMasterEnabled || appPaymentBusy === m.id}
-                            onChange={() => toggleAppPayment(m)}
-                          />
-                          {m.appPaymentEnabled ? "Ligado" : "Desligado"}
-                        </label>
+                      <td style={{ textAlign: "center" }}>
+                        <Switch
+                          checked={m.appPaymentEnabled}
+                          disabled={!appPaymentMasterEnabled || appPaymentBusy === m.id}
+                          onChange={() => toggleAppPayment(m)}
+                          title={
+                            !appPaymentMasterEnabled
+                              ? "Habilite em Configurações primeiro"
+                              : m.appPaymentEnabled
+                                ? "Pagamento pelo app ligado para este cliente — clique para desligar"
+                                : "Pagamento pelo app desligado para este cliente — clique para ligar"
+                          }
+                          aria-label="Pagamento pelo app"
+                        />
                       </td>
-                      <td>
+                      <td className={panel.actionsStack}>
                         <button className={panel.ghostBtn} onClick={() => setBranchesOf(m)}>Filiais</button>
                         <button className={panel.ghostBtn} onClick={() => openRates(m)}>Valores/hora</button>
                         <button className={panel.ghostBtn} onClick={() => openTeam(m)}>Equipe</button>
@@ -556,16 +565,30 @@ function SupermarketsPage() {
                       </td>
                       <td>{mem.memberUser?.email ?? "—"}</td>
                       <td>{memberScopeLabel(mem)}</td>
-                      <td><input type="checkbox" disabled={mem.isOwner} checked={mem.canSubmitOrders}
-                        onChange={(e) => patchMember(mem, { canSubmitOrders: e.target.checked })} /></td>
-                      <td><input type="checkbox" disabled={mem.isOwner} checked={mem.canApproveOrders}
-                        onChange={(e) => patchMember(mem, { canApproveOrders: e.target.checked })} /></td>
-                      <td><input type="checkbox" disabled={mem.isOwner} checked={mem.isOwner || mem.canViewInvoices}
-                        onChange={(e) => setMemberView(mem, e.target.checked)} /></td>
-                      <td><input type="checkbox" disabled={mem.isOwner} checked={mem.isOwner || mem.canPayInvoices}
-                        onChange={(e) => setMemberPay(mem, e.target.checked)} /></td>
-                      <td>
+                      <td style={{ textAlign: "center" }}>
+                        <Switch disabled={mem.isOwner} checked={mem.canSubmitOrders}
+                          onChange={(v) => patchMember(mem, { canSubmitOrders: v })} />
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <Switch disabled={mem.isOwner} checked={mem.canApproveOrders}
+                          onChange={(v) => patchMember(mem, { canApproveOrders: v })} />
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <Switch disabled={mem.isOwner} checked={mem.isOwner || mem.canViewInvoices}
+                          onChange={(v) => setMemberView(mem, v)} />
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <Switch disabled={mem.isOwner} checked={mem.isOwner || mem.canPayInvoices}
+                          onChange={(v) => setMemberPay(mem, v)} />
+                      </td>
+                      <td className={panel.actionsStack}>
                         {!mem.isOwner && <button className={panel.ghostBtn} onClick={() => openEditMember(mem)}>Editar</button>}
+                        <ResetPasswordAction
+                          label={mem.memberUser?.name ?? (mem.isOwner ? "o dono" : "este gerente")}
+                          onReset={() =>
+                            mem.isOwner ? resetSupermarketOwnerPassword(teamOf!.id) : resetMemberPassword(mem.id)
+                          }
+                        />
                         {!mem.isOwner && <button className={panel.secondaryBtn} onClick={() => removeMember(mem)}>Remover</button>}
                       </td>
                     </tr>
@@ -666,7 +689,7 @@ function SupermarketsPage() {
                           ? <span className={`${panel.badge} ${panel.badgeDone}`}>Aprovada</span>
                           : <span className={`${panel.badge} ${panel.badgePending}`}>Pendente</span>}
                       </td>
-                      <td>
+                      <td className={panel.actionsStack}>
                         {b.serviceStatus === "pending" && (
                           <button className={panel.primaryBtn} onClick={() => approveBranchAttendance(b.id)}>Aprovar atendimento</button>
                         )}
@@ -713,8 +736,10 @@ function SupermarketsPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <SupermarketsPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="clientes">
+        <SupermarketsPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import { getMyFreelancers, addFreelancer, AgencyFreelancer } from "@/src/services/agencyService";
 import { createInvite } from "@/src/services/inviteService";
@@ -14,7 +15,9 @@ import {
   addCategoryToFreelancer,
   setFreelancerCategoryRate,
   removeCategoryFromFreelancer,
+  resetFreelancerPassword,
 } from "@/src/services/freelancerService";
+import ResetPasswordAction from "@/src/components/ResetPasswordAction";
 import {
   getFreelancerReputation,
   getFreelancerReviews,
@@ -191,9 +194,6 @@ function FreelancersPage() {
 
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
 
-  const missingRate = (freelancerId: string) =>
-    (catsByFreelancer[freelancerId] ?? []).some((cid) => !Number(rateByFreelancer[freelancerId]?.[cid]));
-
   return (
     <>
       <Head><title>Colaboradores | Agência</title></Head>
@@ -227,21 +227,21 @@ function FreelancersPage() {
                     {(catsByFreelancer[f.id] ?? []).length === 0 ? (
                       <span className={panel.muted}>nenhuma</span>
                     ) : (
-                      <>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                         {(catsByFreelancer[f.id] ?? []).map((cid) => {
                           const rate = Number(rateByFreelancer[f.id]?.[cid]);
+                          const missing = !(rate > 0);
                           return (
-                            <span key={cid} className={panel.badge} style={{ marginRight: 4 }}>
+                            <span
+                              key={cid}
+                              className={`${panel.badge} ${missing ? panel.badgeCanceled : ""}`}
+                              title={missing ? "Defina o valor/hora desta função — sem valor o colaborador não vê vagas dela." : undefined}
+                            >
                               {categoryName(cid)}{rate > 0 ? ` · R$ ${rate.toFixed(2)}/h` : " · sem valor"}
                             </span>
                           );
                         })}
-                        {missingRate(f.id) && (
-                          <div className={panel.error} style={{ fontSize: "0.8rem", marginTop: 4 }}>
-                            Defina o valor/hora das funções sem valor.
-                          </div>
-                        )}
-                      </>
+                      </div>
                     )}
                   </td>
                   <td>R$ {Number(f.availableBalance ?? 0).toFixed(2)}</td>
@@ -356,6 +356,10 @@ function FreelancersPage() {
             <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
             <label>Telefone</label>
             <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+            <ResetPasswordAction
+              label={editForm.name || "este colaborador"}
+              onReset={() => resetFreelancerPassword(editId)}
+            />
             <label>Habilidades</label>
             <textarea value={editForm.skills} onChange={(e) => setEditForm({ ...editForm, skills: e.target.value })} />
 
@@ -387,8 +391,10 @@ function FreelancersPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <FreelancersPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="colaboradores">
+        <FreelancersPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }

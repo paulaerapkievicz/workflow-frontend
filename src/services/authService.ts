@@ -1,6 +1,15 @@
 import api from "@/src/services/api";
 
-export type Role = "admin" | "supermarket" | "freelancer" | "agency" | "leader";
+export type Role = "admin" | "supermarket" | "freelancer" | "agency" | "leader" | "partner";
+
+/** Áreas configuráveis de acesso de um sócio de agência — ver `AgencyPartnerFeature` no backend. */
+export type AgencyPartnerFeature =
+  | "vagas"
+  | "clientes"
+  | "colaboradores"
+  | "financeiro"
+  | "equipe"
+  | "configuracoes";
 
 export interface AuthUser {
   id: string;
@@ -38,13 +47,15 @@ export interface AuthProfile {
   } | null;
   /** Só para papel supermarket: override por cliente do pagamento da fatura pelo app. */
   appPaymentEnabled?: boolean;
-  /** Só para papel leader: dados do líder de agência. */
+  /** Só para papel leader/partner: dados do líder/sócio de agência. */
   agencyId?: string;
   agencyName?: string | null;
   active?: boolean;
   payType?: "hora" | "diaria" | "mensal" | null;
   payAmount?: number | null;
   availableBalance?: number;
+  /** Só para papel partner: quais áreas do painel da agência este sócio pode acessar. */
+  permissions?: Record<AgencyPartnerFeature, boolean>;
   /** Agência/supermercado: ordem personalizada do menu lateral (lista de hrefs). */
   sidebarOrder?: string[] | null;
   [key: string]: unknown;

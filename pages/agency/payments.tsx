@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import StatusBadge from "@/src/components/StatusBadge";
 import DataTable, { Column } from "@/src/components/DataTable";
 import FilterBar, { FilterFieldDef } from "@/src/components/FilterBar";
@@ -567,8 +568,10 @@ function AgencyPayments() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <AgencyPayments />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="financeiro">
+        <AgencyPayments />
+      </RequirePermission>
     </RequireAuth>
   );
 }

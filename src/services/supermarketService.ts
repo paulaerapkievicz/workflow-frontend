@@ -52,6 +52,17 @@ export const deleteSupermarket = async (id: string): Promise<void> => {
   await api.delete(`/supermarkets/${id}`);
 };
 
+export interface PasswordResetResult {
+  /** E-mail de login (útil quando a agência usa o padrão nomesobrenome@workflow.com). */
+  email: string;
+  /** Senha nova — só aparece nesta resposta, repassar por fora (WhatsApp etc.). */
+  password: string;
+}
+
+// Redefine a senha do dono do supermercado
+export const resetSupermarketOwnerPassword = async (id: string): Promise<PasswordResetResult> =>
+  (await api.post(`/supermarkets/${id}/reset-password`)).data;
+
 // ----- Equipe (gerentes de loja) -----
 export interface SupermarketMember {
   id: string;
@@ -104,3 +115,7 @@ export const updateMember = async (
 export const deleteMember = async (id: string): Promise<void> => {
   await api.delete(`/supermarket-members/${id}`);
 };
+
+// Redefine a senha de um gerente de loja (agência-cliente ou o dono do supermercado)
+export const resetMemberPassword = async (id: string): Promise<PasswordResetResult> =>
+  (await api.post(`/supermarket-members/${id}/reset-password`)).data;

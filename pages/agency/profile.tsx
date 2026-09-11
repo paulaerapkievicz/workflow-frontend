@@ -4,6 +4,7 @@ import Link from "next/link";
 import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import ProfileImageField from "@/src/components/ProfileImageField";
 import FormField, { type FieldKind } from "@/src/components/FormField";
 import panel from "@/styles/panel.module.scss";
@@ -254,8 +255,10 @@ function AgencyProfilePage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <AgencyProfilePage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="configuracoes">
+        <AgencyProfilePage />
+      </RequirePermission>
     </RequireAuth>
   );
 }
