@@ -20,7 +20,7 @@ const Header = () => {
 
   // Nas telas internas (painéis) o cabeçalho lateral já dá o contexto — mantemos o topo enxuto.
   const onPanel = /^\/(supermarket|agency|freelancer|admin)(\/|$)/.test(router.pathname);
-  const onLandingRoot = router.pathname === "/";
+  const onLandingRoot = router.pathname === "/" || router.pathname === "/p/[id]";
 
   return (
     <header className={styles.header}>

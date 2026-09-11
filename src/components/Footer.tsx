@@ -7,8 +7,10 @@ const Footer = () => {
   const router = useRouter();
   const { authenticated } = useAuth();
 
-  // A landing (deslogada) monta o próprio rodapé completo — evita duplicar rodapé aqui.
-  if (router.pathname === '/' && !authenticated) return null;
+  // A landing (deslogada), padrão da plataforma ou de uma agência (/p/:id), monta o
+  // próprio rodapé completo — evita duplicar rodapé aqui.
+  const onLandingRoot = router.pathname === '/' || router.pathname === '/p/[id]';
+  if (onLandingRoot && !authenticated) return null;
 
   return (
     <footer className={styles.footer}>

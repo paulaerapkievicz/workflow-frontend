@@ -10,6 +10,10 @@ export interface Agency {
   availableBalance: number;
   commissionPercentage: number;
   allowSelfRegistration?: boolean;
+  active?: boolean;
+  logoUrl?: string | null;
+  whatsappNumber?: string | null;
+  whatsappMessage?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +52,18 @@ export const getAgencies = async (): Promise<Agency[]> => (await api.get("/agenc
 
 export const getAgencyById = async (id: string): Promise<Agency> =>
   (await api.get(`/agencies/${id}`)).data;
+
+/** Dados públicos da landing da agência (/p/:id) — não exige login. */
+export interface AgencyPublicLanding {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  whatsappNumber: string | null;
+  whatsappMessage: string | null;
+}
+
+export const getAgencyPublicLanding = async (id: string): Promise<AgencyPublicLanding> =>
+  (await api.get(`/agencies/${id}/public-landing`)).data;
 
 // Freelancers da agência logada (a API devolve todos; filtramos pelo agencyId).
 export const getMyFreelancers = async (agencyId: string): Promise<AgencyFreelancer[]> => {

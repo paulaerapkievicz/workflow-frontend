@@ -11,10 +11,17 @@ export interface AgencyProfile {
   logoUrl: string | null;
   profilePhotoUrl: string | null;
   active: boolean;
+  /** Número de WhatsApp (com DDI) usado no botão de contato da landing pública (/p/:id). */
+  whatsappNumber: string | null;
+  /** Mensagem pré-preenchida do botão de WhatsApp da landing. */
+  whatsappMessage: string | null;
 }
 
 export type AgencyProfilePatch = Partial<
-  Pick<AgencyProfile, "name" | "legalName" | "cnpj" | "address" | "phone" | "email">
+  Pick<
+    AgencyProfile,
+    "name" | "legalName" | "cnpj" | "address" | "phone" | "email" | "whatsappNumber" | "whatsappMessage"
+  >
 >;
 
 export const getAgencyProfile = async (): Promise<AgencyProfile> =>
