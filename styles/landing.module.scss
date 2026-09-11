@@ -193,10 +193,300 @@
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 .pillGreen { background: rgba(87, 194, 106, 0.16); color: #2f8f45; }
 .pillBlue { background: rgba(78, 108, 255, 0.16); color: $primary-dark; }
 .pillAmber { background: rgba(245, 192, 78, 0.2); color: #a9791b; }
+
+.heroNote {
+  display: block;
+  margin-top: 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: map.get($light-theme, muted);
+
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
+}
+
+.mockHeader {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: map.get($light-theme, muted);
+  margin-bottom: 0.7rem;
+
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
+}
+
+.mockNotification {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 20px 40px -20px rgba(30, 41, 99, 0.35);
+  font-size: 0.82rem;
+
+  strong { font-weight: 700; }
+  span { color: map.get($light-theme, muted); font-size: 0.78rem; }
+
+  body[data-theme="dark"] & {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    span { color: map.get($dark-theme, muted); }
+  }
+}
+
+// ---------------- Faixa de funções ----------------
+.functionsBar {
+  padding: 1.4rem 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+
+  body[data-theme="dark"] & { border-color: rgba(255, 255, 255, 0.08); }
+}
+
+.functionsInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.functionsLabel {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: map.get($light-theme, muted);
+  white-space: nowrap;
+
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
+}
+
+.functionsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.functionPill {
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(78, 108, 255, 0.1);
+  color: $primary-dark;
+
+  body[data-theme="dark"] & { background: rgba(78, 108, 255, 0.18); color: #c9d3ff; }
+}
+
+// ---------------- A dor ----------------
+.painList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 40rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.painItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 14px;
+  background: map.get($light-theme, surface);
+  border: 1px solid rgba(229, 57, 53, 0.18);
+  font-size: 0.96rem;
+  line-height: 1.55;
+
+  body[data-theme="dark"] & {
+    background: map.get($dark-theme, surface);
+    border-color: rgba(229, 57, 53, 0.3);
+  }
+}
+
+.painIcon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: $error-color;
+  background: rgba(229, 57, 53, 0.14);
+}
+
+// ---------------- A solução ----------------
+.solutionInner {
+  max-width: 46rem;
+  text-align: center;
+}
+
+.solutionText {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: map.get($light-theme, muted);
+  margin: 0;
+
+  strong { color: inherit; font-weight: 700; }
+  em { font-style: normal; font-weight: 700; color: $primary-dark; }
+
+  body[data-theme="dark"] & {
+    color: map.get($dark-theme, muted);
+    em { color: #b9c6ff; }
+  }
+}
+
+// ---------------- Benefícios ----------------
+.benefitHighlight {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: center;
+  padding: 2rem;
+  border-radius: 20px;
+  background: linear-gradient(140deg, rgba(78, 108, 255, 0.08), rgba(245, 106, 49, 0.06));
+  border: 1px solid rgba(78, 108, 255, 0.15);
+  margin-bottom: 2rem;
+
+  body[data-theme="dark"] & { border-color: rgba(78, 108, 255, 0.25); }
+
+  @media (max-width: 780px) { grid-template-columns: 1fr; }
+}
+
+.benefitHighlightText {
+  h3 { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.6rem; letter-spacing: -0.01em; }
+  p { color: map.get($light-theme, muted); line-height: 1.6; margin: 0; }
+  body[data-theme="dark"] & p { color: map.get($dark-theme, muted); }
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  li {
+    display: flex;
+    gap: 0.9rem;
+    align-items: baseline;
+
+    time {
+      flex: none;
+      font-weight: 800;
+      font-size: 0.85rem;
+      color: $primary-dark;
+      width: 3.4rem;
+
+      body[data-theme="dark"] & { color: #b9c6ff; }
+    }
+
+    div { display: flex; flex-direction: column; gap: 0.1rem; }
+    strong { font-size: 0.92rem; font-weight: 700; }
+    span { font-size: 0.82rem; color: map.get($light-theme, muted); }
+    body[data-theme="dark"] & span { color: map.get($dark-theme, muted); }
+  }
+}
+
+// ---------------- Números ----------------
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  text-align: center;
+
+  @media (max-width: 780px) { grid-template-columns: repeat(2, 1fr); }
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+
+  strong {
+    font-size: clamp(1.8rem, 4vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: $primary-dark;
+
+    body[data-theme="dark"] & { color: #b9c6ff; }
+  }
+
+  span {
+    font-size: 0.88rem;
+    color: map.get($light-theme, muted);
+    line-height: 1.4;
+  }
+  body[data-theme="dark"] & span { color: map.get($dark-theme, muted); }
+}
+
+.statsNote {
+  text-align: center;
+  margin: 2rem 0 0;
+  font-size: 0.82rem;
+  color: map.get($light-theme, muted);
+
+  body[data-theme="dark"] & { color: map.get($dark-theme, muted); }
+}
+
+// ---------------- FAQ ----------------
+.faqWrap {
+  max-width: 42rem;
+}
+
+.faq {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.faqItem {
+  padding: 1rem 1.2rem;
+  border-radius: 14px;
+  background: map.get($light-theme, surface);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+
+  body[data-theme="dark"] & {
+    background: map.get($dark-theme, surface);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.98rem;
+    list-style: none;
+
+    &::-webkit-details-marker { display: none; }
+
+    &::after {
+      content: "+";
+      float: right;
+      font-weight: 800;
+      color: $primary-dark;
+    }
+  }
+
+  &[open] summary::after { content: "−"; }
+
+  p {
+    margin: 0.75rem 0 0;
+    color: map.get($light-theme, muted);
+    line-height: 1.6;
+    font-size: 0.92rem;
+  }
+  body[data-theme="dark"] & p { color: map.get($dark-theme, muted); }
+}
 
 // ---------------- Seções ----------------
 .section {
@@ -336,4 +626,86 @@
   transition: transform 0.12s ease;
 
   &:hover { transform: translateY(-2px); }
+}
+
+.ctaActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.ctaBtnGhost {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  padding: 0.85rem 1.8rem;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.12s ease;
+
+  &:hover { background: rgba(255, 255, 255, 0.14); transform: translateY(-2px); }
+}
+
+// ---------------- Rodapé (landing deslogada) ----------------
+.landingFooter {
+  background: $primary-dark;
+  color: rgba(255, 255, 255, 0.85);
+  padding: clamp(2.5rem, 5vw, 3.5rem) 0 1.5rem;
+
+  body[data-theme="dark"] & { background: #0b1220; }
+}
+
+.footerInner {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+
+  @media (max-width: 720px) { grid-template-columns: 1fr; }
+}
+
+.footerBrand {
+  display: flex;
+  align-items: flex-start;
+}
+
+.footerLogo {
+  height: 48px;
+  width: auto;
+}
+
+.footerCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+
+  h4 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0 0 0.2rem;
+  }
+
+  a {
+    color: rgba(255, 255, 255, 0.88);
+    text-decoration: none;
+    font-size: 0.92rem;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.footerBottom {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.25rem 20px 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
 }

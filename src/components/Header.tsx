@@ -4,6 +4,7 @@ import styles from "@/styles/Header.module.scss";
 import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useSelfRegistrationOpen } from "@/src/hooks/useSelfRegistrationOpen";
+import { proposalEmailLink } from "@/src/config/landingContact";
 
 const ROLE_HOME: Record<string, string> = {
   admin: "/",
@@ -19,6 +20,7 @@ const Header = () => {
 
   // Nas telas internas (painéis) o cabeçalho lateral já dá o contexto — mantemos o topo enxuto.
   const onPanel = /^\/(supermarket|agency|freelancer|admin)(\/|$)/.test(router.pathname);
+  const onLandingRoot = router.pathname === "/";
 
   return (
     <header className={styles.header}>
@@ -36,6 +38,13 @@ const Header = () => {
               )}
               {user && <span className={styles.hi}>Olá, {user.name.split(" ")[0]}</span>}
               <button type="button" className={styles.logout} onClick={logout}>Sair</button>
+            </>
+          ) : onLandingRoot ? (
+            <>
+              <Link href="/login" className={styles.navLink}>Entrar no sistema</Link>
+              <a href={proposalEmailLink("Quero uma proposta para o meu supermercado")} className={styles.cta}>
+                Quero uma proposta
+              </a>
             </>
           ) : (
             <>
