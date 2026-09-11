@@ -1,6 +1,7 @@
 import panel from "@/styles/panel.module.scss";
 import { applySidebarOrder } from "@/src/lib/sidebarOrder";
 import type { SidebarItemDef } from "@/src/config/sidebarItems";
+import SidebarIcon from "@/src/components/panel/SidebarIcon";
 
 interface Props {
   items: SidebarItemDef[];
@@ -31,7 +32,9 @@ export default function SidebarOrderEditor({ items, order, onChange }: Props) {
             background: "var(--surface)",
           }}
         >
-          <span aria-hidden="true">{item.icon}</span>
+          <span aria-hidden="true" style={{ display: "inline-flex", color: "var(--text-muted)" }}>
+            <SidebarIcon name={item.icon} />
+          </span>
           <span style={{ flex: 1 }}>{item.label}</span>
           <button
             type="button"

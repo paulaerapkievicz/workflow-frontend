@@ -5,6 +5,7 @@ import Sidebar from "@/src/components/freelancer/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import StatusBadge from "@/src/components/StatusBadge";
+import SidebarIcon from "@/src/components/panel/SidebarIcon";
 import panel from "@/styles/panel.module.scss";
 import {
   getJobs, checkIn, checkOut, startBreak, endBreak, withdrawJob, readGeolocation, canFreelancerCancel,
@@ -259,8 +260,12 @@ function MyJobs() {
                           {fmtDate(j.startTime)} · {formatShiftPeriods(j)} · {formatShifts(j.shifts)}
                         </p>
                         {j.jobBranch?.address && (
-                          <button className={panel.ghostBtn} style={{ marginTop: 4 }} onClick={() => setMapJobId(j.id)}>
-                            📍 Ver no mapa
+                          <button
+                            className={panel.ghostBtn}
+                            style={{ marginTop: 4, display: "inline-flex", alignItems: "center", gap: 6 }}
+                            onClick={() => setMapJobId(j.id)}
+                          >
+                            <SidebarIcon name="pin" size={14} /> Ver no mapa
                           </button>
                         )}
                       </div>

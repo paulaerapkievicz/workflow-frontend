@@ -5,7 +5,7 @@ export default function AdminSidebar() {
     <SideNav
       title="Administração"
       items={[
-        { href: "/admin/agencias", label: "Agências", icon: "🧭" },
+        { href: "/admin/agencias", label: "Agências", icon: "compass" },
       ]}
     />
   );

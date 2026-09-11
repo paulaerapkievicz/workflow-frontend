@@ -13,19 +13,19 @@ export default function Sidebar() {
   const sidebarOrder = profile?.sidebarOrder ?? null;
 
   const rawItems: SideNavItem[] = [
-    { href: "/supermarket/dashboard", label: "Dashboard", icon: "▚" },
-    { href: "/supermarket/orders", label: "Pedidos", icon: "🛒", badge: ordersToApprove },
-    { href: "/supermarket/jobs", label: "Vagas", icon: "📋" },
+    { href: "/supermarket/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/supermarket/orders", label: "Pedidos", icon: "cart", badge: ordersToApprove },
+    { href: "/supermarket/jobs", label: "Vagas", icon: "clipboard-list" },
     ...(alertsOpen > 0
-      ? [{ href: "/supermarket/alerts", label: "Alertas", icon: "🚨", badge: alertsOpen }]
+      ? ([{ href: "/supermarket/alerts", label: "Alertas", icon: "alert", badge: alertsOpen }] as SideNavItem[])
       : []),
-    { href: "/supermarket/live", label: "Ao vivo", icon: "🟢" },
+    { href: "/supermarket/live", label: "Ao vivo", icon: "live" },
     ...(canViewInvoices
-      ? [{ href: "/supermarket/payments", label: "Faturamento", icon: "💳" }]
+      ? ([{ href: "/supermarket/payments", label: "Faturamento", icon: "card" }] as SideNavItem[])
       : []),
-    { href: "/supermarket/branches", label: "Filiais", icon: "📍" },
-    { href: "/supermarket/team", label: "Equipe", icon: "👥" },
-    { href: "/supermarket/profile", label: "Perfil", icon: "🏢" },
+    { href: "/supermarket/branches", label: "Filiais", icon: "pin" },
+    { href: "/supermarket/team", label: "Equipe", icon: "people" },
+    { href: "/supermarket/profile", label: "Perfil", icon: "office" },
   ];
 
   return <SideNav title="Supermercado" items={applySidebarOrder(rawItems, sidebarOrder)} />;

@@ -5,13 +5,13 @@ export default function FreelancerSidebar() {
     <SideNav
       title="Colaborador"
       items={[
-        { href: "/freelancer/dashboard", label: "Dashboard", icon: "▚" },
-        { href: "/freelancer", label: "Vagas disponíveis", icon: "🔎" },
-        { href: "/freelancer/jobs", label: "Meus trabalhos", icon: "🧾" },
-        { href: "/freelancer/onboarding", label: "Onboarding", icon: "📝" },
-        { href: "/freelancer/contrato", label: "Contrato", icon: "📄" },
-        { href: "/freelancer/reports", label: "Relatório", icon: "📊" },
-        { href: "/freelancer/payments", label: "Carteira", icon: "💰" },
+        { href: "/freelancer/dashboard", label: "Dashboard", icon: "dashboard" },
+        { href: "/freelancer", label: "Vagas disponíveis", icon: "search" },
+        { href: "/freelancer/jobs", label: "Meus trabalhos", icon: "receipt" },
+        { href: "/freelancer/onboarding", label: "Onboarding", icon: "clipboard-edit" },
+        { href: "/freelancer/contrato", label: "Contrato", icon: "contract" },
+        { href: "/freelancer/reports", label: "Relatório", icon: "chart" },
+        { href: "/freelancer/payments", label: "Carteira", icon: "wallet" },
       ]}
     />
   );

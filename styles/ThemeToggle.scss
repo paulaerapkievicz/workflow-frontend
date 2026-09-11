@@ -18,9 +18,9 @@
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 
   .icon {
-    font-size: 16px;
+    display: inline-flex;
     pointer-events: none;
-    transition: opacity 0.3s ease, filter 0.3s ease;
+    transition: opacity 0.3s ease, color 0.3s ease;
   }
 
   .toggle-circle {
@@ -46,11 +46,12 @@
 
     .sun {
       opacity: 1;
-      filter: brightness(1.2);
+      color: map.get($light-theme, text);
     }
 
     .moon {
       opacity: 0.4;
+      color: map.get($light-theme, muted);
     }
   }
 
@@ -65,11 +66,12 @@
 
     .sun {
       opacity: 0.4;
+      color: map.get($dark-theme, muted);
     }
 
     .moon {
       opacity: 1;
-      filter: brightness(1.4);
+      color: map.get($dark-theme, text);
     }
   }
 

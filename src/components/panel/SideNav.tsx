@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import styles from "@/styles/sidebar.module.scss";
+import SidebarIcon, { SidebarIconName } from "@/src/components/panel/SidebarIcon";
 
 export interface SideNavItem {
   href: string;
   label: string;
-  icon: string;
+  icon: SidebarIconName;
   /** Contador de pendências mostrado à direita do item. */
   badge?: number;
 }
@@ -33,7 +34,9 @@ export default function SideNav({ title, items }: Props) {
               href={it.href}
               className={`${styles.link} ${it.href === activeHref ? styles.active : ""}`}
             >
-              <span className={styles.icon} aria-hidden="true">{it.icon}</span>
+              <span className={styles.icon} aria-hidden="true">
+                <SidebarIcon name={it.icon} />
+              </span>
               {it.label}
               {it.badge ? (
                 <span

@@ -167,7 +167,7 @@ export default function AlertsView({ role, jobHref }: Props) {
       {loading ? (
         <p>Carregando…</p>
       ) : shown.length === 0 ? (
-        <p className={panel.muted}>Nenhuma ocorrência {status === "open" ? "em aberto" : "encontrada"}. 🎉</p>
+        <p className={panel.muted}>Nenhuma ocorrência {status === "open" ? "em aberto" : "encontrada"}.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {shown.map((a) => {
