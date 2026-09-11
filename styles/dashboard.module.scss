@@ -1,0 +1,299 @@
+// Central de comando da agência + upgrades visuais dos outros dashboards.
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.kpiCardActive {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.kpiTitle {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.kpiBody {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.kpiLegend {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.9;
+}
+
+.legendDot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+
+  &[data-tone="ok"] { background: var(--primary); }
+  &[data-tone="problem"] { background: var(--danger); }
+}
+
+.kpiAction {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+// ----- Corpo inferior: feed (30%) + tabela dinâmica (70%) -----
+.bodyGrid {
+  display: grid;
+  grid-template-columns: minmax(240px, 30%) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feedCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+}
+
+.feed {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.feedList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.feedItem {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0.1rem;
+  border-left: 2px solid var(--border);
+  padding-left: 0.85rem;
+  position: relative;
+
+  &:not(:last-child) { border-left-color: var(--border); }
+}
+
+.feedDot {
+  position: absolute;
+  left: -5px;
+  top: 0.65rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.feedItem[data-tone="ok"] .feedDot { background: var(--primary); }
+.feedItem[data-tone="problem"] .feedDot { background: var(--danger); }
+
+.feedTime {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.feedText {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+// ----- Chip de filtro ativo (clique numa fatia vermelha) -----
+.activeFilterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-soft);
+  border-radius: 999px;
+  padding: 0.32rem 0.55rem 0.32rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+
+  button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+    padding: 0 0.2rem;
+  }
+}
+
+// ----- Status dot na tabela dinâmica -----
+.statusDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &[data-status="ok"] { background: var(--ok); }
+  &[data-status="waiting"] { background: var(--badge-pending-fg, #d18f00); }
+  &[data-status="problem"] { background: var(--danger); }
+}
+
+// ----- Colaborador & contato (chip + whatsapp) -----
+.contactCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.whatsappLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #25d366;
+  color: #fff;
+  flex-shrink: 0;
+  transition: transform 0.12s ease;
+
+  &:hover { transform: scale(1.08); }
+
+  svg { width: 15px; height: 15px; }
+}
+
+// ----- Menu de ações (details/summary, sem lib nova) -----
+.actionMenu {
+  position: relative;
+  display: inline-block;
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    font-weight: 800;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+
+    &::-webkit-details-marker { display: none; }
+    &:hover { background: var(--surface-2); }
+  }
+
+  &[open] summary { border-color: var(--primary); color: var(--primary-dark); }
+}
+
+.actionMenuList {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+
+  button {
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-radius: 7px;
+    font-size: 0.85rem;
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover { background: var(--surface-2); }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  .danger { color: var(--danger); }
+}
+
+// ----- Filtro rápido "próximo turno" / mini cards em freelancer/supermercado/líder -----
+.miniGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.highlightCard {
+  background: linear-gradient(155deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.3rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 700;
+  }
+}
+
+.alertList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.alertRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 9px;
+  background: var(--surface-2);
+
+  strong { font-weight: 700; }
+}

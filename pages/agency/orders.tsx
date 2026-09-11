@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
+import RequirePermission from "@/src/components/RequirePermission";
 import StatusBadge from "@/src/components/StatusBadge";
 import panel from "@/styles/panel.module.scss";
 import {
@@ -15,7 +16,7 @@ import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import {
   formatShifts, formatShiftPeriods, minutesToHours, releaseJob, registerNoShow,
-  forceCheckoutJob, reassignJob, agencyStartBreak, agencyEndBreak, hasOpenBreak,
+  forceCheckoutJob, agencyStartBreak, agencyEndBreak, hasOpenBreak,
   totalBreakMinutes, isExpiredUnfilled, closeUnfilledJob, closeExpiredUnfilled, Job,
 } from "@/src/services/jobService";
 import { fmtTime, fmtDateTime } from "@/src/lib/datetime";
@@ -24,6 +25,7 @@ import { getAgencySettings, AgencySettings } from "@/src/services/agencySettings
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
 import { useAuth } from "@/src/hooks/useAuth";
 import JobManageModal from "@/src/components/agency/JobManageModal";
+import ReassignModal from "@/src/components/agency/ReassignModal";
 import FreelancerChip, { FreelancerProfileBody } from "@/src/components/FreelancerChip";
 import { AlertDot, AlertDots } from "@/src/components/AlertDot";
 import { orderUnfilledTiers, jobUnfilledTier } from "@/src/services/unfilledAlerts";
@@ -99,9 +101,6 @@ function AgencyOrdersPage() {
 
   const [profileFreelancer, setProfileFreelancer] = useState<NonNullable<Job["assignedFreelancer"]> | null>(null);
   const [reassignTarget, setReassignTarget] = useState<Job | null>(null);
-  const [reassignFreelancerId, setReassignFreelancerId] = useState("");
-  const [reassignReason, setReassignReason] = useState("");
-  const [reassignError, setReassignError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -113,25 +112,6 @@ function AgencyOrdersPage() {
     } finally { setLoading(false); }
   }, [agencyId]);
   useEffect(() => { load(); }, [load]);
-
-  const openReassign = (j: Job) => {
-    setReassignTarget(j);
-    setReassignFreelancerId("");
-    setReassignReason("");
-    setReassignError(null);
-  };
-
-  const confirmReassign = async () => {
-    if (!reassignTarget || !reassignFreelancerId) return;
-    setReassignError(null);
-    try {
-      await reassignJob(reassignTarget.id, reassignFreelancerId, reassignReason || undefined);
-      setReassignTarget(null);
-      await load();
-    } catch (err) {
-      setReassignError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao trocar colaborador." : "Erro ao trocar colaborador.");
-    }
-  };
 
   const rows = useMemo(
     () =>
@@ -309,7 +289,7 @@ function AgencyOrdersPage() {
                             }}>
                             Falta
                           </button>
-                          <button className={panel.ghostBtn} disabled={busy === j.id} onClick={() => openReassign(j)}>
+                          <button className={panel.ghostBtn} disabled={busy === j.id} onClick={() => setReassignTarget(j)}>
                             Trocar colaborador
                           </button>
                         </>
@@ -369,28 +349,12 @@ function AgencyOrdersPage() {
       )}
 
       {reassignTarget && (
-        <Modal title={`Trocar colaborador — ${reassignTarget.title}`} onClose={() => setReassignTarget(null)}>
-          <div className={panel.form}>
-            <p className={panel.muted}>
-              Colaborador atual: <strong>{reassignTarget.assignedFreelancer?.name ?? "—"}</strong>.
-              {" "}Se ele já tiver trabalhado parte do turno, essas horas ficam registradas pra ele e o
-              restante vira uma vaga nova já atribuída ao novo colaborador escolhido.
-            </p>
-            <label>Novo colaborador</label>
-            <select value={reassignFreelancerId} onChange={(e) => setReassignFreelancerId(e.target.value)}>
-              <option value="">Selecione…</option>
-              {freelancers
-                .filter((f) => f.id !== reassignTarget.assignedFreelancer?.id)
-                .map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-            <label>Motivo (opcional)</label>
-            <input value={reassignReason} onChange={(e) => setReassignReason(e.target.value)} />
-            {reassignError && <p className={panel.error}>{reassignError}</p>}
-            <button className={panel.primaryBtn} onClick={confirmReassign} disabled={!reassignFreelancerId}>
-              Trocar
-            </button>
-          </div>
-        </Modal>
+        <ReassignModal
+          job={reassignTarget}
+          freelancers={freelancers}
+          onClose={() => setReassignTarget(null)}
+          onReassigned={load}
+        />
       )}
 
       {manageJob && (
@@ -408,8 +372,10 @@ function AgencyOrdersPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="agency">
-      <AgencyOrdersPage />
+    <RequireAuth role={["agency", "partner"]}>
+      <RequirePermission feature="vagas">
+        <AgencyOrdersPage />
+      </RequirePermission>
     </RequireAuth>
   );
 }
