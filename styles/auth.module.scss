@@ -163,20 +163,48 @@
   display: none;
 
   @media (max-width: 900px) {
-    display: inline-block;
-    margin-bottom: 1.5rem;
-    // Chip azul da marca — o logo branco fica bem contrastante sobre ele.
-    background: linear-gradient(135deg, $primary-dark, $primary-color);
-    padding: 0.7rem 1.05rem;
-    border-radius: 14px;
-    box-shadow: 0 14px 30px -18px rgba(45, 79, 224, 0.7);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 0 0 1.75rem;
+    // Faixa azul/roxa da marca — o logo branco fica bem contrastante sobre ela,
+    // com o mesmo gradiente e brilho decorativo do painel de marca (versão desktop).
+    background: linear-gradient(135deg, $primary-dark, $primary-color 55%, #7b5bff);
+    padding: 1.5rem 1.5rem;
+    border-radius: 18px;
+    box-shadow: 0 18px 34px -16px rgba(45, 79, 224, 0.55);
+
+    &::before {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      top: -70px;
+      right: -50px;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5), transparent 70%);
+      opacity: 0.5;
+    }
 
     img {
+      position: relative;
+      z-index: 1;
       display: block;
-      height: 34px;
+      height: 46px;
       width: auto;
       max-width: 100%;
+      filter: drop-shadow(0 3px 10px rgba(15, 23, 42, 0.3));
     }
+  }
+
+  @media (max-width: 460px) {
+    padding: 1.25rem 1.25rem;
+    border-radius: 16px;
+
+    img { height: 40px; }
   }
 }
 

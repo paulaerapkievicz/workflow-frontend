@@ -41,9 +41,11 @@ const Header = () => {
             </>
           ) : onLandingRoot ? (
             <>
-              <Link href="/login" className={styles.navLink}>Entrar no sistema</Link>
+              <Link href="/login" className={styles.navLink}>
+                Entrar<span className={styles.navLinkExtra}> no sistema</span>
+              </Link>
               <a href={proposalEmailLink("Quero uma proposta para o meu supermercado")} className={styles.cta}>
-                Quero uma proposta
+                <span className={styles.ctaExtra}>Quero uma </span>proposta
               </a>
             </>
           ) : (
