@@ -3,6 +3,7 @@ import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import Modal from "@/src/components/common/Modal";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import RequireAuth from "@/src/components/RequireAuth";
 import StatusBadge from "@/src/components/StatusBadge";
 import SidebarIcon from "@/src/components/panel/SidebarIcon";
@@ -241,12 +242,19 @@ function MyJobs() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Meus trabalhos</h1></header>
+          <header className={panel.header}>
+            <h1>
+              Meus trabalhos
+              <HelpIcon title="Como funciona o ponto">
+                <p>Check-in e check-out por turno usam a sua localização para comprovar a presença no local.</p>
+                <p>
+                  Você pode desistir de uma vaga aceita até <strong>{cancelWindow} min</strong> antes do início
+                  (prazo definido pela sua agência). Fora desse prazo, peça o cancelamento à agência.
+                </p>
+              </HelpIcon>
+            </h1>
+          </header>
           <OnboardingBanner />
-          <p className={panel.muted}>
-            Check-in e check-out por turno usam a sua localização para comprovar a presença no local.
-            Você pode desistir de uma vaga até {cancelWindow} min antes do início.
-          </p>
 
           <CollapsibleFilterBar>
             <DateRangeQuickFilter

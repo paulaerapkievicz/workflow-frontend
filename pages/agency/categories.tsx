@@ -8,6 +8,7 @@ import panel from "@/styles/panel.module.scss";
 import {
   getManagedCategories, createCategory, updateCategory, deleteCategory, Category,
 } from "@/src/services/categoryService";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 function CategoriesPage() {
   const [list, setList] = useState<Category[]>([]);
@@ -67,13 +68,19 @@ function CategoriesPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Funções</h1></header>
-          <p className={panel.muted}>
-            As funções (cargos) que os colaboradores exercem e que os supermercados contratam. Só as
-            funções <strong>ativas</strong> aparecem nas combos de cadastro do colaborador, de
-            valores/hora do supermercado e do pedido de vagas. Uma função em uso não pode ser
-            excluída — desative-a.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Funções
+              <HelpIcon title="Como funcionam as funções">
+                <p>
+                  As funções (cargos) que os colaboradores exercem e que os supermercados contratam. Só as
+                  funções <strong>ativas</strong> aparecem nas combos de cadastro do colaborador, de
+                  valores/hora do supermercado e do pedido de vagas. Uma função em uso não pode ser
+                  excluída — desative-a.
+                </p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           <div className={panel.card} style={{ maxWidth: 520 }}>
             <div className={panel.form} style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, flexWrap: "wrap" }}>

@@ -16,10 +16,12 @@ export default function FileField({ label, accept, capture, file, onChange }: Pr
     <label className={panel.filterField} htmlFor={id}>
       <span>{label}</span>
       <div className={panel.fileField}>
-        <span className={panel.secondaryBtn} style={{ display: "inline-block" }}>
+        <span className={panel.secondaryBtn} style={{ display: "inline-block", textTransform: "none" }}>
           {file ? "Trocar arquivo" : "Escolher arquivo"}
         </span>
-        <span className={panel.muted}>{file ? file.name : "Nenhum arquivo escolhido"}</span>
+        <span className={panel.muted} style={{ textTransform: "none" }}>
+          {file ? file.name : "Nenhum arquivo escolhido"}
+        </span>
         <input
           id={id}
           className={panel.fileFieldInput}

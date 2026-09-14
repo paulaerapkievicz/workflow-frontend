@@ -23,6 +23,7 @@ import TeamRolesManager from "@/src/components/TeamRolesManager";
 import FormField from "@/src/components/FormField";
 import { validateForm } from "@/src/lib/validators";
 import { maskCnpj } from "@/src/lib/masks";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getCategories, Category } from "@/src/services/categoryService";
 import {
@@ -353,16 +354,20 @@ function SupermarketsPage() {
         <Sidebar />
         <section className={panel.content}>
           <header className={panel.header}>
-            <h1>Gestão de Clientes</h1>
+            <h1>
+              Gestão de Clientes
+              <HelpIcon title="Como funciona o cadastro">
+                <p>
+                  A agência cadastra os supermercados e as filiais de cada um. O acesso do supermercado é
+                  criado junto (e-mail + senha informados aqui).
+                </p>
+              </HelpIcon>
+            </h1>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button className={panel.ghostBtn} onClick={openInviteMarket}>Convidar supermercado</button>
               <button className={panel.primaryBtn} onClick={openNewMarket}>Novo supermercado</button>
             </div>
           </header>
-          <p className={panel.muted}>
-            A agência cadastra os supermercados e as filiais de cada um. O acesso do supermercado é
-            criado junto (e-mail + senha informados aqui).
-          </p>
 
           {loading ? (
             <p>Carregando…</p>
@@ -420,13 +425,20 @@ function SupermarketsPage() {
       </main>
 
       {inviteModal && (
-        <Modal title="Convidar supermercado" onClose={() => setInviteModal(false)}>
+        <Modal
+          title="Convidar supermercado"
+          onClose={() => setInviteModal(false)}
+          titleAdornment={(
+            <HelpIcon title="Como funciona o convite">
+              <p>
+                Envie este link pro supermercado (WhatsApp, e-mail…). Ao preencher o cadastro, ele já
+                nasce vinculado à sua agência — sem etapa de aprovação depois. Nenhum valor/preço aparece
+                nesse formulário, só cadastro básico.
+              </p>
+            </HelpIcon>
+          )}
+        >
           <div className={panel.form}>
-            <p className={panel.muted}>
-              Envie este link pro supermercado (WhatsApp, e-mail…). Ao preencher o cadastro, ele já
-              nasce vinculado à sua agência — sem etapa de aprovação depois. Nenhum valor/preço aparece
-              nesse formulário, só cadastro básico.
-            </p>
             {inviteError && <p className={panel.error}>{inviteError}</p>}
             {!inviteError && !inviteLink && <p>Gerando link…</p>}
             {inviteLink && (
@@ -473,13 +485,20 @@ function SupermarketsPage() {
       )}
 
       {ratesOf && (
-        <Modal title={`Valores/hora — ${ratesOf.name}`} onClose={() => setRatesOf(null)}>
+        <Modal
+          title={`Valores/hora — ${ratesOf.name}`}
+          onClose={() => setRatesOf(null)}
+          titleAdornment={(
+            <HelpIcon title="Como funcionam os valores/hora">
+              <p>
+                Valor que a agência cobra deste supermercado por <strong>função</strong>, por hora
+                trabalhada. Deixe a loja em <em>Todas as lojas</em> para o valor padrão da rede, ou
+                escolha uma filial para uma tarifa específica (tem prioridade sobre o padrão).
+              </p>
+            </HelpIcon>
+          )}
+        >
           <div className={panel.form}>
-            <p className={panel.muted}>
-              Valor que a agência cobra deste supermercado por <strong>função</strong>, por hora
-              trabalhada. Deixe a loja em <em>Todas as lojas</em> para o valor padrão da rede, ou
-              escolha uma filial para uma tarifa específica (tem prioridade sobre o padrão).
-            </p>
             <form onSubmit={addRate} style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "flex-end" }}>
               <div className={panel.filterField}>
                 <label>Função</label>
@@ -535,14 +554,21 @@ function SupermarketsPage() {
       )}
 
       {teamOf && !memberModal && (
-        <Modal title={`Equipe — ${teamOf.name}`} onClose={() => setTeamOf(null)}>
+        <Modal
+          title={`Equipe — ${teamOf.name}`}
+          onClose={() => setTeamOf(null)}
+          titleAdornment={(
+            <HelpIcon title="Como funciona a equipe">
+              <p>
+                Gerentes do supermercado. Um gerente pode responder pela rede toda ou por uma ou mais
+                filiais. A agência também define quem <strong>vê</strong> e quem <strong>paga/contesta</strong>
+                as faturas do fechamento mensal — quem vê não necessariamente paga. O dono do
+                supermercado sempre vê e paga.
+              </p>
+            </HelpIcon>
+          )}
+        >
           <div className={panel.form}>
-            <p className={panel.muted}>
-              Gerentes do supermercado. Um gerente pode responder pela rede toda ou por uma ou mais
-              filiais. A agência também define quem <strong>vê</strong> e quem <strong>paga/contesta</strong>
-              as faturas do fechamento mensal — quem vê não necessariamente paga. O dono do
-              supermercado sempre vê e paga.
-            </p>
             <div style={{ display: "flex", gap: 8 }}>
               <button className={panel.ghostBtn} onClick={() => setRolesModal(true)}>Cargos</button>
               <button className={panel.primaryBtn} onClick={openAddMember}>Adicionar gerente</button>

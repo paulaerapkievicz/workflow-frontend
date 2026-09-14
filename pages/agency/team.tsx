@@ -23,6 +23,7 @@ import ScopePicker from "@/src/components/ScopePicker";
 import FormField from "@/src/components/FormField";
 import Switch from "@/src/components/common/Switch";
 import { validateForm } from "@/src/lib/validators";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
 import { getBranches, Branch } from "@/src/services/branchService";
@@ -323,15 +324,28 @@ function TeamPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <h1 style={{ margin: 0 }}>Equipe da agência</h1>
-          <p className={panel.muted} style={{ marginTop: "-0.5rem" }}>
-            Todos os perfis com acesso ao painel da agência, além do seu, ficam centralizados
-            aqui: <strong>líderes</strong> (poderes operacionais fixos, sem financeiro) e{" "}
-            <strong>sócios</strong> (acesso amplo e configurável por área).
-          </p>
+          <h1 style={{ margin: 0 }}>
+            Equipe da agência
+            <HelpIcon title="Líderes × sócios">
+              <p>
+                Todos os perfis com acesso ao painel da agência, além do seu, ficam centralizados
+                aqui: <strong>líderes</strong> (poderes operacionais fixos, sem financeiro) e{" "}
+                <strong>sócios</strong> (acesso amplo e configurável por área).
+              </p>
+            </HelpIcon>
+          </h1>
 
           <header className={panel.header}>
-            <h1 style={{ fontSize: "1.15rem" }}>Líderes</h1>
+            <h1 style={{ fontSize: "1.15rem" }}>
+              Líderes
+              <HelpIcon title="Como funcionam os líderes">
+                <p>
+                  Líderes gerenciam vagas e colaboradores. Eles <strong>não</strong> acessam faturamento,
+                  fechamentos, pagamentos, o saldo da agência nem os valores que a agência cobra dos
+                  supermercados. Sem escopo definido, o líder enxerga a rede toda.
+                </p>
+              </HelpIcon>
+            </h1>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button className={panel.ghostBtn} onClick={() => setRolesOpen(true)}>Cargos</button>
               <button className={panel.ghostBtn} onClick={openInvite}>Convidar líder</button>
@@ -340,11 +354,6 @@ function TeamPage() {
               </button>
             </div>
           </header>
-          <p className={panel.muted}>
-            Líderes gerenciam vagas e colaboradores. Eles <strong>não</strong> acessam faturamento,
-            fechamentos, pagamentos, o saldo da agência nem os valores que a agência cobra dos
-            supermercados. Sem escopo definido, o líder enxerga a rede toda.
-          </p>
           {msg && <p className={msg.type === "error" ? panel.error : panel.success}>{msg.text}</p>}
 
           <div style={{ overflowX: "auto" }}>
@@ -402,7 +411,16 @@ function TeamPage() {
           </div>
 
           <header className={panel.header} style={{ marginTop: "1rem" }}>
-            <h1 style={{ fontSize: "1.15rem" }}>Sócios</h1>
+            <h1 style={{ fontSize: "1.15rem" }}>
+              Sócios
+              <HelpIcon title="Como funcionam os sócios">
+                <p>
+                  Sócio nasce com <strong>acesso total</strong> ao painel da agência — mesmas telas do
+                  dono. Restrinja por área quando quiser em &quot;Permissões&quot;. Só o dono da agência
+                  gerencia sócios (nem outro sócio pode).
+                </p>
+              </HelpIcon>
+            </h1>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button className={panel.ghostBtn} onClick={openInvitePartner}>Convidar sócio</button>
               <button className={panel.primaryBtn} onClick={() => { setPartnerCreateError(null); setPartnerCreateOpen(true); }}>
@@ -410,11 +428,6 @@ function TeamPage() {
               </button>
             </div>
           </header>
-          <p className={panel.muted}>
-            Sócio nasce com <strong>acesso total</strong> ao painel da agência — mesmas telas do
-            dono. Restrinja por área quando quiser em &quot;Permissões&quot;. Só o dono da agência
-            gerencia sócios (nem outro sócio pode).
-          </p>
 
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
@@ -610,12 +623,19 @@ function TeamPage() {
       )}
 
       {memberPermMember && memberPermDraft && (
-        <Modal title={`Permissões — ${memberPermMember.name ?? ""}`} onClose={() => setMemberPermMember(null)}>
+        <Modal
+          title={`Permissões — ${memberPermMember.name ?? ""}`}
+          onClose={() => setMemberPermMember(null)}
+          titleAdornment={(
+            <HelpIcon title="Como funcionam as permissões">
+              <p>
+                O líder sempre enxerga e atua no pool de vagas (convocações, alocações, ao vivo e
+                alertas de ocorrência do grupo dele). Desligue abaixo só o que ele NÃO pode fazer.
+              </p>
+            </HelpIcon>
+          )}
+        >
           <div className={panel.form}>
-            <p className={panel.muted}>
-              O líder sempre enxerga e atua no pool de vagas (convocações, alocações, ao vivo e
-              alertas de ocorrência do grupo dele). Desligue abaixo só o que ele NÃO pode fazer.
-            </p>
             {AGENCY_MEMBER_FEATURES.map((f) => (
               <label key={f} className={panel.toggleRow}>
                 <Switch
@@ -632,12 +652,19 @@ function TeamPage() {
       )}
 
       {permMember && permDraft && (
-        <Modal title={`Permissões — ${permMember.name ?? ""}`} onClose={() => setPermMember(null)}>
+        <Modal
+          title={`Permissões — ${permMember.name ?? ""}`}
+          onClose={() => setPermMember(null)}
+          titleAdornment={(
+            <HelpIcon title="Como funcionam as permissões">
+              <p>
+                Áreas do painel que este sócio pode acessar. Desligar uma área bloqueia as telas e
+                rotas dela — inclusive se ele tentar acessar direto pelo link.
+              </p>
+            </HelpIcon>
+          )}
+        >
           <div className={panel.form}>
-            <p className={panel.muted}>
-              Áreas do painel que este sócio pode acessar. Desligar uma área bloqueia as telas e
-              rotas dela — inclusive se ele tentar acessar direto pelo link.
-            </p>
             {AGENCY_PARTNER_FEATURES.map((f) => (
               <label key={f} className={panel.toggleRow}>
                 <Switch

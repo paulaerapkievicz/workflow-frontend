@@ -18,6 +18,7 @@ import {
   resetFreelancerPassword,
 } from "@/src/services/freelancerService";
 import ResetPasswordAction from "@/src/components/ResetPasswordAction";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import {
   getFreelancerReputation,
   getFreelancerReviews,
@@ -201,7 +202,15 @@ function FreelancersPage() {
         <Sidebar />
         <section className={panel.content}>
           <header className={panel.header}>
-            <h1>Colaboradores da agência</h1>
+            <h1>
+              Colaboradores da agência
+              <HelpIcon title="Como funcionam as funções">
+                <p>
+                  As funções definem quais vagas o colaborador enxerga. Para cada função é preciso definir
+                  o <strong>valor/hora que ele recebe</strong> — sem valor, ele não vê nem aceita vagas dessa função.
+                </p>
+              </HelpIcon>
+            </h1>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button className={panel.ghostBtn} onClick={openInviteFreelancer}>Convidar colaborador</button>
               <button className={panel.primaryBtn} onClick={() => { setError(null); setOpen(true); }}>
@@ -209,10 +218,6 @@ function FreelancersPage() {
               </button>
             </div>
           </header>
-          <p className={panel.muted}>
-            As funções definem quais vagas o colaborador enxerga. Para cada função é preciso definir
-            o <strong>valor/hora que ele recebe</strong> — sem valor, ele não vê nem aceita vagas dessa função.
-          </p>
 
           <div style={{ overflowX: "auto" }}>
           <table className={panel.table}>
@@ -256,13 +261,20 @@ function FreelancersPage() {
       </main>
 
       {inviteModal && (
-        <Modal title="Convidar colaborador" onClose={() => setInviteModal(false)}>
+        <Modal
+          title="Convidar colaborador"
+          onClose={() => setInviteModal(false)}
+          titleAdornment={(
+            <HelpIcon title="Como funciona o convite">
+              <p>
+                Envie este link pro colaborador (WhatsApp, e-mail…). Ao preencher o cadastro, ele já
+                nasce vinculado à sua agência e aprovado — sem etapa de aprovação depois. Você define o
+                valor/hora dele por função separadamente, aqui na tela.
+              </p>
+            </HelpIcon>
+          )}
+        >
           <div className={panel.form}>
-            <p className={panel.muted}>
-              Envie este link pro colaborador (WhatsApp, e-mail…). Ao preencher o cadastro, ele já
-              nasce vinculado à sua agência e aprovado — sem etapa de aprovação depois. Você define o
-              valor/hora dele por função separadamente, aqui na tela.
-            </p>
             {inviteError && <p className={panel.error}>{inviteError}</p>}
             {!inviteError && !inviteLink && <p>Gerando link…</p>}
             {inviteLink && (

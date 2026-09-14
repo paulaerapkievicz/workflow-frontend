@@ -14,6 +14,7 @@ import {
 import { createInvite } from "@/src/services/inviteService";
 import { getCategories, Category } from "@/src/services/categoryService";
 import FreelancerCategoriesEditor from "@/src/components/FreelancerCategoriesEditor";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import {
   updateFreelancer,
   getFreelancerCategories,
@@ -195,7 +196,15 @@ function LeaderFreelancersPage() {
         <Sidebar />
         <section className={panel.content}>
           <header className={panel.header}>
-            <h1>Colaboradores do meu grupo</h1>
+            <h1>
+              Colaboradores do meu grupo
+              <HelpIcon title="Como funcionam as funções">
+                <p>
+                  As funções definem quais vagas o colaborador enxerga. Para cada função é preciso definir
+                  o <strong>valor/hora que ele recebe</strong> — sem valor, ele não vê nem aceita vagas dessa função.
+                </p>
+              </HelpIcon>
+            </h1>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button className={panel.ghostBtn} onClick={openInviteFreelancer}>Convidar colaborador</button>
               <button className={panel.primaryBtn} onClick={() => { setError(null); setOpen(true); }}>
@@ -203,10 +212,6 @@ function LeaderFreelancersPage() {
               </button>
             </div>
           </header>
-          <p className={panel.muted}>
-            As funções definem quais vagas o colaborador enxerga. Para cada função é preciso definir
-            o <strong>valor/hora que ele recebe</strong> — sem valor, ele não vê nem aceita vagas dessa função.
-          </p>
 
           {pending.length > 0 && (
             <>
@@ -275,12 +280,19 @@ function LeaderFreelancersPage() {
       </main>
 
       {inviteModal && (
-        <Modal title="Convidar colaborador" onClose={() => setInviteModal(false)}>
+        <Modal
+          title="Convidar colaborador"
+          onClose={() => setInviteModal(false)}
+          titleAdornment={(
+            <HelpIcon title="Como funciona o convite">
+              <p>
+                Envie este link pro colaborador (WhatsApp, e-mail…). Ao preencher o cadastro, ele já
+                nasce vinculado à agência e no seu grupo. Você define o valor/hora dele por função aqui na tela.
+              </p>
+            </HelpIcon>
+          )}
+        >
           <div className={panel.form}>
-            <p className={panel.muted}>
-              Envie este link pro colaborador (WhatsApp, e-mail…). Ao preencher o cadastro, ele já
-              nasce vinculado à agência e no seu grupo. Você define o valor/hora dele por função aqui na tela.
-            </p>
             {inviteError && <p className={panel.error}>{inviteError}</p>}
             {!inviteError && !inviteLink && <p>Gerando link…</p>}
             {inviteLink && (

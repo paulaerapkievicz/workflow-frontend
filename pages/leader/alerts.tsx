@@ -4,6 +4,7 @@ import RevokedNotice from "@/src/components/leader/RevokedNotice";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import AlertsView from "@/src/components/alerts/AlertsView";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 function AlertsPage() {
   return (
@@ -14,11 +15,13 @@ function AlertsPage() {
         <section className={panel.content}>
           <RevokedNotice />
           <header className={panel.header}>
-            <h1>Alertas de ocorrência</h1>
+            <h1>
+              Alertas de ocorrência
+              <HelpIcon title="Como funcionam os alertas">
+                <p>Ocorrências das vagas do seu grupo de trabalho: atraso, falta, saída antecipada, turno sem check-out e mais.</p>
+              </HelpIcon>
+            </h1>
           </header>
-          <p className={panel.muted}>
-            Ocorrências das vagas do seu grupo de trabalho: atraso, falta, saída antecipada, turno sem check-out e mais.
-          </p>
           <AlertsView role="leader" jobHref={(id) => `/leader/orders?job=${id}`} />
         </section>
       </main>

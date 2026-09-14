@@ -13,6 +13,7 @@ import {
 } from "@/src/services/supermarketProfileService";
 import SidebarOrderEditor from "@/src/components/SidebarOrderEditor";
 import { SUPERMARKET_SIDEBAR_ITEMS } from "@/src/config/sidebarItems";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 const FIELDS: { key: string; label: string; required?: boolean; kind?: FieldKind }[] = [
   { key: "name", label: "Nome fantasia", required: true },
@@ -90,11 +91,17 @@ function SupermarketProfilePage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Perfil do supermercado</h1></header>
-          <p className={panel.muted}>
-            Dados cadastrais da matriz. Cada filial pode ter dados próprios em <strong>Filiais</strong> —
-            o que faltar na filial usa o que está aqui.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Perfil do supermercado
+              <HelpIcon title="Como funciona o perfil">
+                <p>
+                  Dados cadastrais da matriz. Cada filial pode ter dados próprios em <strong>Filiais</strong> —
+                  o que faltar na filial usa o que está aqui.
+                </p>
+              </HelpIcon>
+            </h1>
+          </header>
           {!canEdit && <p className={panel.error}>Só o proprietário do supermercado edita o perfil.</p>}
 
           <form className={panel.card} onSubmit={save} style={{ maxWidth: 560 }}>

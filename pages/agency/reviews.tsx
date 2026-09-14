@@ -9,6 +9,7 @@ import StarRating from "@/src/components/StarRating";
 import { getAgencyReviews, AgencyReviewRow } from "@/src/services/reviewService";
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
 import { useAuth } from "@/src/hooks/useAuth";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 const authorLabel = (role?: string | null) =>
   role === "supermarket" ? "Cliente" : role === "agency" ? "Agência" : "—";
@@ -58,12 +59,18 @@ function ReviewsPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Avaliações dos colaboradores</h1></header>
-          <p className={panel.muted}>
-            Todas as avaliações que a agência e os supermercados-clientes publicaram sobre a entrega
-            das vagas. O colaborador só enxerga a própria nota média; o supermercado só as que ele
-            mesmo publicou.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Avaliações dos colaboradores
+              <HelpIcon title="Quem vê o quê">
+                <p>
+                  Todas as avaliações que a agência e os supermercados-clientes publicaram sobre a entrega
+                  das vagas. O colaborador só enxerga a própria nota média; o supermercado só as que ele
+                  mesmo publicou.
+                </p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           <CollapsibleFilterBar>
             <label>

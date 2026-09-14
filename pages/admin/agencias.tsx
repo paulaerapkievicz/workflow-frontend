@@ -9,6 +9,7 @@ import { listAgencies, createAgency, updateAgency, AdminAgency } from "@/src/ser
 import FormField from "@/src/components/FormField";
 import { validateForm } from "@/src/lib/validators";
 import { maskCnpj } from "@/src/lib/masks";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 const EMPTY = {
   name: "", legalName: "", cnpj: "", address: "", phone: "", email: "",
@@ -89,11 +90,17 @@ function AdminAgenciesPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Agências</h1></header>
-          <p className={panel.muted}>
-            Cadastre uma nova agência e o login do responsável. A agência completa o próprio perfil
-            (logotipo, contato, contratos) depois de entrar.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Agências
+              <HelpIcon title="Como funciona o cadastro">
+                <p>
+                  Cadastre uma nova agência e o login do responsável. A agência completa o próprio perfil
+                  (logotipo, contato, contratos) depois de entrar.
+                </p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
 

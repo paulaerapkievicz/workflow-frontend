@@ -16,6 +16,7 @@ import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import {
   formatShifts, formatShiftPeriods, minutesToHours, releaseJob, registerNoShow,
   forceCheckoutJob, reassignJob, agencyStartBreak, agencyEndBreak, hasOpenBreak,
@@ -184,10 +185,14 @@ function LeaderOrdersPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Convocações dos supermercados</h1></header>
-          <p className={panel.muted}>
-            Acompanhe a demanda do seu grupo, o preenchimento pela rede e libere/repasse vagas quando necessário.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Convocações dos supermercados
+              <HelpIcon title="Como funciona esta tela">
+                <p>Acompanhe a demanda do seu grupo, o preenchimento pela rede e libere/repasse vagas quando necessário.</p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} label="Vagas em" />

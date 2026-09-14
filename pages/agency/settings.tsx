@@ -16,6 +16,7 @@ import SidebarOrderEditor from "@/src/components/SidebarOrderEditor";
 import Switch from "@/src/components/common/Switch";
 import Tabs from "@/src/components/panel/Tabs";
 import { AGENCY_SIDEBAR_ITEMS } from "@/src/config/sidebarItems";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 const newTier = (): UnfilledAlertTier => ({
   id: `tier-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -178,10 +179,14 @@ function SettingsPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Configurações da agência</h1></header>
-          <p className={panel.muted}>
-            Estas regras valem para todos os colaboradores da sua rede.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Configurações da agência
+              <HelpIcon title="Sobre estas configurações">
+                <p>Estas regras valem para todos os colaboradores da sua rede.</p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           <div className={panel.card} style={{ maxWidth: 480, marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
             <div>

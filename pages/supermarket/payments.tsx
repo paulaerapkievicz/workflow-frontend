@@ -15,6 +15,7 @@ import {
   hoursFromMin, money, monthName, CLOSING_STATUS_LABELS,
 } from "@/src/services/billingService";
 import { shiftLabel } from "@/src/services/shifts";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import { useAuth } from "@/src/hooks/useAuth";
 import type { SupermarketMembership } from "@/src/services/authService";
 
@@ -380,12 +381,18 @@ function BillingPage() {
       {adjInvoice && (() => {
         const live = (summary?.invoices ?? []).find((i) => i.id === adjInvoice.id) ?? adjInvoice;
         return (
-          <Modal title={`Contestar fechamento — ${monthName(live.referenceMonth)}`} onClose={() => setAdjInvoice(null)}>
-            <p className={panel.muted}>
-              Lance aqui os valores a abater deste fechamento (ex.: quebra de caixa). A agência aprova
-              ou recusa cada item. Você paga o valor líquido depois que tudo for resolvido.
-            </p>
-
+          <Modal
+            title={`Contestar fechamento — ${monthName(live.referenceMonth)}`}
+            onClose={() => setAdjInvoice(null)}
+            titleAdornment={(
+              <HelpIcon title="Como funciona a contestação">
+                <p>
+                  Lance aqui os valores a abater deste fechamento (ex.: quebra de caixa). A agência aprova
+                  ou recusa cada item. Você paga o valor líquido depois que tudo for resolvido.
+                </p>
+              </HelpIcon>
+            )}
+          >
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap", margin: "0.5rem 0" }}>
               <span>Valor bruto: <strong>{money(live.totalAmount)}</strong></span>
               <span>Abatimentos aprovados: <strong>- {money(live.adjustmentsTotal)}</strong></span>

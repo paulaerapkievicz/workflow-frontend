@@ -4,6 +4,7 @@ import RequireAuth from "@/src/components/RequireAuth";
 import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
 import AlertsView from "@/src/components/alerts/AlertsView";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 function AlertsPage() {
   return (
@@ -13,12 +14,16 @@ function AlertsPage() {
         <Sidebar />
         <section className={panel.content}>
           <header className={panel.header}>
-            <h1>Alertas de ocorrência</h1>
+            <h1>
+              Alertas de ocorrência
+              <HelpIcon title="Como funcionam os alertas">
+                <p>
+                  Atraso no check-in, falta, saída antecipada, turno sem check-out, vaga descoberta e mais.
+                  Os limites ficam em Configurações → Alertas de ocorrência.
+                </p>
+              </HelpIcon>
+            </h1>
           </header>
-          <p className={panel.muted}>
-            Atraso no check-in, falta, saída antecipada, turno sem check-out, vaga descoberta e mais.
-            Os limites ficam em Configurações → Alertas de ocorrência.
-          </p>
           <AlertsView role="agency" jobHref={(id) => `/agency/orders?job=${id}`} />
         </section>
       </main>

@@ -11,6 +11,7 @@ import FilterBar, { FilterFieldDef } from "@/src/components/FilterBar";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import panel from "@/styles/panel.module.scss";
 import { getMyPayments, Payment } from "@/src/services/paymentService";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import {
   getJobs, reviewDelivery, getPendingSettlementJobs, releaseJobPayment, minutesToHours,
   formatShifts, formatActualPunches, Job,
@@ -318,11 +319,15 @@ function AgencyPayments() {
 
           {(heldJobs.length > 0 || heldMsg) && (
             <>
-              <h2 style={{ fontSize: "1.1rem" }}>Pagamentos aguardando liberação (hora extra)</h2>
-              <p className={panel.muted}>
-                Vagas concluídas com mais de 15 min acima do turno contratado. O pagamento ao
-                colaborador só é liberado depois da sua aprovação.
-              </p>
+              <h2 style={{ fontSize: "1.1rem" }}>
+                Pagamentos aguardando liberação (hora extra)
+                <HelpIcon title="Como funciona a liberação">
+                  <p>
+                    Vagas concluídas com mais de 15 min acima do turno contratado. O pagamento ao
+                    colaborador só é liberado depois da sua aprovação.
+                  </p>
+                </HelpIcon>
+              </h2>
               {heldMsg && (
                 <p className={heldMsg.type === "error" ? panel.error : panel.success}>{heldMsg.text}</p>
               )}
@@ -439,12 +444,16 @@ function AgencyPayments() {
 
           {(pendingCredits.length > 0 || creditMsg) && (
             <>
-              <h2 style={{ fontSize: "1.1rem" }}>Créditos de líderes a revisar (por colaborador)</h2>
-              <p className={panel.muted}>
-                Vagas concluídas com desistência, falta ou troca de colaborador. O crédito do líder
-                pago <strong>por colaborador que trabalhou</strong> só entra na carteira dele depois
-                que você libera. Liberar <strong>debita o saldo da agência</strong>.
-              </p>
+              <h2 style={{ fontSize: "1.1rem" }}>
+                Créditos de líderes a revisar (por colaborador)
+                <HelpIcon title="Como funcionam estes créditos">
+                  <p>
+                    Vagas concluídas com desistência, falta ou troca de colaborador. O crédito do líder
+                    pago <strong>por colaborador que trabalhou</strong> só entra na carteira dele depois
+                    que você libera. Liberar <strong>debita o saldo da agência</strong>.
+                  </p>
+                </HelpIcon>
+              </h2>
               {creditMsg && (
                 <p className={creditMsg.type === "error" ? panel.error : panel.success}>{creditMsg.text}</p>
               )}
@@ -489,12 +498,16 @@ function AgencyPayments() {
 
           {members.length > 0 && (
             <>
-              <h2 style={{ fontSize: "1.1rem" }}>Pagamento a líderes</h2>
-              <p className={panel.muted}>
-                Registrar um pagamento credita a carteira do líder e <strong>debita o saldo da agência</strong>.
-                Líderes pagos <strong>por colaborador que trabalhou</strong> recebem automaticamente a cada
-                vaga concluída — use isto só para ajustes pontuais.
-              </p>
+              <h2 style={{ fontSize: "1.1rem" }}>
+                Pagamento a líderes
+                <HelpIcon title="Como funciona o pagamento a líderes">
+                  <p>
+                    Registrar um pagamento credita a carteira do líder e <strong>debita o saldo da agência</strong>.
+                    Líderes pagos <strong>por colaborador que trabalhou</strong> recebem automaticamente a cada
+                    vaga concluída — use isto só para ajustes pontuais.
+                  </p>
+                </HelpIcon>
+              </h2>
               <div style={{ overflowX: "auto" }}>
                 <table className={panel.table}>
                   <thead><tr><th>Líder</th><th>Combinado</th><th>Carteira</th><th>Ação</th></tr></thead>

@@ -13,6 +13,7 @@ import {
 } from "@/src/services/orderService";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import {
@@ -161,10 +162,14 @@ function AgencyOrdersPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Convocações dos supermercados</h1></header>
-          <p className={panel.muted}>
-            Acompanhe a demanda, o preenchimento pela sua rede e libere/repasse vagas quando necessário.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Convocações dos supermercados
+              <HelpIcon title="Como funciona esta tela">
+                <p>Acompanhe a demanda, o preenchimento pela sua rede e libere/repasse vagas quando necessário.</p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} label="Vagas em" />

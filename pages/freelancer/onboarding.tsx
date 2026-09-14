@@ -15,6 +15,7 @@ import Link from "next/link";
 import FormField, { type FieldKind } from "@/src/components/FormField";
 import FileField from "@/src/components/FileField";
 import { validateForm } from "@/src/lib/validators";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 type Field = {
   key: string;
@@ -248,10 +249,14 @@ function OnboardingPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Onboarding</h1></header>
-          <p className={panel.muted}>
-            Preencha o seu perfil contratual e as demais etapas exigidas pela sua agência para poder aceitar vagas.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Onboarding
+              <HelpIcon title="Como funciona o onboarding">
+                <p>Preencha o seu perfil contratual e as demais etapas exigidas pela sua agência para poder aceitar vagas.</p>
+              </HelpIcon>
+            </h1>
+          </header>
           {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
 
           {loading ? (

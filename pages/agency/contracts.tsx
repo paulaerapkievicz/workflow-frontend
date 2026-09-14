@@ -15,6 +15,7 @@ import {
   ContractTemplate, MergeToken, ContractSignature,
 } from "@/src/services/contractService";
 import { getAllFreelancers } from "@/src/services/freelancerService";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 function errText(e: unknown) {
   return axios.isAxiosError(e) ? e.response?.data?.message ?? "Erro." : "Erro.";
@@ -104,11 +105,17 @@ function ContractsPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Contratos</h1></header>
-          <p className={panel.muted}>
-            Monte o modelo de contrato da sua agência. Depois do onboarding aprovado, o colaborador
-            assina eletronicamente e o sistema preenche os dados do cadastro dele.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Contratos
+              <HelpIcon title="Como funcionam os contratos">
+                <p>
+                  Monte o modelo de contrato da sua agência. Depois do onboarding aprovado, o colaborador
+                  assina eletronicamente e o sistema preenche os dados do cadastro dele.
+                </p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           <div className={panel.roleTabs} style={{ marginBottom: "1rem" }}>
             <button className={tab === "modelo" ? panel.primaryBtn : panel.ghostBtn} onClick={() => setTab("modelo")}>

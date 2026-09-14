@@ -16,6 +16,7 @@ import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getBranchesBySupermarket, Branch } from "@/src/services/branchService";
 import { useAuth } from "@/src/hooks/useAuth";
 import type { SupermarketMembership } from "@/src/services/authService";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 const emptyForm = {
   name: "", email: "", password: "", branchIds: [] as string[], teamRoleId: "",
@@ -115,7 +116,21 @@ function TeamPage() {
         <Sidebar />
         <section className={panel.content}>
           <header className={panel.header}>
-            <h1>Equipe da rede</h1>
+            <h1>
+              Equipe da rede
+              <HelpIcon title="Como funciona a equipe">
+                <p>
+                  Um gerente pode responder pela <strong>rede toda</strong> ou por <strong>uma ou mais
+                  filiais</strong>. Pedidos de quem não tem permissão de aprovação ficam
+                  <strong> aguardando aprovação</strong> de um aprovador da rede.
+                </p>
+                <p>
+                  <strong>Vê faturas</strong> libera o acesso ao Faturamento; <strong>Paga faturas</strong> permite,
+                  além de ver, pagar e contestar o fechamento mensal — quem vê não necessariamente paga.
+                  O responsável pela rede sempre vê e paga.
+                </p>
+              </HelpIcon>
+            </h1>
             {isOwner && (
               <div style={{ display: "flex", gap: 8 }}>
                 <button className={panel.ghostBtn} onClick={() => setRolesOpen(true)}>Cargos</button>
@@ -125,14 +140,6 @@ function TeamPage() {
               </div>
             )}
           </header>
-          <p className={panel.muted}>
-            Um gerente pode responder pela <strong>rede toda</strong> ou por <strong>uma ou mais
-            filiais</strong>. Pedidos de quem não tem permissão de aprovação ficam
-            <strong> aguardando aprovação</strong> de um aprovador da rede. <strong>Vê faturas</strong>
-            libera o acesso ao Faturamento; <strong>Paga faturas</strong> permite, além de ver, pagar
-            e contestar o fechamento mensal — quem vê não necessariamente paga. O responsável pela
-            rede sempre vê e paga.
-          </p>
 
           {!isOwner ? (
             <p className={panel.muted}>Somente o responsável pela rede gerencia a equipe.</p>

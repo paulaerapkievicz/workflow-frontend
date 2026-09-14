@@ -23,6 +23,7 @@ import { AlertDot } from "@/src/components/AlertDot";
 import { jobStartedUnfilled, orderHasStartedUnfilled } from "@/src/services/unfilledAlerts";
 import { newShift, validateShifts, shiftDisplayName, ShiftInput, LaborLimits } from "@/src/services/shifts";
 import ShiftsField from "@/src/components/ShiftsField";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import { authService } from "@/src/services/authService";
 import type { SupermarketMembership } from "@/src/services/authService";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -241,11 +242,18 @@ function OrdersPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Pedidos de vagas</h1></header>
-          <p className={panel.muted}>
-            Informe a filial, a função, a data e o turno. Monte uma vez e escolha a quantidade de atendentes.
-            O valor é definido pela agência (valor/hora por função).
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Pedidos de vagas
+              <HelpIcon title="Como montar um pedido">
+                <p>
+                  Informe a filial, a função, a data e o turno. Monte uma vez e escolha a quantidade de atendentes.
+                  O valor é definido pela agência (valor/hora por função).
+                </p>
+                <p>A filial é escolhida por vaga — um pedido pode pedir vagas para lojas diferentes.</p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           {error && <p className={panel.error}>{error}</p>}
 
@@ -253,9 +261,6 @@ function OrdersPage() {
             <div className={panel.form}>
               <label>Observações (opcional)</label>
               <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex.: reforço de fim de semana" />
-              <p className={panel.muted}>
-                A filial é escolhida por vaga — um pedido pode pedir vagas para lojas diferentes.
-              </p>
             </div>
 
             <div className={panel.tableToolbar}>

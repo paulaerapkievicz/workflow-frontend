@@ -18,6 +18,7 @@ import { getSupermarketRates, SupermarketCategoryRate } from "@/src/services/sup
 import { getJobPhotos, photoUrl, JobPhoto } from "@/src/services/jobPhotoService";
 import { getJobFreelancerProfile, JobFreelancerProfile } from "@/src/services/freelancerService";
 import { createSupermarketReview } from "@/src/services/reviewService";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import StarRating from "@/src/components/StarRating";
 import { useAuth } from "@/src/hooks/useAuth";
 import { authService } from "@/src/services/authService";
@@ -258,11 +259,17 @@ function JobsPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Vagas</h1></header>
-          <p className={panel.muted}>
-            As vagas nascem dos seus pedidos. Enquanto não forem aceitas, podem ser editadas ou removidas —
-            vagas já aceitas por colaboradores ficam bloqueadas.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Vagas
+              <HelpIcon title="Como funcionam as vagas">
+                <p>
+                  As vagas nascem dos seus pedidos. Enquanto não forem aceitas, podem ser editadas ou removidas —
+                  vagas já aceitas por colaboradores ficam bloqueadas.
+                </p>
+              </HelpIcon>
+            </h1>
+          </header>
           <FilterBar
             fields={filterFields}
             value={filter}
@@ -314,12 +321,19 @@ function JobsPage() {
       )}
 
       {reviewJob && (
-        <Modal title={`Avaliar colaborador — ${reviewJob.assignedFreelancer?.name ?? ""}`} onClose={() => setReviewJob(null)}>
+        <Modal
+          title={`Avaliar colaborador — ${reviewJob.assignedFreelancer?.name ?? ""}`}
+          onClose={() => setReviewJob(null)}
+          titleAdornment={(
+            <HelpIcon title="Como funciona a avaliação">
+              <p>
+                Sua nota entra na média de reputação do colaborador. A agência e outros supermercados
+                da rede enxergam essa média.
+              </p>
+            </HelpIcon>
+          )}
+        >
           <div className={panel.form}>
-            <p className={panel.muted}>
-              Sua nota entra na média de reputação do colaborador. A agência e outros supermercados
-              da rede enxergam essa média.
-            </p>
             <label>Nota</label>
             <StarRating value={rv.rating} onChange={(rating) => setRv((s) => ({ ...s, rating }))} size={26} />
             <label>Comentário (opcional)</label>

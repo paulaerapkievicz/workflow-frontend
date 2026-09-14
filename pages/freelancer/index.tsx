@@ -12,6 +12,7 @@ import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
 import { fmtDate } from "@/src/lib/datetime";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange } from "@/src/lib/dateRange";
 
@@ -110,12 +111,16 @@ function AvailableJobs() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Vagas disponíveis</h1></header>
+          <header className={panel.header}>
+            <h1>
+              Vagas disponíveis
+              <HelpIcon title="Como funciona esta lista">
+                <p>Você vê apenas vagas das funções marcadas no seu perfil e cujo turno ainda não passou.</p>
+                <p>Só é possível aceitar uma vaga por período — sem horários sobrepostos.</p>
+              </HelpIcon>
+            </h1>
+          </header>
           <OnboardingBanner />
-          <p className={panel.muted}>
-            Você vê apenas vagas das funções marcadas no seu perfil e cujo turno ainda não passou.
-            Só pode aceitar uma vaga por período — sem horários sobrepostos.
-          </p>
           {error && <p className={panel.error}>{error}</p>}
 
           <CollapsibleFilterBar>

@@ -13,6 +13,7 @@ import {
 } from "@/src/services/supermarketProfileService";
 import ProfileImageField from "@/src/components/ProfileImageField";
 import FormField from "@/src/components/FormField";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import { validateForm } from "@/src/lib/validators";
 import { authService } from "@/src/services/authService";
 
@@ -110,13 +111,17 @@ function BranchesPage() {
         <Sidebar />
         <section className={panel.content}>
           <header className={panel.header}>
-            <h1>Filiais</h1>
+            <h1>
+              Filiais
+              <HelpIcon title="Como funciona a localização">
+                <p>
+                  A localização usada no check-in vem do <strong>endereço da filial</strong>. O raio permitido é
+                  configurado pela agência.
+                </p>
+              </HelpIcon>
+            </h1>
             <button className={panel.primaryBtn} onClick={openNew}>Nova filial</button>
           </header>
-          <p className={panel.muted}>
-            A localização usada no check-in vem do <strong>endereço da filial</strong>. O raio permitido é
-            configurado pela agência.
-          </p>
 
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>

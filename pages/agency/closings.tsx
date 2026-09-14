@@ -15,6 +15,7 @@ import {
   revertInvoiceAdjustment, ADJUSTMENT_STATUS_LABELS, closingNetAmount,
   CLOSING_STATUS_LABELS, monthName, money,
 } from "@/src/services/billingService";
+import HelpIcon from "@/src/components/common/HelpIcon";
 
 const hrs = (min: number | null | undefined) => (min == null ? "—" : `${(min / 60).toFixed(1).replace(".", ",")} h`);
 const thisMonth = () => {
@@ -138,11 +139,17 @@ function ClosingsPage() {
       <main className={panel.container}>
         <Sidebar />
         <section className={panel.content}>
-          <header className={panel.header}><h1>Fechamento mensal</h1></header>
-          <p className={panel.muted}>
-            Consolide as vagas concluídas do mês em uma fatura. Feche <strong>toda a matriz</strong> de uma vez
-            ou <strong>uma loja por vez</strong>. O pagamento ao supermercado é feito no fechamento.
-          </p>
+          <header className={panel.header}>
+            <h1>
+              Fechamento mensal
+              <HelpIcon title="Como funciona o fechamento">
+                <p>
+                  Consolide as vagas concluídas do mês em uma fatura. Feche <strong>toda a matriz</strong> de uma vez
+                  ou <strong>uma loja por vez</strong>. O pagamento ao supermercado é feito no fechamento.
+                </p>
+              </HelpIcon>
+            </h1>
+          </header>
 
           <div className={panel.card} style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "flex-end" }}>
             <label className={panel.filterField}>
@@ -245,11 +252,18 @@ function ClosingsPage() {
       </main>
 
       {adjClosing && (
-        <Modal title={`Contestações — ${monthName(adjClosing.referenceMonth)} · ${adjClosing.invoiceSupermarket?.name ?? ""}`} onClose={() => setAdjClosing(null)}>
-          <p className={panel.muted}>
-            O supermercado lançou estes abatimentos. Aprovar reduz o valor a receber deste fechamento
-            e o débito sai do saldo da agência. Recusar mantém o valor cheio.
-          </p>
+        <Modal
+          title={`Contestações — ${monthName(adjClosing.referenceMonth)} · ${adjClosing.invoiceSupermarket?.name ?? ""}`}
+          onClose={() => setAdjClosing(null)}
+          titleAdornment={(
+            <HelpIcon title="Como funcionam as contestações">
+              <p>
+                O supermercado lançou estes abatimentos. Aprovar reduz o valor a receber deste fechamento
+                e o débito sai do saldo da agência. Recusar mantém o valor cheio.
+              </p>
+            </HelpIcon>
+          )}
+        >
           {adjError && <p className={panel.error}>{adjError}</p>}
           <table className={panel.table}>
             <thead><tr><th>Descrição</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
