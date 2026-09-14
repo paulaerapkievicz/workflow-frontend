@@ -367,10 +367,13 @@ function TeamPage() {
                     <td>{m.name ?? "—"}</td>
                     <td>
                       <select
+                        className={panel.tableSelect}
                         value={m.teamRoleId ?? ""}
                         onChange={async (e) => {
-                          try { await updateAgencyMember(m.id, { teamRoleId: e.target.value || null }); await load(); }
-                          catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+                          try {
+                            const updated = await updateAgencyMember(m.id, { teamRoleId: e.target.value || null });
+                            setMembers((cur) => cur.map((x) => (x.id === m.id ? updated : x)));
+                          } catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
                         }}
                       >
                         <option value="">— sem cargo —</option>
@@ -440,10 +443,13 @@ function TeamPage() {
                     <td>{p.name ?? "—"}</td>
                     <td>
                       <select
+                        className={panel.tableSelect}
                         value={p.teamRoleId ?? ""}
                         onChange={async (e) => {
-                          try { await updateAgencyPartner(p.id, { teamRoleId: e.target.value || null }); await load(); }
-                          catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+                          try {
+                            const updated = await updateAgencyPartner(p.id, { teamRoleId: e.target.value || null });
+                            setPartners((cur) => cur.map((x) => (x.id === p.id ? updated : x)));
+                          } catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
                         }}
                       >
                         <option value="">— sem cargo —</option>

@@ -203,7 +203,7 @@ function SettingsPage() {
           {loading || !settings ? (
             <p>Carregando…</p>
           ) : (
-            <form onSubmit={save} style={{ maxWidth: 560 }}>
+            <form onSubmit={save}>
               <Tabs tabs={TABS as unknown as { id: string; label: string }[]} active={tab} onChange={(id) => setTab(id as TabId)} />
 
               <div className={panel.card}>

@@ -73,8 +73,8 @@ function ReviewsPage() {
           </header>
 
           <CollapsibleFilterBar>
-            <label>
-              Colaborador{" "}
+            <label className={panel.filterField}>
+              <span>Colaborador</span>
               <select value={freelancerId} onChange={(e) => setFreelancerId(e.target.value)}>
                 <option value="">Todos</option>
                 {freelancers.map((f) => (

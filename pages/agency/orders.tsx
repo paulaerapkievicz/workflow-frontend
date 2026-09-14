@@ -180,9 +180,9 @@ function AgencyOrdersPage() {
           </label>
 
           {expiredUnfilledCount > 0 && (
-            <p className={panel.muted} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <p className={panel.muted} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
               <span>{expiredUnfilledCount} vaga(s) de dias anteriores seguem sem colaborador.</span>
-              <button className={panel.secondaryBtn} disabled={busy === "__all__"} onClick={() => closeExpired()}>
+              <button className={`${panel.secondaryBtn} ${panel.smallBtn}`} disabled={busy === "__all__"} onClick={() => closeExpired()}>
                 Fechar vagas vencidas não preenchidas
               </button>
             </p>
@@ -229,9 +229,9 @@ function AgencyOrdersPage() {
       {detail && (
         <Modal title={`Pedido — ${detail.orderSupermarket?.name ?? ""}`} onClose={() => setDetailId(null)}>
           {detailExpiredCount > 0 && (
-            <p className={panel.muted} style={{ marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <p className={panel.muted} style={{ marginBottom: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
               <span>{detailExpiredCount} vaga(s) vencida(s) sem colaborador neste pedido.</span>
-              <button className={panel.secondaryBtn} disabled={busy === detail.id} onClick={() => closeExpired(detail.id)}>
+              <button className={`${panel.secondaryBtn} ${panel.smallBtn}`} disabled={busy === detail.id} onClick={() => closeExpired(detail.id)}>
                 Fechar vagas vencidas ({detailExpiredCount})
               </button>
             </p>
@@ -277,7 +277,7 @@ function AgencyOrdersPage() {
                         <button className={panel.ghostBtn} onClick={() => setManageJob(j)}>Gerenciar</button>
                       )}
                       {isExpiredUnfilled(j) && (
-                        <button className={panel.secondaryBtn} disabled={busy === j.id}
+                        <button className={`${panel.secondaryBtn} ${panel.smallBtn}`} disabled={busy === j.id}
                           onClick={() => confirm("Fechar esta vaga vencida sem colaborador?") && act(j.id, () => closeUnfilledJob(j.id))}>
                           Fechar vaga
                         </button>

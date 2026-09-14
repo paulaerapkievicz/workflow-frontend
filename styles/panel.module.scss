@@ -143,6 +143,13 @@
   &:hover { background: var(--primary-soft); border-color: var(--primary); }
 }
 
+// Variante compacta — ações secundárias de baixo risco que não devem competir
+// visualmente com a ação principal da linha (ex.: fechar vagas vencidas).
+.smallBtn {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+}
+
 .linkBtn {
   background: none;
   border: none;
