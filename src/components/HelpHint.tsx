@@ -1,34 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import panel from "@/styles/panel.module.scss";
 import SidebarIcon from "@/src/components/panel/SidebarIcon";
+import Modal from "@/src/components/common/Modal";
 
 interface Props {
   /** Texto explicando o motivo do bloqueio / o aviso / a ação que falta. */
   text: string;
   /** Rótulo acessível do botão (default: "Ajuda"). */
   label?: string;
+  /** Título da janela de aviso (default: "Aviso"). */
+  title?: string;
 }
 
 /**
- * Ícone "?" vermelho ao lado de um botão bloqueado. Ao clicar, abre um painel com borda
- * vermelha explicando o motivo — fecha pelo X ou clicando fora. O botão ao lado nunca some,
- * só fica desabilitado; este componente é o "porquê".
+ * Ícone "?" vermelho ao lado de um botão bloqueado. Ao clicar, abre o texto explicativo numa
+ * janela sobreposta ao conteúdo (mesmo componente Modal usado no resto do app, com borda
+ * vermelha) — nunca empurra ou quebra o layout da tela, nem em telas pequenas. O botão ao lado
+ * nunca some, só fica desabilitado; este componente é o "porquê".
  */
-export default function HelpHint({ text, label = "Ajuda" }: Props) {
+export default function HelpHint({ text, label = "Ajuda", title = "Aviso" }: Props) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [open]);
 
   return (
-    <span className={panel.helpHintWrap} ref={ref}>
+    <>
       <button
         type="button"
         className={panel.helpHintBtn}
@@ -36,26 +30,16 @@ export default function HelpHint({ text, label = "Ajuda" }: Props) {
         aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
-          setOpen((v) => !v);
+          setOpen(true);
         }}
       >
         <SidebarIcon name="help" size={14} />
       </button>
       {open && (
-        <div className={panel.helpHintPanel} role="tooltip">
-          <div className={panel.helpHintPanelHeader}>
-            <button
-              type="button"
-              className={panel.helpHintCloseBtn}
-              aria-label="Fechar"
-              onClick={() => setOpen(false)}
-            >
-              ×
-            </button>
-          </div>
-          <span>{text}</span>
-        </div>
+        <Modal title={title} onClose={() => setOpen(false)} variant="danger">
+          <p style={{ margin: 0 }}>{text}</p>
+        </Modal>
       )}
-    </span>
+    </>
   );
 }
