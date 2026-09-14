@@ -59,6 +59,8 @@ function SettingsPage() {
     unfilledAlertLeadMinutes: "120",
     shortNoticeWithdrawalMinutes: "180",
     onboardingRequired: false,
+    requireUniformPurchase: false,
+    requirePhotoApproval: false,
     uniformPrice: "0",
     allowSelfRegistration: false,
     appPaymentEnabledForSupermarkets: true,
@@ -105,6 +107,8 @@ function SettingsPage() {
           unfilledAlertLeadMinutes: String(s.unfilledAlertLeadMinutes),
           shortNoticeWithdrawalMinutes: String(s.shortNoticeWithdrawalMinutes),
           onboardingRequired: s.onboardingRequired,
+          requireUniformPurchase: s.requireUniformPurchase,
+          requirePhotoApproval: s.requirePhotoApproval,
           uniformPrice: String(s.uniformPrice),
           allowSelfRegistration: s.allowSelfRegistration,
           appPaymentEnabledForSupermarkets: s.appPaymentEnabledForSupermarkets,
@@ -148,6 +152,8 @@ function SettingsPage() {
         })),
         shortNoticeWithdrawalMinutes: Number(form.shortNoticeWithdrawalMinutes),
         onboardingRequired: form.onboardingRequired,
+        requireUniformPurchase: form.requireUniformPurchase,
+        requirePhotoApproval: form.requirePhotoApproval,
         uniformPrice: Number(form.uniformPrice),
         allowSelfRegistration: form.allowSelfRegistration,
         appPaymentEnabledForSupermarkets: form.appPaymentEnabledForSupermarkets,
@@ -386,12 +392,44 @@ function SettingsPage() {
                     <label className={panel.toggleRow}>
                       <Switch checked={form.onboardingRequired}
                         onChange={(v) => setForm({ ...form, onboardingRequired: v })} />
-                      Exigir onboarding (perfil contratual + uniforme aprovado) antes de aceitar vagas
+                      Exigir onboarding (perfil contratual) antes de aceitar vagas
                     </label>
-                    <label>Preço do kit uniforme (R$)</label>
-                    <input type="number" min={0} step={0.01} value={form.uniformPrice}
-                      onChange={(e) => setForm({ ...form, uniformPrice: e.target.value })} />
-                    <span className={panel.muted}>Cobrado do colaborador no Mercado Pago ao comprar o uniforme.</span>
+                    <span className={panel.muted}>
+                      Sem isso, nada abaixo bloqueia vagas — cadastro, andamento e assinatura de
+                      contrato continuam disponíveis normalmente.
+                    </span>
+
+                    <div className={panel.card} style={{ marginTop: "0.6rem" }}>
+                      <label className={panel.toggleRow}>
+                        <Switch checked={form.requireUniformPurchase}
+                          onChange={(v) => setForm({ ...form, requireUniformPurchase: v })} />
+                        Exigir compra de uniforme obrigatória
+                      </label>
+                      <span className={panel.muted}>
+                        Desligado (padrão), a seção de uniforme some do onboarding do colaborador e da
+                        tela de Onboarding da agência.
+                      </span>
+                      {form.requireUniformPurchase && (
+                        <>
+                          <label style={{ marginTop: "0.6rem" }}>Preço do kit uniforme (R$)</label>
+                          <input type="number" min={0} step={0.01} value={form.uniformPrice}
+                            onChange={(e) => setForm({ ...form, uniformPrice: e.target.value })} />
+                          <span className={panel.muted}>Cobrado do colaborador no Mercado Pago ao comprar o uniforme.</span>
+                        </>
+                      )}
+                    </div>
+
+                    <div className={panel.card} style={{ marginTop: "0.6rem" }}>
+                      <label className={panel.toggleRow}>
+                        <Switch checked={form.requirePhotoApproval}
+                          onChange={(v) => setForm({ ...form, requirePhotoApproval: v })} />
+                        Exigir aprovação da foto pela agência
+                      </label>
+                      <span className={panel.muted}>
+                        Desligado (padrão), a foto enviada pelo colaborador no onboarding já vale
+                        direto como foto de perfil, sem revisão.
+                      </span>
+                    </div>
 
                     <label>E-mail de login das contas da rede</label>
                     <label className={panel.toggleRow}>

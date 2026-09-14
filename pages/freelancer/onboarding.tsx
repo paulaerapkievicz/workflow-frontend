@@ -6,7 +6,7 @@ import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import {
   getContract, saveContract, getUniform, requestUniform, confirmUniformReceived,
-  submitUniformSelfie, syncUniformPayment, SHIRT_SIZES, UNIFORM_STATUS_LABELS, UniformOrder,
+  syncUniformPayment, SHIRT_SIZES, UNIFORM_STATUS_LABELS, UniformOrder, PHOTO_STATUS_LABELS,
 } from "@/src/services/onboardingService";
 import { photoUrl } from "@/src/services/jobPhotoService";
 import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
@@ -88,7 +88,6 @@ function OnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
-  const [selfie, setSelfie] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [uniformErr, setUniformErr] = useState<string | null>(null);
@@ -98,6 +97,21 @@ function OnboardingPage() {
   const appPaymentEnabledForFreelancers =
     (profile as { affiliatedAgency?: { appPaymentEnabledForFreelancers?: boolean } } | null)
       ?.affiliatedAgency?.appPaymentEnabledForFreelancers !== false;
+  const onboarding = (profile as {
+    onboarding?: {
+      requireUniformPurchase?: boolean;
+      requirePhotoApproval?: boolean;
+      photoStatus?: "none" | "pending" | "approved" | "rejected";
+      photoRejectionReason?: string | null;
+      approved?: boolean;
+      contractTemplateAvailable?: boolean;
+      contractSigned?: boolean;
+    };
+  } | null)?.onboarding;
+  const requireUniformPurchase = !!onboarding?.requireUniformPurchase;
+  const requirePhotoApproval = !!onboarding?.requirePhotoApproval;
+  const photoStatus = onboarding?.photoStatus ?? "none";
+  const photoRejectionReason = onboarding?.photoRejectionReason ?? null;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -220,6 +234,13 @@ function OnboardingPage() {
     }
   };
 
+  // Numeração dinâmica dos cards — a seção de uniforme só existe (e só conta) quando exigida.
+  let stepCounter = 1;
+  const perfilStep = stepCounter++;
+  const uniformStep = requireUniformPurchase ? stepCounter++ : null;
+  const fotoStep = stepCounter++;
+  const contractStep = stepCounter++;
+
   return (
     <>
       <Head><title>Onboarding | Colaborador</title></Head>
@@ -228,7 +249,7 @@ function OnboardingPage() {
         <section className={panel.content}>
           <header className={panel.header}><h1>Onboarding</h1></header>
           <p className={panel.muted}>
-            Preencha o seu perfil contratual e conclua a etapa do uniforme para poder aceitar vagas.
+            Preencha o seu perfil contratual e as demais etapas exigidas pela sua agência para poder aceitar vagas.
           </p>
           {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
 
@@ -238,7 +259,7 @@ function OnboardingPage() {
             <>
               <div className={panel.card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <strong>1. Perfil contratual</strong>
+                  <strong>{perfilStep}. Perfil contratual</strong>
                   <span className={`${panel.badge} ${contractDone ? panel.badgeDone : panel.badgePending}`}>
                     {contractDone ? "Concluído" : `Faltam ${missing.length} campos`}
                   </span>
@@ -310,85 +331,87 @@ function OnboardingPage() {
                 </button>
               </div>
 
-              <div className={panel.card} style={{ marginTop: "1rem" }}>
-                <strong>2. Uniforme</strong>
-                {uniformErr && (
-                  <p className={panel.error} style={{ marginTop: "0.5rem" }}>{uniformErr}</p>
-                )}
-                {!contractDone ? (
-                  <p className={panel.muted}>Conclua o perfil contratual para comprar o uniforme.</p>
-                ) : !uniform ? (
-                  <div style={{ marginTop: "0.5rem" }}>
-                    <p className={panel.muted}>
-                      {!values.shirtSize
-                        ? "Escolha o tamanho da camiseta no perfil acima para liberar a compra."
-                        : appPaymentEnabledForFreelancers
-                        ? "Finalize a compra para receber o link de pagamento."
-                        : "Confirme o tamanho — a agência vai combinar o pagamento com você por fora."}
-                    </p>
-                    <button className={panel.primaryBtn} disabled={busy || !values.shirtSize} onClick={buyUniform}>
-                      {busy ? "Processando…" : "Comprar uniforme"}
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ marginTop: "0.5rem" }}>
-                    <p>
-                      Tamanho <strong>{uniform.shirtSize}</strong> · R$ {Number(uniform.amount).toFixed(2)} ·{" "}
-                      <span className={panel.badge}>{UNIFORM_STATUS_LABELS[uniform.status]}</span>
-                    </p>
-                    {uniform.trackingCode && <p className={panel.muted}>Rastreio: {uniform.trackingCode}</p>}
-                    {uniform.rejectionReason && <p className={panel.error}>Motivo da recusa: {uniform.rejectionReason}</p>}
-
-                    {uniform.status === "pending_payment" && uniform.paymentUrl && (
-                      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
-                        <a
-                          className={panel.primaryBtn}
-                          href={uniform.paymentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ textDecoration: "none" }}
-                        >
-                          Ir para o pagamento
-                        </a>
-                        <button className={panel.ghostBtn} disabled={busy} onClick={buyUniform}>
-                          {busy ? "Processando…" : "Gerar novo link"}
-                        </button>
-                      </div>
-                    )}
-                    {uniform.status === "pending_payment" && !uniform.paymentUrl && (
-                      <p className={panel.muted} style={{ marginTop: "0.5rem" }}>
-                        Pedido registrado — combine o pagamento com a agência e aguarde ela confirmar
-                        o recebimento por aqui.
+              {requireUniformPurchase && (
+                <div className={panel.card} style={{ marginTop: "1rem" }}>
+                  <strong>{uniformStep}. Uniforme</strong>
+                  {uniformErr && (
+                    <p className={panel.error} style={{ marginTop: "0.5rem" }}>{uniformErr}</p>
+                  )}
+                  {!contractDone ? (
+                    <p className={panel.muted}>Conclua o perfil contratual para comprar o uniforme.</p>
+                  ) : !uniform ? (
+                    <div style={{ marginTop: "0.5rem" }}>
+                      <p className={panel.muted}>
+                        {!values.shirtSize
+                          ? "Escolha o tamanho da camiseta no perfil acima para liberar a compra."
+                          : appPaymentEnabledForFreelancers
+                          ? "Finalize a compra para receber o link de pagamento."
+                          : "Confirme o tamanho — a agência vai combinar o pagamento com você por fora."}
                       </p>
-                    )}
-                    {uniform.status === "shipped" && (
-                      <button className={panel.primaryBtn} disabled={busy} onClick={() => act(() => confirmUniformReceived(uniform.id))}>
-                        Confirmar recebimento
+                      <button className={panel.primaryBtn} disabled={busy || !values.shirtSize} onClick={buyUniform}>
+                        {busy ? "Processando…" : "Comprar uniforme"}
                       </button>
-                    )}
-                    {["delivered", "photo_submitted", "rejected"].includes(uniform.status) && (
-                      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.5rem" }}>
-                        <input type="file" accept="image/*" capture="user" onChange={(e) => setSelfie(e.target.files?.[0] ?? null)} />
-                        <button className={panel.primaryBtn} disabled={busy || !selfie}
-                          onClick={() => selfie && act(() => submitUniformSelfie(uniform.id, selfie))}>
-                          {uniform.status === "rejected" || uniform.status === "photo_submitted" ? "Reenviar selfie" : "Enviar selfie de uniforme"}
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: "0.5rem" }}>
+                      <p>
+                        Tamanho <strong>{uniform.shirtSize}</strong> · R$ {Number(uniform.amount).toFixed(2)} ·{" "}
+                        <span className={panel.badge}>{UNIFORM_STATUS_LABELS[uniform.status]}</span>
+                      </p>
+                      {uniform.trackingCode && <p className={panel.muted}>Rastreio: {uniform.trackingCode}</p>}
+
+                      {uniform.status === "pending_payment" && uniform.paymentUrl && (
+                        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+                          <a
+                            className={panel.primaryBtn}
+                            href={uniform.paymentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ textDecoration: "none" }}
+                          >
+                            Ir para o pagamento
+                          </a>
+                          <button className={panel.ghostBtn} disabled={busy} onClick={buyUniform}>
+                            {busy ? "Processando…" : "Gerar novo link"}
+                          </button>
+                        </div>
+                      )}
+                      {uniform.status === "pending_payment" && !uniform.paymentUrl && (
+                        <p className={panel.muted} style={{ marginTop: "0.5rem" }}>
+                          Pedido registrado — combine o pagamento com a agência e aguarde ela confirmar
+                          o recebimento por aqui.
+                        </p>
+                      )}
+                      {uniform.status === "shipped" && (
+                        <button className={panel.primaryBtn} disabled={busy} onClick={() => act(() => confirmUniformReceived(uniform.id))}>
+                          Confirmar recebimento
                         </button>
-                      </div>
-                    )}
-                    {uniform.selfiePhotoUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={photoUrl(uniform.selfiePhotoUrl)} alt="Selfie de uniforme" style={{ maxWidth: 200, borderRadius: 12, marginTop: "0.5rem" }} />
-                    )}
-                    {uniform.status === "approved" && <p className={panel.success}>Uniforme aprovado — você já pode aceitar vagas!</p>}
-                  </div>
-                )}
-              </div>
+                      )}
+                      {uniform.status === "delivered" && (
+                        <p className={panel.success}>Uniforme recebido — você já pode aceitar vagas!</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className={panel.card} style={{ marginTop: "1rem" }}>
-                <strong>3. Foto de perfil</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong>{fotoStep}. Foto</strong>
+                  {requirePhotoApproval && (
+                    <span className={`${panel.badge} ${photoStatus === "approved" ? panel.badgeDone : panel.badgePending}`}>
+                      {PHOTO_STATUS_LABELS[photoStatus]}
+                    </span>
+                  )}
+                </div>
                 <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
-                  Essa foto é mostrada ao supermercado quando você aceita uma vaga, para identificação de quem vai atender.
+                  {requirePhotoApproval
+                    ? "Envie uma foto sua. A sua agência precisa aprovar antes que ela valha como foto de perfil e libere vagas."
+                    : "Essa foto é mostrada ao supermercado quando você aceita uma vaga, para identificação de quem vai atender."}
                 </p>
+                {requirePhotoApproval && photoStatus === "rejected" && photoRejectionReason && (
+                  <p className={panel.error}>Motivo da recusa: {photoRejectionReason} — envie outra foto.</p>
+                )}
                 {profilePhotoErr && <p className={panel.error}>{profilePhotoErr}</p>}
                 {profilePhotoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -412,7 +435,7 @@ function OnboardingPage() {
                 return (
                   <div className={panel.card} style={{ marginTop: "1rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <strong>4. Contrato</strong>
+                      <strong>{contractStep}. Contrato</strong>
                       <span className={`${panel.badge} ${ob.contractSigned ? panel.badgeDone : panel.badgePending}`}>
                         {ob.contractSigned ? "Assinado" : ob.contractTemplateAvailable ? "Pendente" : "Aguardando a agência"}
                       </span>

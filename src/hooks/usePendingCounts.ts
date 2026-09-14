@@ -3,7 +3,7 @@ import api from "@/src/services/api";
 
 export interface AgencyPendingCounts {
   uniformsToShip: number;
-  selfiesToReview: number;
+  photosToReview: number;
   contractsPending: number;
   registrationsToApprove: number;
   branchesToApprove: number;
@@ -23,7 +23,7 @@ export interface SupermarketPendingCounts {
 export function usePendingCounts(role: "agency" | "supermarket" | "leader") {
   const [counts, setCounts] = useState<AgencyPendingCounts & SupermarketPendingCounts>({
     uniformsToShip: 0,
-    selfiesToReview: 0,
+    photosToReview: 0,
     contractsPending: 0,
     registrationsToApprove: 0,
     branchesToApprove: 0,

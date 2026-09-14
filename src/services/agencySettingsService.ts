@@ -55,8 +55,12 @@ export interface AgencySettings {
   unfilledAlertTiers: UnfilledAlertTier[];
   /** Abaixo desta antecedência (min) do início, uma desistência é "de última hora". */
   shortNoticeWithdrawalMinutes: number;
-  /** Exige onboarding (perfil contratual + uniforme aprovado) antes de aceitar vagas. */
+  /** Exige onboarding (perfil contratual) antes de aceitar vagas. */
   onboardingRequired: boolean;
+  /** Exige a compra do uniforme para aceitar vagas; some do onboarding do colaborador quando desligado. */
+  requireUniformPurchase: boolean;
+  /** Exige aprovação da agência pra foto enviada no onboarding; sem isso, ela já vale direto. */
+  requirePhotoApproval: boolean;
   /** Preço do kit uniforme cobrado do colaborador. */
   uniformPrice: number;
   /** Permite que colaboradores se autocadastrem nesta agência (com aprovação depois). */

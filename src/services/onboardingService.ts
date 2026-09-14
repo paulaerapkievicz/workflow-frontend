@@ -2,24 +2,33 @@ import api from "@/src/services/api";
 
 export const SHIRT_SIZES = ["PP", "P", "M", "G", "GG", "XGG"] as const;
 
-export type UniformStatus =
-  | "pending_payment"
-  | "paid"
-  | "shipped"
-  | "delivered"
-  | "photo_submitted"
-  | "approved"
-  | "rejected";
+export type UniformStatus = "pending_payment" | "paid" | "shipped" | "delivered";
 
 export const UNIFORM_STATUS_LABELS: Record<UniformStatus, string> = {
   pending_payment: "Aguardando pagamento",
   paid: "Pago — aguardando envio",
   shipped: "Enviado",
-  delivered: "Recebido — envie a selfie",
-  photo_submitted: "Selfie em análise",
-  approved: "Aprovado",
-  rejected: "Selfie recusada",
+  delivered: "Recebido",
 };
+
+export type PhotoStatus = "none" | "pending" | "approved" | "rejected";
+
+export const PHOTO_STATUS_LABELS: Record<PhotoStatus, string> = {
+  none: "Nenhuma foto enviada",
+  pending: "Em análise",
+  approved: "Aprovada",
+  rejected: "Recusada",
+};
+
+export interface FreelancerPhotoReview {
+  id: string;
+  name: string;
+  profilePhotoUrl: string | null;
+  profilePhotoStatus: PhotoStatus;
+  profilePhotoRejectionReason: string | null;
+  profilePhotoSubmittedAt: string | null;
+  profilePhotoReviewedAt: string | null;
+}
 
 export interface FreelancerContract {
   id: string;
@@ -36,8 +45,6 @@ export interface UniformOrder {
   status: UniformStatus;
   paymentUrl?: string | null;
   trackingCode?: string | null;
-  selfiePhotoUrl?: string | null;
-  rejectionReason?: string | null;
   createdAt: string;
   freelancerName?: string | null;
 }
@@ -60,12 +67,6 @@ export const syncUniformPayment = async (id: string): Promise<UniformOrder> =>
 export const confirmUniformReceived = async (id: string): Promise<UniformOrder> =>
   (await api.post(`/freelancer/uniform/${id}/received`)).data;
 
-export const submitUniformSelfie = async (id: string, file: File): Promise<UniformOrder> => {
-  const fd = new FormData();
-  fd.append("photo", file);
-  return (await api.post(`/freelancer/uniform/${id}/selfie`, fd)).data;
-};
-
 // ----- Agência -----
 export const getAgencyUniforms = async (): Promise<UniformOrder[]> =>
   (await api.get("/agency/uniforms")).data;
@@ -77,9 +78,13 @@ export const markUniformPaid = async (id: string): Promise<UniformOrder> =>
 export const shipUniform = async (id: string, trackingCode?: string): Promise<UniformOrder> =>
   (await api.post(`/agency/uniforms/${id}/ship`, { trackingCode })).data;
 
-export const reviewUniform = async (
-  id: string,
+// ----- Foto de perfil (onboarding) -----
+export const getAgencyPhotoReviews = async (): Promise<FreelancerPhotoReview[]> =>
+  (await api.get("/agency/photo-reviews")).data;
+
+export const reviewFreelancerPhoto = async (
+  freelancerId: string,
   approved: boolean,
   reason?: string
-): Promise<UniformOrder> =>
-  (await api.post(`/agency/uniforms/${id}/review`, { approved, reason })).data;
+): Promise<FreelancerPhotoReview> =>
+  (await api.post(`/freelancers/${freelancerId}/photo-review`, { approved, reason })).data;
