@@ -23,7 +23,8 @@ export type SidebarIconName =
   | "search"
   | "receipt"
   | "chart"
-  | "compass";
+  | "compass"
+  | "more";
 
 const PATHS: Record<SidebarIconName, React.ReactNode> = {
   dashboard: (
@@ -189,6 +190,13 @@ const PATHS: Record<SidebarIconName, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="9.5" />
       <path d="m15.5 8.5-2 5.5-5.5 2 2-5.5Z" />
+    </>
+  ),
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1.8" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.8" fill="currentColor" stroke="none" />
     </>
   ),
 };

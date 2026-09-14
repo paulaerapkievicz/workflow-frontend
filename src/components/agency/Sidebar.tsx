@@ -32,15 +32,15 @@ export default function AgencySidebar() {
 
   const items = applySidebarOrder<SideNavItem>(
     ([
-      { href: "/agency/dashboard", label: "Dashboard", icon: "dashboard" },
-      { href: "/agency/freelancers", label: "Colaboradores", icon: "people" },
+      { href: "/agency/dashboard", label: "Dashboard", icon: "dashboard", mobilePrimary: true },
+      { href: "/agency/freelancers", label: "Colaboradores", icon: "people", mobilePrimary: true },
       { href: "/agency/categories", label: "Funções", icon: "tag" },
       { href: "/agency/onboarding", label: "Onboarding", icon: "clipboard-edit", badge: uniformsToShip + selfiesToReview + registrationsToApprove },
       { href: "/agency/supermarkets", label: "Gestão de Clientes", icon: "store", badge: branchesToApprove },
       { href: "/agency/team", label: "Equipe", icon: "id-badge" },
-      { href: "/agency/orders", label: "Convocações", icon: "cart" },
+      { href: "/agency/orders", label: "Convocações", icon: "cart", mobilePrimary: true },
       { href: "/agency/alerts", label: "Alertas", icon: "alert", badge: alertsOpen },
-      { href: "/agency/live", label: "Ao vivo", icon: "live" },
+      { href: "/agency/live", label: "Ao vivo", icon: "live", mobilePrimary: true },
       { href: "/agency/reviews", label: "Avaliações", icon: "star" },
       { href: "/agency/closings", label: "Fechamentos", icon: "calendar", badge: contestationsToReview },
       { href: "/agency/payments", label: "Pagamentos", icon: "card", badge: memberCreditsToReview },

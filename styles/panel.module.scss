@@ -511,12 +511,13 @@ body[data-theme='dark'] {
 
 @media (max-width: 860px) {
   .container { flex-direction: column; }
-  .content { padding: 1.25rem; }
+  // Espaço extra embaixo pra bottom navigation bar (fixed) não cobrir o conteúdo.
+  .content { padding: 1.25rem 1.25rem calc(5.5rem + env(safe-area-inset-bottom)); }
 }
 
 // Ajustes pra tela de celular (iPhone SE ~375px até iPhone padrão ~430px).
 @media (max-width: 480px) {
-  .content { padding: 0.85rem; gap: 1.1rem; }
+  .content { padding: 0.85rem 0.85rem calc(5.25rem + env(safe-area-inset-bottom)); gap: 1.1rem; }
 
   .header {
     padding-bottom: 1rem;

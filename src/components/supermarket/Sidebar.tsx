@@ -13,13 +13,13 @@ export default function Sidebar() {
   const sidebarOrder = profile?.sidebarOrder ?? null;
 
   const rawItems: SideNavItem[] = [
-    { href: "/supermarket/dashboard", label: "Dashboard", icon: "dashboard" },
-    { href: "/supermarket/orders", label: "Pedidos", icon: "cart", badge: ordersToApprove },
-    { href: "/supermarket/jobs", label: "Vagas", icon: "clipboard-list" },
+    { href: "/supermarket/dashboard", label: "Dashboard", icon: "dashboard", mobilePrimary: true },
+    { href: "/supermarket/orders", label: "Pedidos", icon: "cart", badge: ordersToApprove, mobilePrimary: true },
+    { href: "/supermarket/jobs", label: "Vagas", icon: "clipboard-list", mobilePrimary: true },
     ...(alertsOpen > 0
       ? ([{ href: "/supermarket/alerts", label: "Alertas", icon: "alert", badge: alertsOpen }] as SideNavItem[])
       : []),
-    { href: "/supermarket/live", label: "Ao vivo", icon: "live" },
+    { href: "/supermarket/live", label: "Ao vivo", icon: "live", mobilePrimary: true },
     ...(canViewInvoices
       ? ([{ href: "/supermarket/payments", label: "Faturamento", icon: "card" }] as SideNavItem[])
       : []),
