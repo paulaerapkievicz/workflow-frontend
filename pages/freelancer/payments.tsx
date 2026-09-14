@@ -7,7 +7,7 @@ import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
 import JobMovementsTable from "@/src/components/JobMovementsTable";
-import HelpHint from "@/src/components/HelpHint";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import panel from "@/styles/panel.module.scss";
 import {
   getFreelancerReport, FreelancerReport, FreelancerPaymentStatus, PAYMENT_STATUS_FILTER_LABELS,
@@ -62,9 +62,10 @@ function FreelancerPayments() {
 
           <div className={panel.balanceCard} style={{ position: "relative" }}>
             <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
-              <HelpHint
-                text={`Baseado nas horas já trabalhadas e aprovadas no período selecionado (${periodLabel}). O pagamento é feito pela agência via Pix, no dia combinado.`}
-              />
+              <HelpIcon title="Ganhos Previstos">
+                <p>Baseado nas horas já trabalhadas e aprovadas no período selecionado ({periodLabel}).</p>
+                <p>O pagamento é feito pela agência via Pix, no dia combinado.</p>
+              </HelpIcon>
             </div>
             <span className={panel.muted}>Ganhos Previstos</span>
             <strong>R$ {earnedInPeriod.toFixed(2)}</strong>

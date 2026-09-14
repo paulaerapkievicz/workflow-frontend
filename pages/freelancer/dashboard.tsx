@@ -15,7 +15,7 @@ import {
 } from "@/src/services/billingService";
 import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
 import FreelancerReputation from "@/src/components/FreelancerReputation";
-import HelpHint from "@/src/components/HelpHint";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
@@ -189,9 +189,9 @@ function Dashboard() {
             <div className={panel.card}><h2>{minutesToHours(Math.round(workedHours * 60))}</h2><p>Horas trabalhadas</p></div>
             <div className={panel.card} style={{ position: "relative" }}>
               <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
-                <HelpHint
-                  text={`Baseado nas horas já trabalhadas e aprovadas no período selecionado (${periodLabel}).`}
-                />
+                <HelpIcon title="Ganhos Previstos">
+                  <p>Baseado nas horas já trabalhadas e aprovadas no período selecionado ({periodLabel}).</p>
+                </HelpIcon>
               </div>
               <h2>R$ {earnedInPeriod.toFixed(2)}</h2>
               <p>Ganhos Previstos</p>
