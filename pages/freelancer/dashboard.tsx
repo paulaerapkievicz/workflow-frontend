@@ -4,6 +4,7 @@ import Link from "next/link";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
 import panel from "@/styles/panel.module.scss";
 import styles from "@/styles/dashboard.module.scss";
@@ -14,17 +15,13 @@ import {
 } from "@/src/services/billingService";
 import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
 import FreelancerReputation from "@/src/components/FreelancerReputation";
+import HelpHint from "@/src/components/HelpHint";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
-import { inDateRange } from "@/src/lib/dateRange";
+import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import { fmtDate, fmtTime, isoDateBR } from "@/src/lib/datetime";
 
 const OUTCOME_TILES: FreelancerOutcome[] = ["accepted", "active", "completed", "withdrawnEarly", "abandoned"];
-
-const monthLabel = () => {
-  const name = new Date().toLocaleDateString("pt-BR", { month: "long" });
-  return name.charAt(0).toUpperCase() + name.slice(1);
-};
 
 function Dashboard() {
   const { profile } = useAuth();
@@ -73,10 +70,10 @@ function Dashboard() {
     .filter((j) => j.status === "accepted" && !isToday(j))
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ?? null;
 
-  const monthKey = new Date().toISOString().slice(0, 7);
-  const earnedMonth = (report?.items ?? [])
-    .filter((i) => (i.date ?? "").slice(0, 7) === monthKey)
+  const earnedInPeriod = (report?.items ?? [])
+    .filter((i) => inDateRange(i.date, range))
     .reduce((s, i) => s + Number(i.amount ?? 0), 0);
+  const periodLabel = range.preset === "todas" ? "todas as datas" : dateRangeLabel(range);
 
   const branches: BranchOption[] = useMemo(() => {
     const map = new Map<string, string>();
@@ -190,16 +187,18 @@ function Dashboard() {
 
           <div className={panel.cards}>
             <div className={panel.card}><h2>{minutesToHours(Math.round(workedHours * 60))}</h2><p>Horas trabalhadas</p></div>
-            <div className={panel.card}>
-              <h2>R$ {earnedMonth.toFixed(2)}</h2>
-              <p>Ganhos Previstos [{monthLabel()}]</p>
-              <span className={panel.muted} style={{ fontSize: "0.75rem" }}>
-                Baseado nas horas já trabalhadas e aprovadas.
-              </span>
+            <div className={panel.card} style={{ position: "relative" }}>
+              <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
+                <HelpHint
+                  text={`Baseado nas horas já trabalhadas e aprovadas no período selecionado (${periodLabel}).`}
+                />
+              </div>
+              <h2>R$ {earnedInPeriod.toFixed(2)}</h2>
+              <p>Ganhos Previstos</p>
             </div>
           </div>
 
-          <div className={panel.filterBar}>
+          <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
             <CategoryBranchFilter
               categoryId={categoryId} onCategoryChange={setCategoryId}
@@ -215,7 +214,7 @@ function Dashboard() {
                 ))}
               </select>
             </label>
-          </div>
+          </CollapsibleFilterBar>
 
           <div className={panel.cards}>
             {OUTCOME_TILES.map((o) => (

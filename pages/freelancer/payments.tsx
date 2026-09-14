@@ -4,20 +4,17 @@ import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import StatusBadge from "@/src/components/StatusBadge";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
 import JobMovementsTable from "@/src/components/JobMovementsTable";
+import HelpHint from "@/src/components/HelpHint";
 import panel from "@/styles/panel.module.scss";
 import {
   getFreelancerReport, FreelancerReport, FreelancerPaymentStatus, PAYMENT_STATUS_FILTER_LABELS,
 } from "@/src/services/billingService";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
-import { inDateRange } from "@/src/lib/dateRange";
+import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import { fmtDate } from "@/src/lib/datetime";
-
-const monthLabel = () => {
-  const name = new Date().toLocaleDateString("pt-BR", { month: "long" });
-  return name.charAt(0).toUpperCase() + name.slice(1);
-};
 
 function FreelancerPayments() {
   const [report, setReport] = useState<FreelancerReport | null>(null);
@@ -34,10 +31,10 @@ function FreelancerPayments() {
 
   useEffect(() => { load().catch(() => {}); }, []);
 
-  const monthKey = new Date().toISOString().slice(0, 7);
-  const earnedMonth = (report?.items ?? [])
-    .filter((i) => (i.date ?? "").slice(0, 7) === monthKey)
+  const earnedInPeriod = (report?.items ?? [])
+    .filter((i) => inDateRange(i.date, range))
     .reduce((s, i) => s + Number(i.amount ?? 0), 0);
+  const periodLabel = range.preset === "todas" ? "todas as datas" : dateRangeLabel(range);
 
   const branches: BranchOption[] = useMemo(() => {
     const map = new Map<string, string>();
@@ -63,17 +60,19 @@ function FreelancerPayments() {
         <section className={panel.content}>
           <header className={panel.header}><h1>Carteira</h1></header>
 
-          <div className={panel.balanceCard}>
-            <span className={panel.muted}>Ganhos Previstos [{monthLabel()}]</span>
-            <strong>R$ {earnedMonth.toFixed(2)}</strong>
-            <span className={panel.muted} style={{ fontSize: "0.8rem" }}>
-              Baseado nas horas já trabalhadas e aprovadas. O pagamento é feito pela agência via Pix, no dia combinado.
-            </span>
+          <div className={panel.balanceCard} style={{ position: "relative" }}>
+            <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
+              <HelpHint
+                text={`Baseado nas horas já trabalhadas e aprovadas no período selecionado (${periodLabel}). O pagamento é feito pela agência via Pix, no dia combinado.`}
+              />
+            </div>
+            <span className={panel.muted}>Ganhos Previstos</span>
+            <strong>R$ {earnedInPeriod.toFixed(2)}</strong>
           </div>
 
           <h2 style={{ fontSize: "1.1rem" }}>Meus recebíveis</h2>
 
-          <div className={panel.filterBar}>
+          <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
             <CategoryBranchFilter
               categoryId={categoryId} onCategoryChange={setCategoryId}
@@ -89,7 +88,7 @@ function FreelancerPayments() {
                 ))}
               </select>
             </label>
-          </div>
+          </CollapsibleFilterBar>
 
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
