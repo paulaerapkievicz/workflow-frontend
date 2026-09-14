@@ -24,6 +24,7 @@ import { jobStartedUnfilled, orderHasStartedUnfilled } from "@/src/services/unfi
 import { newShift, validateShifts, shiftDisplayName, ShiftInput, LaborLimits } from "@/src/services/shifts";
 import ShiftsField from "@/src/components/ShiftsField";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import IconActionButton from "@/src/components/common/IconActionButton";
 import { authService } from "@/src/services/authService";
 import type { SupermarketMembership } from "@/src/services/authService";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -283,7 +284,7 @@ function OrdersPage() {
                       <td>{it.shifts.map((s, si) => shiftDisplayName(s, si)).join(", ")}</td>
                       <td>{it.shifts.map((s) => `${s.startTime}–${s.endTime}`).join(", ")}</td>
                       <td className={panel.muted}>{it.title ?? "padrão"}</td>
-                      <td><button className={panel.secondaryBtn} onClick={() => setCart((p) => p.filter((_, idx) => idx !== i))}>Remover</button></td>
+                      <td><IconActionButton action="delete" label="Remover" variant="secondary" onClick={() => setCart((p) => p.filter((_, idx) => idx !== i))} /></td>
                     </tr>
                   ))}
                   {cart.length === 0 && <tr><td colSpan={8} className={panel.muted}>Nenhuma vaga. Clique em “Adicionar função”.</td></tr>}
@@ -357,7 +358,7 @@ function OrdersPage() {
                           {o.approvalStatus === "approved" && ["open", "in_progress"].includes(o.status) && (
                             <>
                               <button className={panel.ghostBtn} onClick={() => openNewItem(o.id)}>+ Vagas</button>
-                              <button className={panel.secondaryBtn} onClick={() => doCancel(o.id)}>Cancelar</button>
+                              <IconActionButton action="cancel" label="Cancelar" variant="secondary" onClick={() => doCancel(o.id)} />
                             </>
                           )}
                         </td>

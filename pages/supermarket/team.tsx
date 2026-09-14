@@ -17,6 +17,7 @@ import { getBranchesBySupermarket, Branch } from "@/src/services/branchService";
 import { useAuth } from "@/src/hooks/useAuth";
 import type { SupermarketMembership } from "@/src/services/authService";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import IconActionButton from "@/src/components/common/IconActionButton";
 
 const emptyForm = {
   name: "", email: "", password: "", branchIds: [] as string[], teamRoleId: "",
@@ -191,8 +192,8 @@ function TeamPage() {
                           onChange={(e) => setPay(m, e.target.checked)} />
                       </td>
                       <td className={panel.actionsStack}>
-                        {!m.isOwner && <button className={panel.ghostBtn} onClick={() => openScope(m)}>Editar lojas</button>}
-                        {!m.isOwner && <button className={panel.secondaryBtn} onClick={() => remove(m)}>Remover</button>}
+                        {!m.isOwner && <IconActionButton action="edit" label="Editar lojas" onClick={() => openScope(m)} />}
+                        {!m.isOwner && <IconActionButton action="delete" label="Remover" variant="secondary" onClick={() => remove(m)} />}
                       </td>
                     </tr>
                   ))}

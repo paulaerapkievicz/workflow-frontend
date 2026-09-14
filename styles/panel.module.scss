@@ -150,6 +150,16 @@
   font-size: 0.78rem;
 }
 
+// Botão de ação só com ícone (Editar/Excluir/Adicionar/…) — usado em colunas de
+// tabela/grid no lugar do texto; a descrição vai no tooltip (title). Ver IconActionButton.
+.iconBtn {
+  padding: 0.4rem;
+  width: 2.05rem;
+  height: 2.05rem;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .linkBtn {
   background: none;
   border: none;

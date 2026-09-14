@@ -19,6 +19,7 @@ import {
 import { createInvite } from "@/src/services/inviteService";
 import BranchScopeField from "@/src/components/supermarket/BranchScopeField";
 import Switch from "@/src/components/common/Switch";
+import IconActionButton from "@/src/components/common/IconActionButton";
 import TeamRolesManager from "@/src/components/TeamRolesManager";
 import FormField from "@/src/components/FormField";
 import { validateForm } from "@/src/lib/validators";
@@ -31,7 +32,7 @@ import {
   SupermarketCategoryRate,
 } from "@/src/services/supermarketRateService";
 
-const emptyMarket = { id: "", name: "", cnpj: "", address: "", phone: "", email: "", password: "" };
+const emptyMarket = { id: "", name: "", cnpj: "", address: "", phone: "", email: "", password: "", appPaymentEnabled: true };
 const emptyBranch = { id: "", name: "", address: "", phone: "" };
 const emptyRate = { categoryId: "", branchId: "", hourlyRate: "" };
 const emptyMember = {
@@ -93,11 +94,12 @@ function SupermarketsPage() {
   }, []);
   useEffect(() => { load().catch(() => {}); }, [load]);
 
-  const toggleAppPayment = async (m: Supermarket) => {
-    setAppPaymentBusy(m.id);
+  const toggleAppPayment = async (id: string, current: boolean) => {
+    setAppPaymentBusy(id);
     try {
-      const { appPaymentEnabled } = await setSupermarketAppPayment(m.id, !m.appPaymentEnabled);
-      setMarkets((cur) => cur.map((x) => (x.id === m.id ? { ...x, appPaymentEnabled } : x)));
+      const { appPaymentEnabled } = await setSupermarketAppPayment(id, !current);
+      setMarkets((cur) => cur.map((x) => (x.id === id ? { ...x, appPaymentEnabled } : x)));
+      setMarketForm((f) => (f.id === id ? { ...f, appPaymentEnabled } : f));
     } catch { /* vazio */ }
     finally { setAppPaymentBusy(null); }
   };
@@ -127,7 +129,10 @@ function SupermarketsPage() {
     try { await navigator.clipboard.writeText(inviteLink); setInviteCopied(true); } catch { /* ignore */ }
   };
   const openEditMarket = (m: Supermarket) => {
-    setMarketForm({ id: m.id, name: m.name, cnpj: m.cnpj, address: m.address ?? "", phone: m.phone ?? "", email: "", password: "" });
+    setMarketForm({
+      id: m.id, name: m.name, cnpj: m.cnpj, address: m.address ?? "", phone: m.phone ?? "", email: "", password: "",
+      appPaymentEnabled: m.appPaymentEnabled,
+    });
     setMarketError(null);
     setMarketModal(true);
   };
@@ -378,7 +383,6 @@ function SupermarketsPage() {
               <table className={panel.table}>
                 <thead><tr>
                   <th>Nome</th><th>CNPJ</th><th>Acesso</th><th>Filiais</th>
-                  <th title="Pagamento pelo app (Mercado Pago) para este cliente">App</th>
                   <th>Ações</th>
                 </tr></thead>
                 <tbody>
@@ -395,30 +399,15 @@ function SupermarketsPage() {
                           </span>
                         )}
                       </td>
-                      <td style={{ textAlign: "center" }}>
-                        <Switch
-                          checked={m.appPaymentEnabled}
-                          disabled={!appPaymentMasterEnabled || appPaymentBusy === m.id}
-                          onChange={() => toggleAppPayment(m)}
-                          title={
-                            !appPaymentMasterEnabled
-                              ? "Habilite em Configurações primeiro"
-                              : m.appPaymentEnabled
-                                ? "Pagamento pelo app ligado para este cliente — clique para desligar"
-                                : "Pagamento pelo app desligado para este cliente — clique para ligar"
-                          }
-                          aria-label="Pagamento pelo app"
-                        />
-                      </td>
                       <td className={panel.actionsStack}>
                         <button className={panel.ghostBtn} onClick={() => setBranchesOf(m)}>Filiais</button>
                         <button className={panel.ghostBtn} onClick={() => openRates(m)}>Valores/hora</button>
                         <button className={panel.ghostBtn} onClick={() => openTeam(m)}>Equipe</button>
-                        <button className={panel.ghostBtn} onClick={() => openEditMarket(m)}>Editar</button>
+                        <IconActionButton action="edit" label="Editar" onClick={() => openEditMarket(m)} />
                       </td>
                     </tr>
                   ))}
-                  {markets.length === 0 && <tr><td colSpan={6} className={panel.muted}>Nenhum supermercado cadastrado.</td></tr>}
+                  {markets.length === 0 && <tr><td colSpan={5} className={panel.muted}>Nenhum supermercado cadastrado.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -474,6 +463,26 @@ function SupermarketsPage() {
                 <input type="password" minLength={4} value={marketForm.password} onChange={(e) => setMarketForm({ ...marketForm, password: e.target.value })} />
               </>
             )}
+            {marketForm.id && (
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: "0.75rem", marginTop: "0.25rem" }}>
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span>Pagamento pelo app</span>
+                  <Switch
+                    checked={marketForm.appPaymentEnabled}
+                    disabled={!appPaymentMasterEnabled || appPaymentBusy === marketForm.id}
+                    onChange={() => toggleAppPayment(marketForm.id, marketForm.appPaymentEnabled)}
+                    aria-label="Pagamento pelo app"
+                  />
+                </label>
+                <p className={panel.muted} style={{ marginTop: 4 }}>
+                  {!appPaymentMasterEnabled
+                    ? "Habilite em Configurações primeiro."
+                    : marketForm.appPaymentEnabled
+                      ? "Pagamento pelo app (Mercado Pago) ligado para este cliente — clique para desligar."
+                      : "Pagamento pelo app (Mercado Pago) desligado para este cliente — a agência dá baixa manual na fatura. Clique para ligar."}
+                </p>
+              </div>
+            )}
             {marketError && <p className={panel.error}>{marketError}</p>}
             <button
               className={panel.primaryBtn}
@@ -521,9 +530,10 @@ function SupermarketsPage() {
                 <input type="number" min="0.01" step="0.01" value={rateForm.hourlyRate}
                   onChange={(e) => setRateForm({ ...rateForm, hourlyRate: e.target.value })} required />
               </div>
-              <button className={panel.primaryBtn} type="submit" disabled={!rateForm.categoryId || !rateForm.hourlyRate}>
-                Adicionar
-              </button>
+              <IconActionButton
+                action="add" label="Adicionar" variant="primary" type="submit"
+                disabled={!rateForm.categoryId || !rateForm.hourlyRate}
+              />
               {rateMsg && <p className={rateMsg.type === "ok" ? panel.success : panel.error} style={{ width: "100%" }}>{rateMsg.text}</p>}
             </form>
 
@@ -542,8 +552,12 @@ function SupermarketsPage() {
                       </td>
                       <td><span className={panel.badge}>{r.active ? "Ativa" : "Inativa"}</span></td>
                       <td className={panel.actionsStack}>
-                        <button className={panel.ghostBtn} onClick={() => toggleRate(r)}>{r.active ? "Desativar" : "Ativar"}</button>
-                        <button className={panel.secondaryBtn} onClick={() => removeRate(r)}>Remover</button>
+                        <IconActionButton
+                          action={r.active ? "deactivate" : "activate"}
+                          label={r.active ? "Desativar" : "Ativar"}
+                          onClick={() => toggleRate(r)}
+                        />
+                        <IconActionButton action="delete" label="Remover" variant="secondary" onClick={() => removeRate(r)} />
                       </td>
                     </tr>
                   ))}
@@ -614,14 +628,14 @@ function SupermarketsPage() {
                           onChange={(v) => setMemberPay(mem, v)} />
                       </td>
                       <td className={panel.actionsStack}>
-                        {!mem.isOwner && <button className={panel.ghostBtn} onClick={() => openEditMember(mem)}>Editar</button>}
+                        {!mem.isOwner && <IconActionButton action="edit" label="Editar" onClick={() => openEditMember(mem)} />}
                         <ResetPasswordAction
                           label={mem.memberUser?.name ?? (mem.isOwner ? "o dono" : "este gerente")}
                           onReset={() =>
                             mem.isOwner ? resetSupermarketOwnerPassword(teamOf!.id) : resetMemberPassword(mem.id)
                           }
                         />
-                        {!mem.isOwner && <button className={panel.secondaryBtn} onClick={() => removeMember(mem)}>Remover</button>}
+                        {!mem.isOwner && <IconActionButton action="delete" label="Remover" variant="secondary" onClick={() => removeMember(mem)} />}
                       </td>
                     </tr>
                   ))}
@@ -725,8 +739,8 @@ function SupermarketsPage() {
                         {b.serviceStatus === "pending" && (
                           <button className={panel.primaryBtn} onClick={() => approveBranchAttendance(b.id)}>Aprovar atendimento</button>
                         )}
-                        <button className={panel.ghostBtn} onClick={() => openEditBranch(b)}>Editar</button>
-                        <button className={panel.secondaryBtn} onClick={() => removeBranch(b.id)}>Excluir</button>
+                        <IconActionButton action="edit" label="Editar" onClick={() => openEditBranch(b)} />
+                        <IconActionButton action="delete" label="Excluir" variant="secondary" onClick={() => removeBranch(b.id)} />
                       </td>
                     </tr>
                   ))}

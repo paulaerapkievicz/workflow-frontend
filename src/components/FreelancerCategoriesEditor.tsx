@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import panel from "@/styles/panel.module.scss";
 import type { Category } from "@/src/services/categoryService";
+import IconActionButton from "@/src/components/common/IconActionButton";
 
 interface Props {
   /** Funções ativas cadastradas pela agência (combo de seleção). */
@@ -73,9 +74,7 @@ export default function FreelancerCategoriesEditor({
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
             />
           </div>
-          <button type="button" className={panel.primaryBtn} disabled={!canAdd} onClick={add}>
-            Adicionar
-          </button>
+          <IconActionButton action="add" label="Adicionar" variant="primary" disabled={!canAdd} onClick={add} />
           {available.length === 0 && (
             <span className={panel.muted} style={{ fontSize: "0.8rem", flexBasis: "100%" }}>
               {categories.length === 0
@@ -102,9 +101,7 @@ export default function FreelancerCategoriesEditor({
                   onBlur={(e) => onCommitRate(cid, e.target.value)}
                 />
                 {!readOnly && (
-                  <button type="button" className={panel.secondaryBtn} onClick={() => onRemove(cid)}>
-                    Remover
-                  </button>
+                  <IconActionButton action="delete" label="Remover" variant="secondary" onClick={() => onRemove(cid)} />
                 )}
               </div>
             );

@@ -9,6 +9,7 @@ import {
   getManagedCategories, createCategory, updateCategory, deleteCategory, Category,
 } from "@/src/services/categoryService";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import IconActionButton from "@/src/components/common/IconActionButton";
 
 function CategoriesPage() {
   const [list, setList] = useState<Category[]>([]);
@@ -93,9 +94,7 @@ function CategoriesPage() {
                   placeholder="Ex.: Estoquista"
                 />
               </div>
-              <button className={panel.primaryBtn} onClick={add} disabled={busy || !newName.trim()}>
-                Adicionar
-              </button>
+              <IconActionButton action="add" label="Adicionar" variant="primary" disabled={busy || !newName.trim()} onClick={add} />
             </div>
             {msg && <p className={msg.type === "ok" ? panel.success : panel.error} style={{ marginTop: 8 }}>{msg.text}</p>}
           </div>
@@ -122,11 +121,13 @@ function CategoriesPage() {
                           {c.active ? "Ativa" : "Inativa"}
                         </span>
                       </td>
-                      <td>
-                        <button className={panel.ghostBtn} onClick={() => toggleActive(c)}>
-                          {c.active ? "Desativar" : "Ativar"}
-                        </button>
-                        <button className={panel.secondaryBtn} onClick={() => remove(c)}>Excluir</button>
+                      <td style={{ display: "flex", gap: 6 }}>
+                        <IconActionButton
+                          action={c.active ? "deactivate" : "activate"}
+                          label={c.active ? "Desativar" : "Ativar"}
+                          onClick={() => toggleActive(c)}
+                        />
+                        <IconActionButton action="delete" label="Excluir" variant="secondary" onClick={() => remove(c)} />
                       </td>
                     </tr>
                   ))}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import Modal from "@/src/components/common/Modal";
+import IconActionButton from "@/src/components/common/IconActionButton";
 import panel from "@/styles/panel.module.scss";
 import {
   TeamRole, createTeamRole, updateTeamRole, deleteTeamRole,
@@ -69,9 +70,7 @@ export default function TeamRolesManager({ roles, onClose, onChange, supermarket
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
           />
-          <button className={panel.primaryBtn} onClick={add} disabled={busy || !newName.trim()}>
-            Adicionar
-          </button>
+          <IconActionButton action="add" label="Adicionar" variant="primary" disabled={busy || !newName.trim()} onClick={add} />
         </div>
 
         {error && <p className={panel.error}>{error}</p>}
@@ -90,9 +89,7 @@ export default function TeamRolesManager({ roles, onClose, onChange, supermarket
                     />
                   </td>
                   <td>
-                    <button className={panel.secondaryBtn} disabled={busy} onClick={() => remove(r)}>
-                      Remover
-                    </button>
+                    <IconActionButton action="delete" label="Remover" variant="secondary" disabled={busy} onClick={() => remove(r)} />
                   </td>
                 </tr>
               ))}

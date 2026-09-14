@@ -24,6 +24,7 @@ import FormField from "@/src/components/FormField";
 import Switch from "@/src/components/common/Switch";
 import { validateForm } from "@/src/lib/validators";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import IconActionButton from "@/src/components/common/IconActionButton";
 import { getTeamRoles, TeamRole } from "@/src/services/teamRoleService";
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
 import { getBranches, Branch } from "@/src/services/branchService";
@@ -402,9 +403,12 @@ function TeamPage() {
                       <button className={panel.ghostBtn} onClick={() => openMemberPermissions(m)}>Permissões</button>
                       <button className={panel.ghostBtn} onClick={() => openPay(m)}>Pagamento</button>
                       <ResetPasswordAction label={m.name ?? "este líder"} onReset={() => resetAgencyMemberPassword(m.id)} />
-                      <button className={panel.secondaryBtn} onClick={() => toggleActive(m)}>
-                        {m.active ? "Desativar" : "Reativar"}
-                      </button>
+                      <IconActionButton
+                        action={m.active ? "deactivate" : "activate"}
+                        label={m.active ? "Desativar" : "Reativar"}
+                        variant="secondary"
+                        onClick={() => toggleActive(m)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -466,9 +470,12 @@ function TeamPage() {
                     <td className={panel.actionsStack}>
                       <button className={panel.ghostBtn} onClick={() => openPermissions(p)}>Permissões</button>
                       <ResetPasswordAction label={p.name ?? "este sócio"} onReset={() => resetAgencyPartnerPassword(p.id)} />
-                      <button className={panel.secondaryBtn} onClick={() => togglePartnerActive(p)}>
-                        {p.active ? "Desativar" : "Reativar"}
-                      </button>
+                      <IconActionButton
+                        action={p.active ? "deactivate" : "activate"}
+                        label={p.active ? "Desativar" : "Reativar"}
+                        variant="secondary"
+                        onClick={() => togglePartnerActive(p)}
+                      />
                     </td>
                   </tr>
                 ))}

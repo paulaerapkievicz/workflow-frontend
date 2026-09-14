@@ -20,6 +20,7 @@ import { listAlerts, JobAlert } from "@/src/services/alertService";
 import { getJobFreelancerProfile, JobFreelancerProfile } from "@/src/services/freelancerService";
 import { createSupermarketReview } from "@/src/services/reviewService";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import IconActionButton from "@/src/components/common/IconActionButton";
 import StarRating from "@/src/components/StarRating";
 import { useAuth } from "@/src/hooks/useAuth";
 import { authService } from "@/src/services/authService";
@@ -263,9 +264,12 @@ function JobsPage() {
           )}
           {j.status === "pending" && (
             <>
-              <button className={panel.ghostBtn} onClick={() => openEdit(j)}>Editar</button>
-              <button className={panel.secondaryBtn} onClick={() => act(() => cancelJob(j.id))}>Cancelar</button>
-              <button className={panel.secondaryBtn} onClick={() => confirm("Excluir esta vaga?") && act(() => deleteJob(j.id))}>Excluir</button>
+              <IconActionButton action="edit" label="Editar" onClick={() => openEdit(j)} />
+              <IconActionButton action="cancel" label="Cancelar" variant="secondary" onClick={() => act(() => cancelJob(j.id))} />
+              <IconActionButton
+                action="delete" label="Excluir" variant="secondary"
+                onClick={() => confirm("Excluir esta vaga?") && act(() => deleteJob(j.id))}
+              />
             </>
           )}
         </>

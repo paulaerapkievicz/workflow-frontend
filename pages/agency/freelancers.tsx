@@ -3,6 +3,7 @@ import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/agency/Sidebar";
 import Modal from "@/src/components/common/Modal";
+import IconActionButton from "@/src/components/common/IconActionButton";
 import RequireAuth from "@/src/components/RequireAuth";
 import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
@@ -250,7 +251,7 @@ function FreelancersPage() {
                     )}
                   </td>
                   <td>R$ {Number(f.availableBalance ?? 0).toFixed(2)}</td>
-                  <td><button className={panel.ghostBtn} onClick={() => openEdit(f)}>Editar</button></td>
+                  <td><IconActionButton action="edit" label="Editar" onClick={() => openEdit(f)} /></td>
                 </tr>
               ))}
               {list.length === 0 && <tr><td colSpan={6}>Nenhum colaborador cadastrado.</td></tr>}

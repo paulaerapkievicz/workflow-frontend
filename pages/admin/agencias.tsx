@@ -4,6 +4,7 @@ import axios from "axios";
 import Sidebar from "@/src/components/admin/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import Modal from "@/src/components/common/Modal";
+import IconActionButton from "@/src/components/common/IconActionButton";
 import panel from "@/styles/panel.module.scss";
 import { listAgencies, createAgency, updateAgency, AdminAgency } from "@/src/services/adminService";
 import FormField from "@/src/components/FormField";
@@ -166,11 +167,14 @@ function AdminAgenciesPage() {
                         {a.active ? "Ativa" : "Desativada"}
                       </span>
                     </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <button className={panel.ghostBtn} onClick={() => setEdit(a)}>Editar</button>{" "}
-                      <button className={panel.secondaryBtn} onClick={() => toggleActive(a)}>
-                        {a.active ? "Desativar" : "Reativar"}
-                      </button>
+                    <td style={{ whiteSpace: "nowrap", display: "flex", gap: 6 }}>
+                      <IconActionButton action="edit" label="Editar" onClick={() => setEdit(a)} />
+                      <IconActionButton
+                        action={a.active ? "deactivate" : "activate"}
+                        label={a.active ? "Desativar" : "Reativar"}
+                        variant="secondary"
+                        onClick={() => toggleActive(a)}
+                      />
                     </td>
                   </tr>
                 ))}

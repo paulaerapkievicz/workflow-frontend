@@ -16,6 +16,7 @@ import {
 } from "@/src/services/contractService";
 import { getAllFreelancers } from "@/src/services/freelancerService";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import IconActionButton from "@/src/components/common/IconActionButton";
 
 function errText(e: unknown) {
   return axios.isAxiosError(e) ? e.response?.data?.message ?? "Erro." : "Erro.";
@@ -147,19 +148,23 @@ function ContractsPage() {
                           </span>
                         </td>
                         <td>{fmt(t.updatedAt)}</td>
-                        <td style={{ whiteSpace: "nowrap" }}>
-                          <button className={panel.ghostBtn} onClick={() => openEditor(t)}>Editar</button>{" "}
-                          <button className={panel.ghostBtn} onClick={() => runPreview(t.id)}>Pré-visualizar</button>{" "}
+                        <td style={{ whiteSpace: "nowrap", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <IconActionButton action="edit" label="Editar" onClick={() => openEditor(t)} />
+                          <button className={panel.ghostBtn} onClick={() => runPreview(t.id)}>Pré-visualizar</button>
                           {!t.active && (
-                            <button className={panel.secondaryBtn}
-                              onClick={() => act(() => activateContractTemplate(t.id), "Modelo ativado.")}>
-                              Tornar ativo
-                            </button>
-                          )}{" "}
-                          <button className={panel.secondaryBtn}
-                            onClick={() => { if (confirm(`Excluir o modelo "${t.title}"?`)) act(() => deleteContractTemplate(t.id), "Modelo excluído."); }}>
-                            Excluir
-                          </button>
+                            <IconActionButton
+                              action="activate"
+                              label="Tornar ativo"
+                              variant="secondary"
+                              onClick={() => act(() => activateContractTemplate(t.id), "Modelo ativado.")}
+                            />
+                          )}
+                          <IconActionButton
+                            action="delete"
+                            label="Excluir"
+                            variant="secondary"
+                            onClick={() => { if (confirm(`Excluir o modelo "${t.title}"?`)) act(() => deleteContractTemplate(t.id), "Modelo excluído."); }}
+                          />
                         </td>
                       </tr>
                     ))}

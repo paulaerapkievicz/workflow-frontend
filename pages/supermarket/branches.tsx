@@ -3,6 +3,7 @@ import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/supermarket/Sidebar";
 import Modal from "@/src/components/common/Modal";
+import IconActionButton from "@/src/components/common/IconActionButton";
 import RequireAuth from "@/src/components/RequireAuth";
 import panel from "@/styles/panel.module.scss";
 import {
@@ -138,8 +139,8 @@ function BranchesPage() {
                         : <span className={`${panel.badge} ${panel.badgePending}`}>não localizada</span>}
                     </td>
                     <td className={panel.actionsStack}>
-                      <button className={panel.ghostBtn} onClick={() => openEdit(b)}>Editar</button>
-                      <button className={panel.secondaryBtn} onClick={() => remove(b.id)}>Excluir</button>
+                      <IconActionButton action="edit" label="Editar" onClick={() => openEdit(b)} />
+                      <IconActionButton action="delete" label="Excluir" variant="secondary" onClick={() => remove(b.id)} />
                     </td>
                   </tr>
                 ))}
