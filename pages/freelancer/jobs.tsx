@@ -18,6 +18,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
 import { fmtTime, fmtDate } from "@/src/lib/datetime";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange } from "@/src/lib/dateRange";
 
@@ -47,7 +48,7 @@ function MyJobs() {
   const breaksAllowed = (j: Job) => j.breaksEnabled ?? agency.breaksEnabled ?? false;
 
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [range, setRange] = useDateRangeFilter("freelancer-jobs-daterange", { preset: "semana" });
+  const [range, setRange] = useDateRangeFilter("freelancer-jobs-daterange", { preset: "hoje" });
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -217,7 +218,7 @@ function MyJobs() {
           </p>
           {banner && <p className={banner.type === "error" ? panel.error : panel.success}>{banner.text}</p>}
 
-          <div className={panel.filterBar}>
+          <CollapsibleFilterBar>
             <DateRangeQuickFilter
               value={range}
               onChange={setRange}
@@ -232,7 +233,7 @@ function MyJobs() {
                 ))}
               </select>
             </label>
-          </div>
+          </CollapsibleFilterBar>
 
           {loading ? (
             <p>Carregando…</p>

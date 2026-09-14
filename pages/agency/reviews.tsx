@@ -4,6 +4,7 @@ import Sidebar from "@/src/components/agency/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import RequirePermission from "@/src/components/RequirePermission";
 import panel from "@/styles/panel.module.scss";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import StarRating from "@/src/components/StarRating";
 import { getAgencyReviews, AgencyReviewRow } from "@/src/services/reviewService";
 import { getMyFreelancers, AgencyFreelancer } from "@/src/services/agencyService";
@@ -64,7 +65,7 @@ function ReviewsPage() {
             mesmo publicou.
           </p>
 
-          <div className={panel.filterBar}>
+          <CollapsibleFilterBar>
             <label>
               Colaborador{" "}
               <select value={freelancerId} onChange={(e) => setFreelancerId(e.target.value)}>
@@ -79,7 +80,7 @@ function ReviewsPage() {
               Agrupar por vaga
             </label>
             <span className={panel.muted}>{rows.length} avaliação(ões) · média {avg}</span>
-          </div>
+          </CollapsibleFilterBar>
 
           {loading ? (
             <p>Carregando…</p>

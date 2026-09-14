@@ -11,6 +11,7 @@ import { distanceInMeters, formatDistance } from "@/src/lib/distance";
 import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
 import { fmtDate } from "@/src/lib/datetime";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange } from "@/src/lib/dateRange";
 
@@ -117,7 +118,7 @@ function AvailableJobs() {
           </p>
           {error && <p className={panel.error}>{error}</p>}
 
-          <div className={panel.filterBar}>
+          <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} />
             <label className={panel.filterField}>
               <span>Supermercado</span>
@@ -170,7 +171,7 @@ function AvailableJobs() {
                 Limpar
               </button>
             )}
-          </div>
+          </CollapsibleFilterBar>
 
           {loading ? (
             <p>Carregando…</p>

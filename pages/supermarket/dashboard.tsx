@@ -10,6 +10,7 @@ import { getBillingSummary, BillingSummary } from "@/src/services/billingService
 import { listAlerts, JobAlert } from "@/src/services/alertService";
 import KpiDonutCard from "@/src/components/dashboard/KpiDonutCard";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange } from "@/src/lib/dateRange";
 
@@ -52,9 +53,9 @@ function Dashboard() {
             <h1>Painel do Supermercado</h1>
           </header>
 
-          <div className={panel.filterBar}>
+          <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} label="Vagas em" />
-          </div>
+          </CollapsibleFilterBar>
 
           <div className={styles.kpiRow}>
             <div className={`${panel.card} ${panel.balanceCard}`}>

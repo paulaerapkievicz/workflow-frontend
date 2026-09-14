@@ -378,6 +378,57 @@ body[data-theme='dark'] {
   }
 }
 
+// Botão "Filtros" que, no mobile, esconde o filterBar atrás de um toggle
+// (some no desktop/tablet — lá os filtros continuam sempre visíveis).
+.filterToggle {
+  display: none;
+}
+
+.filterToggleLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filterChevron {
+  display: inline-flex;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.filterChevronOpen { transform: rotate(180deg); }
+
+@media (max-width: 860px) {
+  .filterToggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.65rem 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+
+    &:active { background: var(--surface-2); }
+  }
+
+  // Especificidade (duas classes) garante a prioridade sobre a regra base do .filterBar,
+  // independente da ordem de importação dos módulos CSS.
+  .filterBar.filterCollapsible {
+    display: none;
+    margin-top: 0.5rem;
+  }
+
+  .filterBar.filterCollapsible.filterOpen {
+    display: flex;
+  }
+}
+
 .tableWrap { display: flex; flex-direction: column; gap: 0.5rem; }
 
 .tableToolbar {

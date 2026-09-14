@@ -6,6 +6,7 @@ import Modal from "@/src/components/common/Modal";
 import RequireAuth from "@/src/components/RequireAuth";
 import StatusBadge from "@/src/components/StatusBadge";
 import panel from "@/styles/panel.module.scss";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import {
   getBillingSummary, payClosing, syncClosingPayment, downloadClosingPdf, BillingSummary, BillingJob,
   BillingInvoice, InvoiceAdjustment,
@@ -240,7 +241,7 @@ function BillingPage() {
                   Você pode consultar as faturas, mas não pagá-las nem contestá-las.
                 </p>
               )}
-              <div className={panel.filterBar}>
+              <CollapsibleFilterBar>
                 <label className={panel.filterField}>
                   <span>Escopo</span>
                   <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
@@ -270,7 +271,7 @@ function BillingPage() {
                   </select>
                 </label>
                 {anyFilter && <button className={panel.ghostBtn} onClick={clearFilters}>Limpar</button>}
-              </div>
+              </CollapsibleFilterBar>
 
               <div className={panel.cards}>
                 <div className={panel.card}><h2>{kpi.jobs}</h2><p>Vagas concluídas</p></div>

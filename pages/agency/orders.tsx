@@ -12,6 +12,7 @@ import {
   orderInDateRange, orderJobDateSpan,
 } from "@/src/services/orderService";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import {
@@ -165,9 +166,9 @@ function AgencyOrdersPage() {
             Acompanhe a demanda, o preenchimento pela sua rede e libere/repasse vagas quando necessário.
           </p>
 
-          <div className={panel.filterBar}>
+          <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} label="Vagas em" />
-          </div>
+          </CollapsibleFilterBar>
           <label className={panel.toggleRow}>
             <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
             Mostrar apenas pedidos abertos / em andamento

@@ -386,13 +386,19 @@ function AgencyPayments() {
           )}
 
           <h2 style={{ fontSize: "1.1rem" }}>Pagamento aos colaboradores</h2>
-          <DateRangeQuickFilter
-            value={payrollRange}
-            onChange={setPayrollRange}
-            presets={["todas", "hoje", "semana", "mes", "custom"]}
-            label="Dias a pagar"
+          <FilterBar
+            fields={filterFields}
+            value={filter}
+            onChange={setFilter}
+            extra={(
+              <DateRangeQuickFilter
+                value={payrollRange}
+                onChange={setPayrollRange}
+                presets={["todas", "hoje", "semana", "mes", "custom"]}
+                label="Dias a pagar"
+              />
+            )}
           />
-          <FilterBar fields={filterFields} value={filter} onChange={setFilter} />
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", margin: "0.5rem 0" }}>
             <button className={panel.ghostBtn} onClick={exportDetailedCsv} disabled={rows.length === 0}>
               Exportar detalhado (CSV)

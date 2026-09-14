@@ -17,6 +17,7 @@ import { listAlerts, JobAlert } from "@/src/services/alertService";
 import { usePendingCounts } from "@/src/hooks/usePendingCounts";
 import { useAuth } from "@/src/hooks/useAuth";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange } from "@/src/lib/dateRange";
 import KpiDonutCard from "@/src/components/dashboard/KpiDonutCard";
@@ -205,7 +206,7 @@ function AgencyDashboard() {
         <section className={panel.content}>
           <header className={panel.header}><h1>Central de Comando</h1></header>
 
-          <div className={panel.filterBar}>
+          <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} label="Vagas em" />
             <label className={panel.filterField}>
               Cliente / Loja
@@ -223,7 +224,7 @@ function AgencyDashboard() {
                 ))}
               </select>
             </label>
-          </div>
+          </CollapsibleFilterBar>
 
           {loading ? (
             <p>Carregando…</p>

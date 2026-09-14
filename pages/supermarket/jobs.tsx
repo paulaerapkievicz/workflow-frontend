@@ -263,10 +263,12 @@ function JobsPage() {
             As vagas nascem dos seus pedidos. Enquanto não forem aceitas, podem ser editadas ou removidas —
             vagas já aceitas por colaboradores ficam bloqueadas.
           </p>
-          <div className={panel.filterBar} style={{ marginBottom: "0.6rem" }}>
-            <DateRangeQuickFilter value={range} onChange={setRange} />
-          </div>
-          <FilterBar fields={filterFields} value={filter} onChange={setFilter} />
+          <FilterBar
+            fields={filterFields}
+            value={filter}
+            onChange={setFilter}
+            extra={<DateRangeQuickFilter value={range} onChange={setRange} />}
+          />
           {loading ? (
             <p>Carregando…</p>
           ) : (

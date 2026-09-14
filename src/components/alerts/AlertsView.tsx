@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import panel from "@/styles/panel.module.scss";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import FreelancerChip from "@/src/components/FreelancerChip";
 import {
   JobAlert,
@@ -137,7 +138,7 @@ export default function AlertsView({ role, jobHref }: Props) {
         {updatedAt ? ` · atualizado às ${updatedAt.toLocaleTimeString("pt-BR")} (recarrega a cada 60s)` : ""}
       </p>
 
-      <div className={panel.filterBar}>
+      <CollapsibleFilterBar>
         <label className={panel.filterField}>
           <span>Situação</span>
           <select value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
@@ -160,7 +161,7 @@ export default function AlertsView({ role, jobHref }: Props) {
         <button type="button" className={panel.ghostBtn} onClick={load}>
           Atualizar
         </button>
-      </div>
+      </CollapsibleFilterBar>
 
       {error && <p style={{ color: "var(--danger, #b42318)" }}>{error}</p>}
 

@@ -15,6 +15,7 @@ import {
   orderInDateRange, orderJobDateSpan,
 } from "@/src/services/orderService";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
 import { formatShifts, formatShiftPeriods } from "@/src/services/jobService";
@@ -296,9 +297,9 @@ function OrdersPage() {
           </div>
 
           <h2 style={{ fontSize: "1.1rem", marginTop: "1.5rem" }}>Meus pedidos</h2>
-          <div className={panel.filterBar} style={{ margin: "0.5rem 0" }}>
+          <CollapsibleFilterBar style={{ margin: "0.5rem 0" }}>
             <DateRangeQuickFilter value={range} onChange={setRange} label="Vagas em" />
-          </div>
+          </CollapsibleFilterBar>
           {loading ? (
             <p>Carregando…</p>
           ) : (

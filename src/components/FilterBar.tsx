@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import panel from "@/styles/panel.module.scss";
 import { RowFilter } from "@/src/lib/filterRows";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 
 export interface FilterFieldDef {
   key: keyof RowFilter;
@@ -12,14 +14,17 @@ interface Props {
   fields: FilterFieldDef[];
   value: RowFilter;
   onChange: (next: RowFilter) => void;
+  /** Conteúdo extra (ex.: `DateRangeQuickFilter`) exibido antes dos campos, dentro do mesmo "Filtros" colapsável. */
+  extra?: ReactNode;
 }
 
-export default function FilterBar({ fields, value, onChange }: Props) {
+export default function FilterBar({ fields, value, onChange, extra }: Props) {
   const set = (k: keyof RowFilter, v: string) => onChange({ ...value, [k]: v || undefined });
   const hasAny = Object.values(value).some(Boolean);
 
   return (
-    <div className={panel.filterBar}>
+    <CollapsibleFilterBar>
+      {extra}
       {fields.map((f) => (
         <label key={f.key} className={panel.filterField}>
           <span>{f.label}</span>
@@ -45,6 +50,6 @@ export default function FilterBar({ fields, value, onChange }: Props) {
           Limpar
         </button>
       )}
-    </div>
+    </CollapsibleFilterBar>
   );
 }
