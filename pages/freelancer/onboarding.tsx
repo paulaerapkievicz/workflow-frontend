@@ -13,6 +13,7 @@ import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
 import { useAuth } from "@/src/hooks/useAuth";
 import Link from "next/link";
 import FormField, { type FieldKind } from "@/src/components/FormField";
+import FileField from "@/src/components/FileField";
 import { validateForm } from "@/src/lib/validators";
 
 type Field = {
@@ -421,8 +422,8 @@ function OnboardingPage() {
                     style={{ width: 120, height: 120, objectFit: "cover", borderRadius: "50%", marginTop: "0.5rem" }}
                   />
                 )}
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.5rem" }}>
-                  <input type="file" accept="image/*" onChange={(e) => setProfilePhoto(e.target.files?.[0] ?? null)} />
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end", marginTop: "0.5rem" }}>
+                  <FileField label="Foto" accept="image/*" file={profilePhoto} onChange={setProfilePhoto} />
                   <button className={panel.primaryBtn} disabled={busy || !profilePhoto} onClick={sendProfilePhoto}>
                     {busy ? "Enviando…" : profilePhotoUrl ? "Trocar foto" : "Enviar foto"}
                   </button>

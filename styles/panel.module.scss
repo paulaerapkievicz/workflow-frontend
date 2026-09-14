@@ -597,3 +597,80 @@ body[data-theme='dark'] {
     input, select, textarea { font-size: 16px; } // evita zoom automático do iOS ao focar
   }
 }
+
+// ----- HelpHint: ícone "?" ao lado de um botão bloqueado, explica o motivo -----
+.helpHintWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.helpHintBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--danger);
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+  padding: 0;
+  line-height: 0;
+
+  &:hover { background: var(--danger-soft); }
+}
+
+.helpHintPanel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  max-width: 300px;
+  background: var(--surface);
+  border: 1.5px solid var(--danger);
+  border-radius: var(--radius, 10px);
+  box-shadow: var(--shadow-md, 0 6px 18px rgba(0, 0, 0, 0.12));
+  padding: 0.65rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.helpHintPanelHeader {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.helpHintCloseBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+
+  &:hover { color: var(--text); }
+}
+
+// ----- FileField: input de arquivo estilizado -----
+.fileField {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.fileFieldInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}

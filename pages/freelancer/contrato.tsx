@@ -5,6 +5,7 @@ import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import ContractDocument from "@/src/components/contract/ContractDocument";
 import FormField from "@/src/components/FormField";
+import HelpHint from "@/src/components/HelpHint";
 import { isValidCpf } from "@/src/lib/validators";
 import { maskCpf } from "@/src/lib/masks";
 import panel from "@/styles/panel.module.scss";
@@ -99,27 +100,39 @@ function ContractPage() {
 
               <ContractDocument html={data.renderedHtml} />
 
-              {data.canSign && (
+              {!data.signedCurrent && (
                 <div className={panel.card} style={{ marginTop: "1rem", maxWidth: 520 }}>
                   <strong>Assinar eletronicamente</strong>
                   <div className={panel.form} style={{ marginTop: "0.6rem" }}>
                     <label className={panel.filterField}>
                       <span>Nome completo</span>
-                      <input value={signerName} onChange={(e) => setSignerName(e.target.value)} />
+                      <input
+                        value={signerName}
+                        onChange={(e) => setSignerName(e.target.value)}
+                        disabled={!data.canSign}
+                      />
                     </label>
                     <FormField label="CPF" kind="cpf" required placeholder="000.000.000-00"
-                      value={signerCpf} onChange={setSignerCpf} />
+                      value={signerCpf} onChange={setSignerCpf} disabled={!data.canSign} />
                     <label className={panel.toggleRow}>
-                      <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+                      <input
+                        type="checkbox"
+                        checked={accepted}
+                        onChange={(e) => setAccepted(e.target.checked)}
+                        disabled={!data.canSign}
+                      />
                       {data.acceptanceText}
                     </label>
                     <span className={panel.muted}>
                       Sua assinatura registra data e hora, o seu IP e o dispositivo, além de um código
                       de integridade do documento — com validade legal (MP 2.200-2/2001).
                     </span>
-                    <button className={panel.primaryBtn} onClick={sign} disabled={busy || !accepted}>
-                      {busy ? "Assinando…" : "Assinar contrato"}
-                    </button>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <button className={panel.primaryBtn} onClick={sign} disabled={busy || !accepted || !data.canSign}>
+                        {busy ? "Assinando…" : "Assinar contrato"}
+                      </button>
+                      {!data.canSign && data.blockedReason && <HelpHint text={data.blockedReason} />}
+                    </span>
                   </div>
                 </div>
               )}

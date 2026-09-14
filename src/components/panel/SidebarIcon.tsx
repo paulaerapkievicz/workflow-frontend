@@ -24,6 +24,7 @@ export type SidebarIconName =
   | "receipt"
   | "chart"
   | "compass"
+  | "help"
   | "more";
 
 const PATHS: Record<SidebarIconName, React.ReactNode> = {
@@ -190,6 +191,13 @@ const PATHS: Record<SidebarIconName, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="9.5" />
       <path d="m15.5 8.5-2 5.5-5.5 2 2-5.5Z" />
+    </>
+  ),
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M9.2 9.3a2.8 2.8 0 1 1 4 2.5c-.8.4-1.2 1-1.2 1.9v.3" />
+      <path d="M12 17h.01" />
     </>
   ),
   more: (

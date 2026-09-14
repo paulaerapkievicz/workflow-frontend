@@ -1,4 +1,5 @@
 import api from "@/src/services/api";
+import type { JobShift } from "@/src/services/jobService";
 
 /** Uma vaga concluída — linha "crua" do faturamento (o front monta os cruzamentos). */
 export interface BillingJob {
@@ -117,18 +118,26 @@ export interface ClosingPreview {
   };
 }
 
+export type FreelancerPaymentStatus = "received" | "awaiting" | "overdue";
+
+export interface FreelancerReportItem {
+  jobId: string;
+  title: string;
+  date: string | null;
+  categoryId: string;
+  categoryName: string | null;
+  branchId: string;
+  branchName: string | null;
+  supermarketName: string | null;
+  contractedHours: number;
+  workedHours: number;
+  amount: number;
+  paymentStatus: FreelancerPaymentStatus | null;
+  shifts: JobShift[];
+}
+
 export interface FreelancerReport {
-  items: {
-    jobId: string;
-    title: string;
-    date: string | null;
-    categoryName: string | null;
-    branchName: string | null;
-    supermarketName: string | null;
-    contractedHours: number;
-    workedHours: number;
-    amount: number;
-  }[];
+  items: FreelancerReportItem[];
   totals: {
     jobsCount: number;
     contractedHours: number;
@@ -138,11 +147,64 @@ export interface FreelancerReport {
   };
 }
 
+export type FreelancerOutcome = "accepted" | "active" | "completed" | "abandoned" | "withdrawnEarly";
+
+export interface FreelancerOutcomeItem {
+  jobId: string;
+  title: string;
+  date: string;
+  categoryId: string;
+  categoryName: string | null;
+  branchId: string;
+  branchName: string | null;
+  supermarketName: string | null;
+  outcome: FreelancerOutcome;
+}
+
+export interface FreelancerOutcomes {
+  counts: { accepted: number; active: number; completed: number; abandoned: number; withdrawnEarly: number };
+  items: FreelancerOutcomeItem[];
+}
+
+export const FREELANCER_OUTCOME_LABELS: Record<FreelancerOutcome, string> = {
+  accepted: "Aceito",
+  active: "Ativo",
+  completed: "Concluído",
+  abandoned: "Abandono",
+  withdrawnEarly: "Desistência",
+};
+
+export const PAYMENT_STATUS_FILTER_LABELS: Record<FreelancerPaymentStatus, string> = {
+  received: "Recebido",
+  awaiting: "A receber",
+  overdue: "Atrasado",
+};
+
 export const getBillingSummary = async (): Promise<BillingSummary> =>
   (await api.get("/billing/summary")).data;
 
 export const getFreelancerReport = async (): Promise<FreelancerReport> =>
   (await api.get("/reports/freelancer")).data;
+
+export const getFreelancerOutcomes = async (): Promise<FreelancerOutcomes> =>
+  (await api.get("/freelancer/outcomes")).data;
+
+/** Baixa o PDF do relatório de trabalhos do colaborador, respeitando os filtros aplicados na tela. */
+export const downloadFreelancerReportPdf = async (filters?: {
+  from?: string; to?: string; categoryId?: string; branchId?: string;
+}): Promise<void> => {
+  const response = await api.get("/reports/freelancer/pdf", {
+    params: filters, responseType: "blob",
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "relatorio-trabalhos.pdf";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
 
 export const getClosings = async (): Promise<MonthlyClosing[]> =>
   (await api.get("/closings")).data;

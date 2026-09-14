@@ -1,29 +1,51 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
 import panel from "@/styles/panel.module.scss";
 import styles from "@/styles/dashboard.module.scss";
-import { getJobs, getAvailableJobs, Job, formatShifts } from "@/src/services/jobService";
-import { getMyPayments, Payment } from "@/src/services/paymentService";
+import { getJobs, getAvailableJobs, Job, formatShifts, minutesToHours } from "@/src/services/jobService";
+import {
+  getFreelancerReport, getFreelancerOutcomes, FreelancerReport, FreelancerOutcomes,
+  FreelancerOutcome, FreelancerPaymentStatus, FREELANCER_OUTCOME_LABELS, PAYMENT_STATUS_FILTER_LABELS,
+} from "@/src/services/billingService";
 import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
 import FreelancerReputation from "@/src/components/FreelancerReputation";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
+import { inDateRange } from "@/src/lib/dateRange";
 import { fmtDate, fmtTime, isoDateBR } from "@/src/lib/datetime";
+
+const OUTCOME_TILES: FreelancerOutcome[] = ["accepted", "active", "completed", "withdrawnEarly", "abandoned"];
+
+const monthLabel = () => {
+  const name = new Date().toLocaleDateString("pt-BR", { month: "long" });
+  return name.charAt(0).toUpperCase() + name.slice(1);
+};
 
 function Dashboard() {
   const { profile } = useAuth();
   const freelancerId = (profile as { id?: string } | null)?.id ?? "";
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [report, setReport] = useState<FreelancerReport | null>(null);
+  const [outcomes, setOutcomes] = useState<FreelancerOutcomes | null>(null);
   const [reputation, setReputation] = useState<Reputation | null>(null);
   const [availableCount, setAvailableCount] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
+  const [range, setRange] = useDateRangeFilter("freelancer-dashboard-daterange", { preset: "mes" });
+  const [categoryId, setCategoryId] = useState("");
+  const [branchId, setBranchId] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<FreelancerPaymentStatus | "">("");
+  const [outcomeFilter, setOutcomeFilter] = useState<FreelancerOutcome | "">("");
+
   useEffect(() => {
     getJobs().then(setJobs).catch(() => {});
-    getMyPayments().then(setPayments).catch(() => {});
+    getFreelancerReport().then(setReport).catch(() => {});
+    getFreelancerOutcomes().then(setOutcomes).catch(() => {});
     getAvailableJobs().then((list) => setAvailableCount(list.length)).catch(() => {});
   }, []);
 
@@ -36,8 +58,6 @@ function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  const balance = Number((profile as { availableBalance?: number } | null)?.availableBalance ?? 0);
-  const active = jobs.filter((j) => ["accepted", "in_progress"].includes(j.status)).length;
   const currentJob = jobs.find((j) => j.status === "in_progress") ?? null;
 
   const todayStr = isoDateBR(new Date());
@@ -54,9 +74,57 @@ function Dashboard() {
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ?? null;
 
   const monthKey = new Date().toISOString().slice(0, 7);
-  const earnedMonth = payments
-    .filter((p) => p.status === "settled" && (p.createdAt ?? "").slice(0, 7) === monthKey)
-    .reduce((s, p) => s + Number(p.freelancerAmount ?? 0), 0);
+  const earnedMonth = (report?.items ?? [])
+    .filter((i) => (i.date ?? "").slice(0, 7) === monthKey)
+    .reduce((s, i) => s + Number(i.amount ?? 0), 0);
+
+  const branches: BranchOption[] = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const i of report?.items ?? []) if (i.branchId && i.branchName) map.set(i.branchId, i.branchName);
+    for (const i of outcomes?.items ?? []) if (i.branchId && i.branchName) map.set(i.branchId, i.branchName);
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [report, outcomes]);
+
+  const paymentStatusByJob = useMemo(() => {
+    const map = new Map<string, FreelancerPaymentStatus | null>();
+    for (const i of report?.items ?? []) map.set(i.jobId, i.paymentStatus);
+    return map;
+  }, [report]);
+
+  const filteredOutcomeItems = useMemo(
+    () =>
+      (outcomes?.items ?? [])
+        .filter((i) => inDateRange(i.date, range))
+        .filter((i) => !categoryId || i.categoryId === categoryId)
+        .filter((i) => !branchId || i.branchId === branchId),
+    [outcomes, range, categoryId, branchId]
+  );
+
+  const counts = useMemo(() => {
+    const c: Record<FreelancerOutcome, number> = {
+      accepted: 0, active: 0, completed: 0, abandoned: 0, withdrawnEarly: 0,
+    };
+    for (const i of filteredOutcomeItems) c[i.outcome]++;
+    return c;
+  }, [filteredOutcomeItems]);
+
+  const workedHours = useMemo(
+    () =>
+      (report?.items ?? [])
+        .filter((i) => inDateRange(i.date, range))
+        .filter((i) => !categoryId || i.categoryId === categoryId)
+        .filter((i) => !branchId || i.branchId === branchId)
+        .reduce((s, i) => s + i.workedHours, 0),
+    [report, range, categoryId, branchId]
+  );
+
+  const rows = useMemo(
+    () =>
+      filteredOutcomeItems
+        .filter((i) => !outcomeFilter || i.outcome === outcomeFilter)
+        .filter((i) => !paymentStatus || paymentStatusByJob.get(i.jobId) === paymentStatus),
+    [filteredOutcomeItems, outcomeFilter, paymentStatus, paymentStatusByJob]
+  );
 
   const openShift = currentJob
     ? [...(currentJob.shifts ?? [])].sort((a, b) => a.position - b.position).find((s) => s.status === "in_progress")
@@ -72,12 +140,6 @@ function Dashboard() {
         <Sidebar />
         <section className={panel.content}>
           <header className={panel.header}><h1>Painel do Colaborador</h1></header>
-
-          <div className={panel.cards}>
-            <div className={panel.card}><h2>R$ {balance.toFixed(2)}</h2><p>Saldo disponível</p></div>
-            <div className={panel.card}><h2>{active}</h2><p>Trabalhos ativos</p></div>
-            <div className={panel.card}><h2>R$ {earnedMonth.toFixed(2)}</h2><p>Ganhos este mês</p></div>
-          </div>
 
           <div className={styles.miniGrid}>
             {currentJob ? (
@@ -124,6 +186,72 @@ function Dashboard() {
                 <FreelancerReputation reputation={reputation} compact />
               </div>
             )}
+          </div>
+
+          <div className={panel.cards}>
+            <div className={panel.card}><h2>{minutesToHours(Math.round(workedHours * 60))}</h2><p>Horas trabalhadas</p></div>
+            <div className={panel.card}>
+              <h2>R$ {earnedMonth.toFixed(2)}</h2>
+              <p>Ganhos Previstos [{monthLabel()}]</p>
+              <span className={panel.muted} style={{ fontSize: "0.75rem" }}>
+                Baseado nas horas já trabalhadas e aprovadas.
+              </span>
+            </div>
+          </div>
+
+          <div className={panel.filterBar}>
+            <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
+            <CategoryBranchFilter
+              categoryId={categoryId} onCategoryChange={setCategoryId}
+              branchId={branchId} onBranchChange={setBranchId}
+              branches={branches}
+            />
+            <label className={panel.filterField}>
+              <span>Situação do pagamento</span>
+              <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as FreelancerPaymentStatus | "")}>
+                <option value="">Todas</option>
+                {Object.entries(PAYMENT_STATUS_FILTER_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className={panel.cards}>
+            {OUTCOME_TILES.map((o) => (
+              <button
+                key={o}
+                type="button"
+                className={panel.card}
+                style={{
+                  cursor: "pointer",
+                  textAlign: "left",
+                  border: outcomeFilter === o ? "2px solid var(--primary)" : undefined,
+                }}
+                onClick={() => setOutcomeFilter((v) => (v === o ? "" : o))}
+              >
+                <h2>{counts[o]}</h2>
+                <p>{FREELANCER_OUTCOME_LABELS[o]}</p>
+              </button>
+            ))}
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table className={panel.table}>
+              <thead><tr><th>Data</th><th>Vaga</th><th>Função</th><th>Loja</th><th>Desfecho</th></tr></thead>
+              <tbody>
+                {rows.map((i) => (
+                  <tr key={`${i.jobId}-${i.outcome}`}>
+                    <td>{fmtDate(i.date)}</td>
+                    <td>{i.title}</td>
+                    <td>{i.categoryName ?? "—"}</td>
+                    <td>{i.supermarketName ?? "—"}{i.branchName ? ` · ${i.branchName}` : ""}</td>
+                    <td>{FREELANCER_OUTCOME_LABELS[i.outcome]}</td>
+                  </tr>
+                ))}
+                {rows.length === 0 && <tr><td colSpan={5}>Nada neste filtro.</td></tr>}
+              </tbody>
+            </table>
           </div>
         </section>
       </main>
