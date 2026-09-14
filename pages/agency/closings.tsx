@@ -13,6 +13,7 @@ import {
   getClosings, previewClosing, createClosing, downloadClosingPdf, markClosingPaid, MonthlyClosing, ClosingPreview,
   InvoiceAdjustment, getInvoiceAdjustments, approveInvoiceAdjustment, rejectInvoiceAdjustment,
   revertInvoiceAdjustment, ADJUSTMENT_STATUS_LABELS, closingNetAmount,
+  approvePaymentProof, rejectPaymentProof, resolveUploadUrl,
   CLOSING_STATUS_LABELS, monthName, money,
 } from "@/src/services/billingService";
 import HelpIcon from "@/src/components/common/HelpIcon";
@@ -133,6 +134,23 @@ function ClosingsPage() {
     finally { setMarkPaidBusyId(null); }
   };
 
+  const [proofBusyId, setProofBusyId] = useState<string | null>(null);
+  const approveProof = async (c: MonthlyClosing) => {
+    if (!confirm(`Confirmar o comprovante de ${c.invoiceSupermarket?.name ?? "—"} (${monthName(c.referenceMonth)}) e dar baixa na fatura?`)) return;
+    setProofBusyId(c.id);
+    try { await approvePaymentProof(c.id); await load(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+    finally { setProofBusyId(null); }
+  };
+  const rejectProof = async (c: MonthlyClosing) => {
+    const note = window.prompt("Motivo da recusa do comprovante:");
+    if (!note || !note.trim()) return;
+    setProofBusyId(c.id);
+    try { await rejectPaymentProof(c.id, note.trim()); await load(); }
+    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+    finally { setProofBusyId(null); }
+  };
+
   return (
     <>
       <Head><title>Fechamentos | Agência</title></Head>
@@ -239,6 +257,19 @@ function ClosingsPage() {
                         >
                           {markPaidBusyId === c.id ? "…" : "Marcar como paga"}
                         </button>
+                      )}
+                      {c.status === "pending" && c.paymentProofStatus === "pending" && c.paymentProofUrl && (
+                        <>
+                          <a className={panel.ghostBtn} href={resolveUploadUrl(c.paymentProofUrl)} target="_blank" rel="noopener noreferrer">
+                            Ver comprovante
+                          </a>
+                          <button className={panel.primaryBtn} disabled={proofBusyId === c.id} onClick={() => approveProof(c)}>
+                            {proofBusyId === c.id ? "…" : "Conferido"}
+                          </button>
+                          <button className={panel.secondaryBtn} disabled={proofBusyId === c.id} onClick={() => rejectProof(c)}>
+                            Recusar
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>

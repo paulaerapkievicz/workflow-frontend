@@ -16,6 +16,7 @@ import { getBranches, Branch } from "@/src/services/branchService";
 import { getCategories, Category } from "@/src/services/categoryService";
 import { getSupermarketRates, SupermarketCategoryRate } from "@/src/services/supermarketRateService";
 import { getJobPhotos, photoUrl, JobPhoto } from "@/src/services/jobPhotoService";
+import { listAlerts, JobAlert } from "@/src/services/alertService";
 import { getJobFreelancerProfile, JobFreelancerProfile } from "@/src/services/freelancerService";
 import { createSupermarketReview } from "@/src/services/reviewService";
 import HelpIcon from "@/src/components/common/HelpIcon";
@@ -50,6 +51,7 @@ function JobsPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [rates, setRates] = useState<SupermarketCategoryRate[]>([]);
+  const [alerts, setAlerts] = useState<JobAlert[]>([]);
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [photoJob, setPhotoJob] = useState<Job | null>(null);
   const [profileJob, setProfileJob] = useState<Job | null>(null);
@@ -76,13 +78,15 @@ function JobsPage() {
     setLoading(true);
     try {
       const supermarketId = authService.getProfileId() ?? "";
-      const [j, b, c, r] = await Promise.all([
+      const [j, b, c, r, a] = await Promise.all([
         getJobs(), getBranches(), getCategories(), getSupermarketRates(supermarketId),
+        listAlerts({ status: "open" }).catch(() => []),
       ]);
       setJobs(j);
       setBranches(b);
       setCategories(c);
       setRates(r);
+      setAlerts(a);
     } finally {
       setLoading(false);
     }
@@ -223,6 +227,22 @@ function JobsPage() {
       render: (j) => <FreelancerChip freelancer={j.assignedFreelancer} onClick={() => openProfile(j)} />,
     },
     { key: "status", label: "Status", render: (j) => <StatusBadge status={j.status} /> },
+    {
+      key: "alert",
+      label: "Aviso",
+      render: (j) => {
+        const jobAlert = alerts.find((a) => a.jobId === j.id);
+        if (!jobAlert) return null;
+        return (
+          <span
+            className={`${panel.badge} ${panel.badgeWaiting}`}
+            title={`${jobAlert.message}${jobAlert.resolutionHint ? ` — ${jobAlert.resolutionHint}` : ""}`}
+          >
+            ⚠ {jobAlert.typeLabel}
+          </span>
+        );
+      },
+    },
     {
       key: "actions",
       label: "Ações",

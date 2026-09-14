@@ -137,7 +137,7 @@ function BranchesPage() {
                         ? <span className={`${panel.badge} ${panel.badgeDone}`}>definida pelo endereço</span>
                         : <span className={`${panel.badge} ${panel.badgePending}`}>não localizada</span>}
                     </td>
-                    <td>
+                    <td className={panel.actionsStack}>
                       <button className={panel.ghostBtn} onClick={() => openEdit(b)}>Editar</button>
                       <button className={panel.secondaryBtn} onClick={() => remove(b.id)}>Excluir</button>
                     </td>

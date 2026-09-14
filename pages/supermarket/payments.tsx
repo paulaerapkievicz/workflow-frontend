@@ -12,6 +12,7 @@ import {
   BillingInvoice, InvoiceAdjustment,
   getInvoiceAdjustments, createInvoiceAdjustment, deleteInvoiceAdjustment,
   ADJUSTMENT_STATUS_LABELS,
+  submitPaymentProof, resolveUploadUrl, PAYMENT_PROOF_STATUS_LABELS,
   hoursFromMin, money, monthName, CLOSING_STATUS_LABELS,
 } from "@/src/services/billingService";
 import { shiftLabel } from "@/src/services/shifts";
@@ -64,6 +65,11 @@ function BillingPage() {
   const [adjForm, setAdjForm] = useState({ description: "", amount: "" });
   const [adjBusy, setAdjBusy] = useState(false);
   const [adjError, setAdjError] = useState<string | null>(null);
+
+  const [proofInvoice, setProofInvoice] = useState<BillingInvoice | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofBusy, setProofBusy] = useState(false);
+  const [proofError, setProofError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -162,6 +168,27 @@ function BillingPage() {
       alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
     } finally {
       setBusy(null);
+    }
+  };
+
+  const openProofModal = (inv: BillingInvoice) => {
+    setProofInvoice(inv);
+    setProofFile(null);
+    setProofError(null);
+  };
+
+  const submitProof = async () => {
+    if (!proofInvoice || !proofFile) return;
+    setProofBusy(true);
+    setProofError(null);
+    try {
+      await submitPaymentProof(proofInvoice.id, proofFile);
+      setProofInvoice(null);
+      await load();
+    } catch (err) {
+      setProofError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao enviar comprovante." : "Erro ao enviar comprovante.");
+    } finally {
+      setProofBusy(false);
     }
   };
 
@@ -308,8 +335,15 @@ function BillingPage() {
                         <td>{money(c.totalAmount)}</td>
                         <td>{c.adjustmentsTotal > 0 ? `- ${money(c.adjustmentsTotal)}` : "—"}</td>
                         <td><strong>{money(c.netAmount)}</strong></td>
-                        <td><StatusBadge family="closing" status={c.status} label={CLOSING_STATUS_LABELS[c.status]} /></td>
                         <td>
+                          <StatusBadge family="closing" status={c.status} label={CLOSING_STATUS_LABELS[c.status]} />
+                          {c.status === "pending" && c.paymentProofStatus && (
+                            <div className={panel.muted} style={{ fontSize: "0.78rem", marginTop: 4 }}>
+                              {PAYMENT_PROOF_STATUS_LABELS[c.paymentProofStatus]}
+                            </div>
+                          )}
+                        </td>
+                        <td className={panel.actionsStack}>
                           {c.status === "pending" && canPayInvoices && (
                             <button className={panel.ghostBtn} onClick={() => openAdjustments(c)}>
                               Contestar
@@ -336,9 +370,33 @@ function BillingPage() {
                             </>
                           )}
                           {c.status === "pending" && canPayInvoices && !appPaymentEnabled && !c.paymentUrl && (
-                            <p className={panel.muted} style={{ margin: 0 }}>
-                              Combine o pagamento com a agência — ela confirma manualmente.
-                            </p>
+                            <>
+                              {(!c.paymentProofStatus || c.paymentProofStatus === "approved") && (
+                                <button className={panel.primaryBtn} onClick={() => openProofModal(c)}>
+                                  Já paguei — anexar comprovante
+                                </button>
+                              )}
+                              {c.paymentProofStatus === "pending" && (
+                                <p className={panel.muted} style={{ margin: 0 }}>
+                                  Comprovante em análise pela agência.{" "}
+                                  {c.paymentProofUrl && (
+                                    <a href={resolveUploadUrl(c.paymentProofUrl)} target="_blank" rel="noopener noreferrer">
+                                      Ver comprovante
+                                    </a>
+                                  )}
+                                </p>
+                              )}
+                              {c.paymentProofStatus === "rejected" && (
+                                <div className={panel.error} style={{ margin: 0 }}>
+                                  <p style={{ margin: "0 0 4px" }}>
+                                    Pagamento não reconhecido pela agência{c.paymentProofNote ? `: ${c.paymentProofNote}` : "."}
+                                  </p>
+                                  <button className={panel.primaryBtn} onClick={() => openProofModal(c)}>
+                                    Reenviar comprovante
+                                  </button>
+                                </div>
+                              )}
+                            </>
                           )}
                           <button className={panel.ghostBtn} disabled={pdfBusyId === c.id} onClick={() => baixarPdf(c.id, c.referenceMonth)}>
                             {pdfBusyId === c.id ? "Baixando…" : "Baixar PDF"}
@@ -448,6 +506,26 @@ function BillingPage() {
           </Modal>
         );
       })()}
+
+      {proofInvoice && (
+        <Modal title={`Anexar comprovante — ${monthName(proofInvoice.referenceMonth)}`} onClose={() => setProofInvoice(null)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              Envie uma imagem ou PDF do comprovante de pagamento. A agência confere e dá baixa na fatura.
+            </p>
+            <label>Arquivo</label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+            />
+            {proofError && <p className={panel.error}>{proofError}</p>}
+            <button className={panel.primaryBtn} disabled={proofBusy || !proofFile} onClick={submitProof}>
+              {proofBusy ? "Enviando…" : "Enviar comprovante"}
+            </button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

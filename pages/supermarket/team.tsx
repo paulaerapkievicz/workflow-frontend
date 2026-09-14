@@ -28,6 +28,7 @@ function TeamPage() {
   const supermarketId = (profile as { id?: string } | null)?.id ?? "";
   const membership = (profile as { membership?: SupermarketMembership } | null)?.membership ?? null;
   const isOwner = membership?.isOwner ?? false;
+  const appPaymentEnabled = (profile as { appPaymentEnabled?: boolean } | null)?.appPaymentEnabled === true;
 
   const [members, setMembers] = useState<SupermarketMember[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -80,8 +81,10 @@ function TeamPage() {
   };
 
   const patch = async (m: SupermarketMember, p: Parameters<typeof updateMember>[1]) => {
-    try { await updateMember(m.id, p); await load(); }
-    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+    try {
+      const updated = await updateMember(m.id, p);
+      setMembers((cur) => cur.map((x) => (x.id === m.id ? updated : x)));
+    } catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
   };
 
   // Ver/pagar são coerentes: ligar "paga" liga "vê"; desligar "vê" desliga "paga".
@@ -135,7 +138,7 @@ function TeamPage() {
               <div style={{ display: "flex", gap: 8 }}>
                 <button className={panel.ghostBtn} onClick={() => setRolesOpen(true)}>Cargos</button>
                 <button className={panel.primaryBtn} onClick={() => { setError(null); setForm({ ...emptyForm }); setOpen(true); }}>
-                  Adicionar gerente
+                  Adicionar Membro
                 </button>
               </div>
             )}
@@ -144,10 +147,15 @@ function TeamPage() {
           {!isOwner ? (
             <p className={panel.muted}>Somente o responsável pela rede gerencia a equipe.</p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <>
+              <p className={panel.muted}>
+                Pagamento pelo app para esta rede:{" "}
+                <strong>{appPaymentEnabled ? "Ligado" : "Desligado — a agência dá baixa manual."}</strong>
+              </p>
+              <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead><tr>
-                  <th>Nome</th><th>Cargo</th><th>E-mail</th><th>Lojas</th><th>Solicita</th><th>Aprova</th>
+                  <th>Nome</th><th>Cargo</th><th>E-mail</th><th>Lojas</th><th>Solicita pedido</th><th>Aprova pedido</th>
                   <th>Vê faturas</th><th>Paga faturas</th><th>Ações</th>
                 </tr></thead>
                 <tbody>
@@ -156,6 +164,7 @@ function TeamPage() {
                       <td>{m.memberUser?.name ?? "—"}</td>
                       <td>
                         <select
+                          className={panel.tableSelect}
                           value={m.teamRoleId ?? ""}
                           onChange={(e) => patch(m, { teamRoleId: e.target.value || null })}
                         >
@@ -164,12 +173,7 @@ function TeamPage() {
                         </select>
                       </td>
                       <td>{m.memberUser?.email ?? "—"}</td>
-                      <td>
-                        {scopeLabel(m)}
-                        {!m.isOwner && (
-                          <button className={panel.ghostBtn} style={{ marginLeft: 6 }} onClick={() => openScope(m)}>Editar</button>
-                        )}
-                      </td>
+                      <td>{scopeLabel(m)}</td>
                       <td>
                         <input type="checkbox" disabled={m.isOwner} checked={m.canSubmitOrders}
                           onChange={(e) => patch(m, { canSubmitOrders: e.target.checked })} />
@@ -186,7 +190,8 @@ function TeamPage() {
                         <input type="checkbox" disabled={m.isOwner} checked={m.isOwner || m.canPayInvoices}
                           onChange={(e) => setPay(m, e.target.checked)} />
                       </td>
-                      <td>
+                      <td className={panel.actionsStack}>
+                        {!m.isOwner && <button className={panel.ghostBtn} onClick={() => openScope(m)}>Editar lojas</button>}
                         {!m.isOwner && <button className={panel.secondaryBtn} onClick={() => remove(m)}>Remover</button>}
                       </td>
                     </tr>
@@ -194,13 +199,14 @@ function TeamPage() {
                   {members.length === 0 && <tr><td colSpan={9}>Nenhum membro.</td></tr>}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </section>
       </main>
 
       {open && (
-        <Modal title="Adicionar gerente" onClose={() => setOpen(false)}>
+        <Modal title="Adicionar Membro" onClose={() => setOpen(false)}>
           <div className={panel.form}>
             <label>Nome</label>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

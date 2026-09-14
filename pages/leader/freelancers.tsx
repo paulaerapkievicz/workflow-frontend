@@ -226,7 +226,7 @@ function LeaderFreelancersPage() {
                         <td>{f.email}</td>
                         <td>{f.phone ?? "—"}</td>
                         <td>{f.document ?? "—"}</td>
-                        <td>
+                        <td className={panel.actionsStack}>
                           <button className={panel.primaryBtn} onClick={() => decide(f.id, approveFreelancer)}>Aprovar</button>
                           <button className={panel.secondaryBtn} onClick={() => decide(f.id, rejectFreelancer)}>Recusar</button>
                         </td>

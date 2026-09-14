@@ -21,6 +21,8 @@ export interface BillingJob {
   invoiceId: string | null;
 }
 
+export type PaymentProofStatus = "pending" | "approved" | "rejected";
+
 export interface InvoiceAdjustment {
   id: string;
   invoiceId: string;
@@ -53,6 +55,10 @@ export interface BillingInvoice {
   paymentUrl?: string | null;
   paymentRef?: string | null;
   paidAt?: string | null;
+  paymentProofUrl?: string | null;
+  paymentProofStatus?: PaymentProofStatus | null;
+  paymentProofNote?: string | null;
+  paymentProofUploadedAt?: string | null;
   createdAt: string;
 }
 
@@ -89,6 +95,10 @@ export interface MonthlyClosing {
   paymentUrl?: string | null;
   paymentRef?: string | null;
   paidAt?: string | null;
+  paymentProofUrl?: string | null;
+  paymentProofStatus?: PaymentProofStatus | null;
+  paymentProofNote?: string | null;
+  paymentProofUploadedAt?: string | null;
   createdAt: string;
   invoiceSupermarket?: { id: string; name: string } | null;
   invoiceAgency?: { id: string; name: string } | null;
@@ -235,6 +245,31 @@ export const syncClosingPayment = async (id: string): Promise<MonthlyClosing> =>
 /** Baixa manual da agência — usada quando o pagamento pelo app está desligado (no geral ou pro cliente). */
 export const markClosingPaid = async (id: string): Promise<MonthlyClosing> =>
   (await api.post(`/invoices/${id}/mark-paid`)).data;
+
+// ---- Comprovante de pagamento manual (supermercado anexa, agência confere) ----
+export const submitPaymentProof = async (invoiceId: string, file: File): Promise<MonthlyClosing> => {
+  const form = new FormData();
+  form.append("file", file);
+  return (await api.post(`/invoices/${invoiceId}/payment-proof`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  })).data;
+};
+
+export const approvePaymentProof = async (invoiceId: string): Promise<MonthlyClosing> =>
+  (await api.post(`/invoices/${invoiceId}/payment-proof/approve`)).data;
+
+export const rejectPaymentProof = async (invoiceId: string, note: string): Promise<MonthlyClosing> =>
+  (await api.post(`/invoices/${invoiceId}/payment-proof/reject`, { note })).data;
+
+/** Resolve a URL de um arquivo enviado (`/uploads/...`) pro host absoluto da API. */
+export const resolveUploadUrl = (url: string) =>
+  url.startsWith("http") ? url : `${process.env.NEXT_PUBLIC_BASEURL || "http://localhost:3333"}${url}`;
+
+export const PAYMENT_PROOF_STATUS_LABELS: Record<PaymentProofStatus, string> = {
+  pending: "Comprovante em análise",
+  approved: "Comprovante aprovado",
+  rejected: "Comprovante recusado",
+};
 
 // Baixa o PDF do fechamento e aciona o download no navegador.
 export const downloadClosingPdf = async (id: string, referenceMonth?: string | null): Promise<void> => {

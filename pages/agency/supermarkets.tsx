@@ -278,8 +278,10 @@ function SupermarketsPage() {
     }
   };
   const patchMember = async (mem: SupermarketMember, p: Parameters<typeof updateMember>[1]) => {
-    try { await updateMember(mem.id, p); await reloadTeam(); }
-    catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
+    try {
+      const updated = await updateMember(mem.id, p);
+      setMembers((cur) => cur.map((x) => (x.id === mem.id ? updated : x)));
+    } catch (err) { alert(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro."); }
   };
   const setMemberView = (mem: SupermarketMember, on: boolean) =>
     patchMember(mem, on ? { canViewInvoices: true } : { canViewInvoices: false, canPayInvoices: false });
@@ -539,7 +541,7 @@ function SupermarketsPage() {
                           onBlur={(e) => changeRate(r, e.target.value)} />
                       </td>
                       <td><span className={panel.badge}>{r.active ? "Ativa" : "Inativa"}</span></td>
-                      <td>
+                      <td className={panel.actionsStack}>
                         <button className={panel.ghostBtn} onClick={() => toggleRate(r)}>{r.active ? "Desativar" : "Ativar"}</button>
                         <button className={panel.secondaryBtn} onClick={() => removeRate(r)}>Remover</button>
                       </td>
@@ -569,14 +571,18 @@ function SupermarketsPage() {
           )}
         >
           <div className={panel.form}>
+            <p className={panel.muted} style={{ margin: 0 }}>
+              Pagamento pelo app para esta loja:{" "}
+              <strong>{teamOf.appPaymentEnabled ? "Ligado" : "Desligado — a agência dá baixa manual."}</strong>
+            </p>
             <div style={{ display: "flex", gap: 8 }}>
               <button className={panel.ghostBtn} onClick={() => setRolesModal(true)}>Cargos</button>
-              <button className={panel.primaryBtn} onClick={openAddMember}>Adicionar gerente</button>
+              <button className={panel.primaryBtn} onClick={openAddMember}>Adicionar Membro</button>
             </div>
             <div style={{ overflowX: "auto" }}>
               <table className={panel.table}>
                 <thead><tr>
-                  <th>Nome</th><th>Cargo</th><th>E-mail</th><th>Lojas</th><th>Solicita</th><th>Aprova</th>
+                  <th>Nome</th><th>Cargo</th><th>E-mail</th><th>Lojas</th><th>Solicita pedido</th><th>Aprova pedido</th>
                   <th>Vê faturas</th><th>Paga faturas</th><th>Ações</th>
                 </tr></thead>
                 <tbody>
@@ -584,7 +590,7 @@ function SupermarketsPage() {
                     <tr key={mem.id}>
                       <td>{mem.memberUser?.name ?? "—"}</td>
                       <td>
-                        <select value={mem.teamRoleId ?? ""} onChange={(e) => patchMember(mem, { teamRoleId: e.target.value || null })}>
+                        <select className={panel.tableSelect} value={mem.teamRoleId ?? ""} onChange={(e) => patchMember(mem, { teamRoleId: e.target.value || null })}>
                           <option value="">— sem cargo —</option>
                           {teamRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                         </select>
@@ -638,7 +644,7 @@ function SupermarketsPage() {
 
       {teamOf && memberModal && (
         <Modal
-          title={editMemberId ? "Editar gerente" : "Adicionar gerente"}
+          title={editMemberId ? "Editar membro" : "Adicionar Membro"}
           onClose={() => { setMemberModal(false); setEditMemberId(null); }}
         >
           <div className={panel.form}>

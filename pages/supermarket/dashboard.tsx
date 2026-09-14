@@ -85,6 +85,11 @@ function Dashboard() {
             <div className={panel.card}><h2>{open}</h2><p>Vagas disponíveis</p></div>
             <div className={panel.card}><h2>{running}</h2><p>Em andamento</p></div>
             <div className={panel.card}><h2>{completed}</h2><p>Concluídas</p></div>
+
+            <div className={panel.card}>
+              <h2>{(billing?.totals.contractedHours ?? 0).toFixed(1)}h / {(billing?.totals.workedHours ?? 0).toFixed(1)}h</h2>
+              <p>Horas contratadas / trabalhadas</p>
+            </div>
           </div>
 
           <div className={styles.feedCard} style={{ maxWidth: 640 }}>

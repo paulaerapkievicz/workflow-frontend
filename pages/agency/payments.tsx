@@ -344,7 +344,7 @@ function AgencyPayments() {
                         <td>{j.assignedFreelancer?.name ?? "—"}</td>
                         <td>{minutesToHours(j.contractedMinutes)}</td>
                         <td>{minutesToHours(j.workedMinutes)}</td>
-                        <td>
+                        <td className={panel.actionsStack}>
                           <button
                             className={panel.primaryBtn}
                             disabled={releasingId === j.id}
@@ -471,7 +471,7 @@ function AgencyPayments() {
                           <td>{c.jobTitle ?? "—"}</td>
                           <td>{c.branchName ?? "—"}</td>
                           <td>R$ {Number(c.amount).toFixed(2)}</td>
-                          <td>
+                          <td className={panel.actionsStack}>
                             <button
                               className={panel.primaryBtn}
                               disabled={creditBusyId === c.id}
