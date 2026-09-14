@@ -185,19 +185,6 @@ function Dashboard() {
             )}
           </div>
 
-          <div className={panel.cards}>
-            <div className={panel.card}><h2>{minutesToHours(Math.round(workedHours * 60))}</h2><p>Horas trabalhadas</p></div>
-            <div className={panel.card} style={{ position: "relative" }}>
-              <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
-                <HelpIcon title="Ganhos Previstos">
-                  <p>Baseado nas horas já trabalhadas e aprovadas no período selecionado ({periodLabel}).</p>
-                </HelpIcon>
-              </div>
-              <h2>R$ {earnedInPeriod.toFixed(2)}</h2>
-              <p>Ganhos Previstos</p>
-            </div>
-          </div>
-
           <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
             <CategoryBranchFilter
@@ -216,6 +203,21 @@ function Dashboard() {
             </label>
           </CollapsibleFilterBar>
 
+          <h2 style={{ fontSize: "1.1rem" }}>Resumo do período</h2>
+          <div className={panel.cards}>
+            <div className={panel.card}><h2>{minutesToHours(Math.round(workedHours * 60))}</h2><p>Horas trabalhadas</p></div>
+            <div className={panel.card} style={{ position: "relative" }}>
+              <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
+                <HelpIcon title="Ganhos Previstos">
+                  <p>Baseado nas horas já trabalhadas e aprovadas no período selecionado ({periodLabel}).</p>
+                </HelpIcon>
+              </div>
+              <h2>R$ {earnedInPeriod.toFixed(2)}</h2>
+              <p>Ganhos Previstos</p>
+            </div>
+          </div>
+
+          <h2 style={{ fontSize: "1.1rem" }}>Desfecho das vagas</h2>
           <div className={panel.cards}>
             {OUTCOME_TILES.map((o) => (
               <button
@@ -235,6 +237,7 @@ function Dashboard() {
             ))}
           </div>
 
+          <h2 style={{ fontSize: "1.1rem" }}>Detalhamento</h2>
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
               <thead><tr><th>Data</th><th>Vaga</th><th>Função</th><th>Loja</th><th>Desfecho</th></tr></thead>

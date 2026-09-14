@@ -60,19 +60,6 @@ function FreelancerPayments() {
         <section className={panel.content}>
           <header className={panel.header}><h1>Carteira</h1></header>
 
-          <div className={panel.balanceCard} style={{ position: "relative" }}>
-            <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
-              <HelpIcon title="Ganhos Previstos">
-                <p>Baseado nas horas já trabalhadas e aprovadas no período selecionado ({periodLabel}).</p>
-                <p>O pagamento é feito pela agência via Pix, no dia combinado.</p>
-              </HelpIcon>
-            </div>
-            <span className={panel.muted}>Ganhos Previstos</span>
-            <strong>R$ {earnedInPeriod.toFixed(2)}</strong>
-          </div>
-
-          <h2 style={{ fontSize: "1.1rem" }}>Meus recebíveis</h2>
-
           <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
             <CategoryBranchFilter
@@ -90,6 +77,19 @@ function FreelancerPayments() {
               </select>
             </label>
           </CollapsibleFilterBar>
+
+          <div className={panel.balanceCard} style={{ position: "relative" }}>
+            <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
+              <HelpIcon title="Ganhos Previstos">
+                <p>Baseado nas horas já trabalhadas e aprovadas no período selecionado ({periodLabel}).</p>
+                <p>O pagamento é feito pela agência via Pix, no dia combinado.</p>
+              </HelpIcon>
+            </div>
+            <span className={panel.muted}>Ganhos Previstos</span>
+            <strong>R$ {earnedInPeriod.toFixed(2)}</strong>
+          </div>
+
+          <h2 style={{ fontSize: "1.1rem" }}>Meus recebíveis</h2>
 
           <div style={{ overflowX: "auto" }}>
             <table className={panel.table}>
