@@ -96,6 +96,7 @@ function LeaderOrdersPage() {
     return () => clearInterval(t);
   }, []);
   const alertTiers = settings?.unfilledAlertTiers ?? [];
+  const canEditSchedule = profile?.permissions?.horarios !== false;
 
   const [profileFreelancer, setProfileFreelancer] = useState<NonNullable<Job["assignedFreelancer"]> | null>(null);
   const [reassignTarget, setReassignTarget] = useState<Job | null>(null);
@@ -289,7 +290,7 @@ function LeaderOrdersPage() {
                       })()}
                     </td>
                     <td>
-                      {j.status !== "canceled" && (
+                      {j.status !== "canceled" && canEditSchedule && (
                         <button className={panel.ghostBtn} onClick={() => setManageJob(j)}>Gerenciar</button>
                       )}
                       {isExpiredUnfilled(j) && (

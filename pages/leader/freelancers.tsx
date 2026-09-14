@@ -25,6 +25,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 
 function LeaderFreelancersPage() {
   const { profile } = useAuth();
+  const canEditRates = profile?.permissions?.valores !== false;
   const [list, setList] = useState<AgencyFreelancer[]>([]);
   const [pending, setPending] = useState<PendingFreelancer[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -339,6 +340,7 @@ function LeaderFreelancersPage() {
               onAdd={(cid, v) => addCategory(editId, cid, v)}
               onCommitRate={(cid, v) => commitRate(editId, cid, v)}
               onRemove={(cid) => removeCategory(editId, cid)}
+              readOnly={!canEditRates}
             />
             {catMsg && <p className={catMsg.type === "ok" ? panel.success : panel.error}>{catMsg.text}</p>}
 

@@ -14,6 +14,8 @@ interface Props {
   onAdd: (categoryId: string, value: string) => void | Promise<void>;
   onCommitRate: (categoryId: string, value: string) => void | Promise<void>;
   onRemove: (categoryId: string) => void | Promise<void>;
+  /** Sem permissão pra mexer no valor/hora — mostra a lista, mas sem editar/adicionar/remover. */
+  readOnly?: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ interface Props {
  * (escolhe a função + informa o valor/hora + Adicionar) e a lista das já vinculadas.
  */
 export default function FreelancerCategoriesEditor({
-  categories, addedIds, rates, categoryName, onRateInput, onAdd, onCommitRate, onRemove,
+  categories, addedIds, rates, categoryName, onRateInput, onAdd, onCommitRate, onRemove, readOnly,
 }: Props) {
   const [pick, setPick] = useState("");
   const [pickRate, setPickRate] = useState("");
@@ -31,7 +33,7 @@ export default function FreelancerCategoriesEditor({
     [categories, addedIds]
   );
 
-  const canAdd = !!pick && Number(pickRate) > 0;
+  const canAdd = !readOnly && !!pick && Number(pickRate) > 0;
 
   const add = async () => {
     if (!canAdd) return;
@@ -42,39 +44,47 @@ export default function FreelancerCategoriesEditor({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div
-        style={{
-          display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap",
-          padding: 10, border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface-2)",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: "1 1 180px" }}>
-          <label style={{ fontSize: "0.8rem" }}>Função</label>
-          <select value={pick} onChange={(e) => setPick(e.target.value)}>
-            <option value="">Selecione uma função…</option>
-            {available.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+      {readOnly && (
+        <p className={panel.muted} style={{ fontSize: "0.8rem", margin: 0 }}>
+          Você não tem permissão para alterar valores/hora. Peça ao responsável pela agência para
+          liberar essa ação para o seu perfil.
+        </p>
+      )}
+      {!readOnly && (
+        <div
+          style={{
+            display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap",
+            padding: 10, border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface-2)",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: "1 1 180px" }}>
+            <label style={{ fontSize: "0.8rem" }}>Função</label>
+            <select value={pick} onChange={(e) => setPick(e.target.value)}>
+              <option value="">Selecione uma função…</option>
+              {available.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, width: 120 }}>
+            <label style={{ fontSize: "0.8rem" }}>Valor/hora (R$)</label>
+            <input
+              type="number" min="0.01" step="0.01" placeholder="R$/h"
+              value={pickRate}
+              onChange={(e) => setPickRate(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+            />
+          </div>
+          <button type="button" className={panel.primaryBtn} disabled={!canAdd} onClick={add}>
+            Adicionar
+          </button>
+          {available.length === 0 && (
+            <span className={panel.muted} style={{ fontSize: "0.8rem", flexBasis: "100%" }}>
+              {categories.length === 0
+                ? "Nenhuma função ativa cadastrada. Cadastre em Funções."
+                : "Todas as funções ativas já foram vinculadas."}
+            </span>
+          )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, width: 120 }}>
-          <label style={{ fontSize: "0.8rem" }}>Valor/hora (R$)</label>
-          <input
-            type="number" min="0.01" step="0.01" placeholder="R$/h"
-            value={pickRate}
-            onChange={(e) => setPickRate(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          />
-        </div>
-        <button type="button" className={panel.primaryBtn} disabled={!canAdd} onClick={add}>
-          Adicionar
-        </button>
-        {available.length === 0 && (
-          <span className={panel.muted} style={{ fontSize: "0.8rem", flexBasis: "100%" }}>
-            {categories.length === 0
-              ? "Nenhuma função ativa cadastrada. Cadastre em Funções."
-              : "Todas as funções ativas já foram vinculadas."}
-          </span>
-        )}
-      </div>
+      )}
 
       {addedIds.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -87,12 +97,15 @@ export default function FreelancerCategoriesEditor({
                   type="number" min="0.01" step="0.01" placeholder="R$/h"
                   style={{ width: 110 }}
                   value={rateValue}
+                  disabled={readOnly}
                   onChange={(e) => onRateInput(cid, e.target.value)}
                   onBlur={(e) => onCommitRate(cid, e.target.value)}
                 />
-                <button type="button" className={panel.secondaryBtn} onClick={() => onRemove(cid)}>
-                  Remover
-                </button>
+                {!readOnly && (
+                  <button type="button" className={panel.secondaryBtn} onClick={() => onRemove(cid)}>
+                    Remover
+                  </button>
+                )}
               </div>
             );
           })}

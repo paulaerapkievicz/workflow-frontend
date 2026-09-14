@@ -54,8 +54,13 @@ export interface AuthProfile {
   payType?: "hora" | "diaria" | "mensal" | null;
   payAmount?: number | null;
   availableBalance?: number;
-  /** Só para papel partner: quais áreas do painel da agência este sócio pode acessar. */
-  permissions?: Record<AgencyPartnerFeature, boolean>;
+  /**
+   * Só para papel partner/leader: quais ações este perfil pode fazer. Sócio: áreas do painel
+   * (`AgencyPartnerFeature`). Líder: ações configuráveis (`AgencyMemberFeature`, ex.: "horarios",
+   * "valores") — ver/atuar em vagas não entra aqui, é sempre liberado. Tipado frouxo (chaves de
+   * ambos os catálogos) pra não colidir entre os dois papéis.
+   */
+  permissions?: Record<string, boolean>;
   /** Agência/supermercado: ordem personalizada do menu lateral (lista de hrefs). */
   sidebarOrder?: string[] | null;
   [key: string]: unknown;

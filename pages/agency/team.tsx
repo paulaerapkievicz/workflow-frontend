@@ -9,6 +9,7 @@ import panel from "@/styles/panel.module.scss";
 import {
   getAgencyMembers, createAgencyMember, updateAgencyMember, setAgencyMemberScope,
   deactivateAgencyMember, resetAgencyMemberPassword, AgencyMember, LeaderPayType, PAY_TYPE_LABELS,
+  AgencyMemberPermissions, AGENCY_MEMBER_FEATURES, AGENCY_MEMBER_FEATURE_LABELS,
 } from "@/src/services/agencyMemberService";
 import {
   getAgencyPartners, createAgencyPartner, updateAgencyPartner, deactivateAgencyPartner,
@@ -67,6 +68,10 @@ function TeamPage() {
   const [payMember, setPayMember] = useState<AgencyMember | null>(null);
   const [payForm, setPayForm] = useState({ payType: "mensal" as LeaderPayType, payAmount: "" });
   const [payError, setPayError] = useState<string | null>(null);
+
+  const [memberPermMember, setMemberPermMember] = useState<AgencyMember | null>(null);
+  const [memberPermDraft, setMemberPermDraft] = useState<AgencyMemberPermissions | null>(null);
+  const [memberPermError, setMemberPermError] = useState<string | null>(null);
 
   const [partners, setPartners] = useState<AgencyPartner[]>([]);
   const [partnerCreateOpen, setPartnerCreateOpen] = useState(false);
@@ -154,6 +159,24 @@ function TeamPage() {
   const copyInvite = async () => {
     if (!inviteLink) return;
     try { await navigator.clipboard.writeText(inviteLink); setInviteCopied(true); } catch { /* ignore */ }
+  };
+
+  const openMemberPermissions = (m: AgencyMember) => {
+    setMemberPermMember(m);
+    setMemberPermDraft({ ...m.permissions });
+    setMemberPermError(null);
+  };
+
+  const saveMemberPermissions = async () => {
+    if (!memberPermMember || !memberPermDraft) return;
+    setMemberPermError(null);
+    try {
+      await updateAgencyMember(memberPermMember.id, { permissions: memberPermDraft });
+      setMemberPermMember(null);
+      await load();
+    } catch (err) {
+      setMemberPermError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro.");
+    }
   };
 
   const openScope = (m: AgencyMember) => {
@@ -364,6 +387,7 @@ function TeamPage() {
                     </td>
                     <td className={panel.actionsStack}>
                       <button className={panel.ghostBtn} onClick={() => openScope(m)}>Escopo</button>
+                      <button className={panel.ghostBtn} onClick={() => openMemberPermissions(m)}>Permissões</button>
                       <button className={panel.ghostBtn} onClick={() => openPay(m)}>Pagamento</button>
                       <ResetPasswordAction label={m.name ?? "este líder"} onReset={() => resetAgencyMemberPassword(m.id)} />
                       <button className={panel.secondaryBtn} onClick={() => toggleActive(m)}>
@@ -581,6 +605,28 @@ function TeamPage() {
                 <button className={panel.primaryBtn} onClick={copyInvitePartner}>{partnerInviteCopied ? "Copiado!" : "Copiar link"}</button>
               </>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {memberPermMember && memberPermDraft && (
+        <Modal title={`Permissões — ${memberPermMember.name ?? ""}`} onClose={() => setMemberPermMember(null)}>
+          <div className={panel.form}>
+            <p className={panel.muted}>
+              O líder sempre enxerga e atua no pool de vagas (convocações, alocações, ao vivo e
+              alertas de ocorrência do grupo dele). Desligue abaixo só o que ele NÃO pode fazer.
+            </p>
+            {AGENCY_MEMBER_FEATURES.map((f) => (
+              <label key={f} className={panel.toggleRow}>
+                <Switch
+                  checked={memberPermDraft[f]}
+                  onChange={(v) => setMemberPermDraft({ ...memberPermDraft, [f]: v })}
+                />
+                {AGENCY_MEMBER_FEATURE_LABELS[f]}
+              </label>
+            ))}
+            {memberPermError && <p className={panel.error}>{memberPermError}</p>}
+            <button className={panel.primaryBtn} onClick={saveMemberPermissions}>Salvar permissões</button>
           </div>
         </Modal>
       )}

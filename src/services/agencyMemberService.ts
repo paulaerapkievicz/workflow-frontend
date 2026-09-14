@@ -2,6 +2,19 @@ import api from "@/src/services/api";
 
 export type LeaderPayType = "hora" | "diaria" | "mensal" | "por_colaborador";
 
+/** Áreas configuráveis de um líder — ver `AgencyMemberFeature` no backend. Ver/atuar em vagas
+ * (pool, alocações, ao vivo, alertas) não entra aqui: é sempre liberado pra todo líder. */
+export type AgencyMemberFeature = "horarios" | "valores";
+
+export const AGENCY_MEMBER_FEATURES: AgencyMemberFeature[] = ["horarios", "valores"];
+
+export const AGENCY_MEMBER_FEATURE_LABELS: Record<AgencyMemberFeature, string> = {
+  horarios: "Editar horário da vaga e corrigir ponto (check-in/checkout, pausas)",
+  valores: "Definir valor/hora do colaborador por função",
+};
+
+export type AgencyMemberPermissions = Record<AgencyMemberFeature, boolean>;
+
 export const PAY_TYPE_LABELS: Record<LeaderPayType, string> = {
   hora: "Por hora",
   diaria: "Por diária",
@@ -54,6 +67,7 @@ export interface AgencyMember {
   availableBalance: number;
   teamRoleId?: string | null;
   teamRole?: { id: string; name: string; position: number } | null;
+  permissions: AgencyMemberPermissions;
   scope: { freelancerIds: string[]; branchIds: string[] };
   payments: AgencyMemberPayment[];
   jobCredits: LeaderJobCredit[];
@@ -78,7 +92,13 @@ export const createAgencyMember = async (payload: {
 
 export const updateAgencyMember = async (
   id: string,
-  payload: { payType?: LeaderPayType; payAmount?: number; active?: boolean; teamRoleId?: string | null }
+  payload: {
+    payType?: LeaderPayType;
+    payAmount?: number;
+    active?: boolean;
+    teamRoleId?: string | null;
+    permissions?: AgencyMemberPermissions;
+  }
 ): Promise<AgencyMember> => (await api.put(`/agency/members/${id}`, payload)).data;
 
 export const setAgencyMemberScope = async (
