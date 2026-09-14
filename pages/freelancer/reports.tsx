@@ -3,6 +3,7 @@ import Head from "next/head";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
+import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
 import JobMovementsTable from "@/src/components/JobMovementsTable";
 import panel from "@/styles/panel.module.scss";
@@ -96,14 +97,14 @@ function ReportsPage() {
                 <div className={panel.card}><h2>{money(report.totals.availableBalance)}</h2><p>Saldo na carteira</p></div>
               </div>
 
-              <div className={panel.filterBar}>
+              <CollapsibleFilterBar>
                 <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
                 <CategoryBranchFilter
                   categoryId={categoryId} onCategoryChange={setCategoryId}
                   branchId={branchId} onBranchChange={setBranchId}
                   branches={branches}
                 />
-              </div>
+              </CollapsibleFilterBar>
 
               <div>
                 <button className={panel.ghostBtn} onClick={downloadPdf} disabled={pdfBusy}>
