@@ -443,25 +443,6 @@ function ProfilePage() {
                         />
                       </div>
                     </div>
-                    <div style={{ marginTop: "0.8rem" }}>
-                      <label className={panel.filterField} style={{ maxWidth: 220 }}>
-                        <span>Tamanho da camiseta *</span>
-                        <select
-                          value={values.shirtSize ?? ""}
-                          onChange={(e) => set("shirtSize", e.target.value)}
-                          aria-invalid={(showErrors && !values.shirtSize) || undefined}
-                          style={
-                            showErrors && !values.shirtSize
-                              ? { borderColor: "var(--danger)", background: "var(--danger-soft)" }
-                              : undefined
-                          }
-                        >
-                          <option value="">Selecione…</option>
-                          {SHIRT_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </label>
-                    </div>
-
                     <div style={{ marginTop: "1.2rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <p style={{ fontWeight: 600, margin: 0 }}>Foto</p>
@@ -512,9 +493,19 @@ function ProfilePage() {
                       <p className={panel.muted}>Conclua o perfil contratual (aba anterior) para comprar o uniforme.</p>
                     ) : !uniform ? (
                       <div style={{ marginTop: "0.5rem" }}>
-                        <p className={panel.muted}>
+                        <label className={panel.filterField} style={{ maxWidth: 220 }}>
+                          <span>Tamanho da camiseta *</span>
+                          <select
+                            value={values.shirtSize ?? ""}
+                            onChange={(e) => set("shirtSize", e.target.value)}
+                          >
+                            <option value="">Selecione…</option>
+                            {SHIRT_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </label>
+                        <p className={panel.muted} style={{ marginTop: "0.5rem" }}>
                           {!values.shirtSize
-                            ? "Escolha o tamanho da camiseta na aba de perfil para liberar a compra."
+                            ? "Escolha o tamanho da camiseta para liberar a compra."
                             : appPaymentEnabledForFreelancers
                             ? "Finalize a compra para receber o link de pagamento."
                             : "Confirme o tamanho — a agência vai combinar o pagamento com você por fora."}

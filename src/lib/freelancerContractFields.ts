@@ -109,8 +109,10 @@ export const BANK_NAME_SUGGESTIONS = [
  * de preenchimento do colaborador (`/freelancer/profile`) quanto na revisão/exibição
  * somente-leitura pela agência (tela de aprovação + seção no cadastro do colaborador).
  *
- * Só ficam `required` os dados de fato necessários para a contratação (documento, endereço,
+ * Só ficam `required` os dados de fato necessários para a contratação (documento, CTPS, endereço,
  * chave Pix); dados de conta bancária e contato de emergência são informativos e opcionais.
+ * Tamanho da camiseta não entra aqui — só é pedido (e obrigatório) na aba de Uniforme, quando a
+ * agência exige a compra.
  */
 export const CONTRACT_SECTIONS: { title: string; fields: ContractField[] }[] = [
   {
@@ -131,7 +133,8 @@ export const CONTRACT_SECTIONS: { title: string; fields: ContractField[] }[] = [
       {
         key: "ctpsNumber",
         label: "CTPS - número",
-        hint: "Opcional. CTPS = Carteira de Trabalho e Previdência Social — preencha só se você já tiver uma; não é exigida para trabalhar como colaborador autônomo.",
+        required: true,
+        hint: "CTPS = Carteira de Trabalho e Previdência Social.",
       },
       { key: "ctpsSeries", label: "CTPS - série" },
     ],
@@ -174,7 +177,7 @@ export const CONTRACT_SECTIONS: { title: string; fields: ContractField[] }[] = [
 export const CONTRACT_ALL_FIELDS = CONTRACT_SECTIONS.flatMap((s) => s.fields);
 export const CONTRACT_REQUIRED_KEYS = CONTRACT_ALL_FIELDS.filter((f) => f.required)
   .map((f) => f.key)
-  .concat("shirtSize", "pixKey", "pixKeyType");
+  .concat("pixKey", "pixKeyType");
 
 /** Tipo de chave Pix -> tipo do campo (máscara/validação do FormField). */
 export const PIX_FIELD_KIND: Record<FreelancerPixKeyType, FieldKind> = {
