@@ -13,82 +13,14 @@ import { photoUrl } from "@/src/services/jobPhotoService";
 import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
 import { useAuth } from "@/src/hooks/useAuth";
 import Link from "next/link";
-import FormField, { type FieldKind } from "@/src/components/FormField";
+import FormField from "@/src/components/FormField";
 import FileField from "@/src/components/FileField";
 import { validateForm } from "@/src/lib/validators";
 import HelpIcon from "@/src/components/common/HelpIcon";
-
-type Field = {
-  key: string;
-  label: string;
-  type?: "text" | "date" | "number";
-  required?: boolean;
-  /** Campo tipado: máscara + validação. */
-  kind?: FieldKind;
-  /** Limite de dígitos (kind="digits"). */
-  maxLength?: number;
-};
-
-const SECTIONS: { title: string; fields: Field[] }[] = [
-  {
-    title: "Dados pessoais",
-    fields: [
-      { key: "fullName", label: "Nome completo", required: true },
-      { key: "cpf", label: "CPF", required: true, kind: "cpf" },
-      { key: "rg", label: "RG", required: true },
-      { key: "rgIssuer", label: "Órgão emissor" },
-      { key: "pisNis", label: "PIS/NIS", required: true, kind: "digits", maxLength: 11 },
-      { key: "birthDate", label: "Data de nascimento", type: "date", required: true, kind: "birthdate" },
-      { key: "gender", label: "Gênero" },
-      { key: "maritalStatus", label: "Estado civil", required: true },
-      { key: "nationality", label: "Nacionalidade", required: true },
-      { key: "motherName", label: "Nome da mãe", required: true },
-      { key: "fatherName", label: "Nome do pai" },
-      { key: "educationLevel", label: "Escolaridade" },
-      { key: "ctpsNumber", label: "CTPS - número" },
-      { key: "ctpsSeries", label: "CTPS - série" },
-    ],
-  },
-  {
-    title: "Endereço",
-    fields: [
-      { key: "addressCep", label: "CEP", required: true, kind: "cep" },
-      { key: "addressStreet", label: "Rua", required: true },
-      { key: "addressNumber", label: "Número", required: true },
-      { key: "addressComplement", label: "Complemento" },
-      { key: "addressNeighborhood", label: "Bairro", required: true },
-      { key: "addressCity", label: "Cidade", required: true },
-      { key: "addressState", label: "UF", required: true, kind: "uf" },
-    ],
-  },
-  {
-    title: "Dados bancários",
-    fields: [
-      { key: "bankName", label: "Banco", required: true },
-      { key: "bankBranch", label: "Agência", required: true, kind: "digits" },
-      { key: "bankAccount", label: "Conta", required: true, kind: "digits" },
-      { key: "bankAccountType", label: "Tipo de conta" },
-    ],
-  },
-  {
-    title: "Contato de emergência",
-    fields: [
-      { key: "emergencyContactName", label: "Nome", required: true },
-      { key: "emergencyContactPhone", label: "Telefone", required: true, kind: "phone" },
-    ],
-  },
-];
-
-const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
-const REQUIRED_KEYS = ALL_FIELDS.filter((f) => f.required).map((f) => f.key).concat("shirtSize", "pixKey", "pixKeyType");
-
-/** Tipo de chave Pix -> tipo do campo (máscara + validação do FormField). */
-const PIX_FIELD_KIND: Record<FreelancerPixKeyType, FieldKind> = {
-  cpf: "cpf",
-  email: "email",
-  telefone: "phone",
-  aleatoria: "text",
-};
+import {
+  CONTRACT_SECTIONS as SECTIONS, CONTRACT_ALL_FIELDS as ALL_FIELDS,
+  CONTRACT_REQUIRED_KEYS as REQUIRED_KEYS, PIX_FIELD_KIND,
+} from "@/src/lib/freelancerContractFields";
 
 function OnboardingPage() {
   const { profile, refresh } = useAuth();
@@ -492,23 +424,36 @@ function OnboardingPage() {
               </div>
 
               {(() => {
-                const ob = (profile as { onboarding?: { approved?: boolean; contractTemplateAvailable?: boolean; contractSigned?: boolean } } | null)?.onboarding;
-                if (!ob?.approved) return null;
+                const ob = (profile as {
+                  onboarding?: { contractDataApproved?: boolean; contractTemplateAvailable?: boolean; contractSigned?: boolean };
+                } | null)?.onboarding;
+                // O card aparece assim que o perfil contratual está completo — não depende de
+                // uniforme/foto (isso só bloqueia aceitar vaga, não a etapa do contrato).
+                if (!contractDone) return null;
+                const statusLabel = ob?.contractSigned
+                  ? "Assinado"
+                  : ob?.contractDataApproved
+                  ? ob?.contractTemplateAvailable ? "Pendente — pronto para assinar" : "Aguardando modelo de contrato"
+                  : "Aguardando revisão da agência";
                 return (
                   <div className={panel.card} style={{ marginTop: "1rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <strong>{contractStep}. Contrato</strong>
-                      <span className={`${panel.badge} ${ob.contractSigned ? panel.badgeDone : panel.badgePending}`}>
-                        {ob.contractSigned ? "Assinado" : ob.contractTemplateAvailable ? "Pendente" : "Aguardando a agência"}
+                      <span className={`${panel.badge} ${ob?.contractSigned ? panel.badgeDone : panel.badgePending}`}>
+                        {statusLabel}
                       </span>
                     </div>
                     <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
-                      {ob.contractTemplateAvailable
-                        ? "O seu contrato já está pronto com os dados acima. Revise e assine eletronicamente."
-                        : "A sua agência ainda não publicou o modelo de contrato."}
+                      {ob?.contractSigned
+                        ? "Contrato assinado — baixe o PDF quando quiser."
+                        : ob?.contractDataApproved
+                        ? ob?.contractTemplateAvailable
+                          ? "A agência conferiu os seus dados — o contrato já está pronto para revisar e assinar eletronicamente."
+                          : "A agência aprovou os seus dados, mas ainda não publicou o modelo de contrato."
+                        : "A agência ainda vai revisar os dados que você preencheu acima antes de liberar o contrato para assinatura."}
                     </p>
                     <Link className={panel.primaryBtn} href="/freelancer/contrato" style={{ textDecoration: "none" }}>
-                      {ob.contractSigned ? "Ver contrato assinado" : "Ir para o contrato"}
+                      {ob?.contractSigned ? "Ver contrato assinado" : "Ir para o contrato"}
                     </Link>
                   </div>
                 );

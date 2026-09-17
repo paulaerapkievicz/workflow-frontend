@@ -31,6 +31,8 @@ import FreelancerCategoriesEditor from "@/src/components/FreelancerCategoriesEdi
 import { getFreelancerLeaders, AssignedLeader } from "@/src/services/agencyMemberService";
 import { FreelancerProfileBody } from "@/src/components/FreelancerChip";
 import { useAuth } from "@/src/hooks/useAuth";
+import { getFreelancerContractForAgency, FreelancerContract } from "@/src/services/onboardingService";
+import FreelancerContractView from "@/src/components/FreelancerContractView";
 
 function FreelancersPage() {
   const { profile } = useAuth();
@@ -49,6 +51,8 @@ function FreelancersPage() {
   const [editLeaders, setEditLeaders] = useState<AssignedLeader[] | null>(null);
   const [editReviews, setEditReviews] = useState<Review[] | null>(null);
   const [showEditReviews, setShowEditReviews] = useState(false);
+  const [editContract, setEditContract] = useState<FreelancerContract | null>(null);
+  const [showEditOnboarding, setShowEditOnboarding] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", skills: "" });
   const [editError, setEditError] = useState<string | null>(null);
   const [catMsg, setCatMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -122,9 +126,12 @@ function FreelancersPage() {
     setEditLeaders(null);
     setEditReviews(null);
     setShowEditReviews(false);
+    setEditContract(null);
+    setShowEditOnboarding(false);
     getFreelancerReputation(f.id).then(setEditReputation).catch(() => {});
     getFreelancerLeaders(f.id).then(setEditLeaders).catch(() => {});
     getFreelancerReviews(f.id).then(setEditReviews).catch(() => setEditReviews([]));
+    getFreelancerContractForAgency(f.id).then(setEditContract).catch(() => setEditContract(null));
   };
 
   const saveEdit = async () => {
@@ -395,6 +402,19 @@ function FreelancersPage() {
 
             {editError && <p className={panel.error}>{editError}</p>}
             <button className={panel.primaryBtn} onClick={saveEdit}>Salvar</button>
+
+            {editContract?.approvedAt && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+                <button type="button" className={panel.ghostBtn} onClick={() => setShowEditOnboarding((v) => !v)}>
+                  {showEditOnboarding ? "Ocultar dados do onboarding" : "Ver dados do onboarding"}
+                </button>
+                {showEditOnboarding && (
+                  <div style={{ marginTop: 10 }}>
+                    <FreelancerContractView contract={editContract} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </Modal>
       )}

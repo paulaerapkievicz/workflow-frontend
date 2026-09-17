@@ -23,8 +23,8 @@ const ITEM_FEATURE: Record<string, AgencyPartnerFeature | undefined> = {
 
 export default function AgencySidebar() {
   const {
-    uniformsToShip, photosToReview, registrationsToApprove, branchesToApprove, memberCreditsToReview,
-    contestationsToReview, paymentProofsToReview, alertsOpen,
+    uniformsToShip, photosToReview, onboardingReviewsToApprove, registrationsToApprove, branchesToApprove,
+    memberCreditsToReview, contestationsToReview, paymentProofsToReview, alertsOpen,
   } = usePendingCounts("agency");
   const { role, profile } = useAuth();
   const sidebarOrder = profile?.sidebarOrder ?? null;
@@ -35,7 +35,7 @@ export default function AgencySidebar() {
       { href: "/agency/dashboard", label: "Dashboard", icon: "dashboard", mobilePrimary: true },
       { href: "/agency/freelancers", label: "Colaboradores", icon: "people", mobilePrimary: true },
       { href: "/agency/categories", label: "Funções", icon: "tag" },
-      { href: "/agency/onboarding", label: "Onboarding", icon: "clipboard-edit", badge: uniformsToShip + photosToReview + registrationsToApprove },
+      { href: "/agency/onboarding", label: "Onboarding", icon: "clipboard-edit", badge: uniformsToShip + photosToReview + onboardingReviewsToApprove + registrationsToApprove },
       { href: "/agency/supermarkets", label: "Gestão de Clientes", icon: "store", badge: branchesToApprove },
       { href: "/agency/team", label: "Equipe", icon: "id-badge" },
       { href: "/agency/orders", label: "Convocações", icon: "cart", mobilePrimary: true },
