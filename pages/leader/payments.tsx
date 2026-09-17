@@ -1,18 +1,101 @@
 import { useCallback, useEffect, useState } from "react";
 import Head from "next/head";
+import axios from "axios";
 import Sidebar from "@/src/components/leader/Sidebar";
 import RevokedNotice from "@/src/components/leader/RevokedNotice";
 import RequireAuth from "@/src/components/RequireAuth";
 import StatusBadge from "@/src/components/StatusBadge";
 import WithdrawForm from "@/src/components/WithdrawForm";
+import FormField, { type FieldKind } from "@/src/components/FormField";
+import HelpIcon from "@/src/components/common/HelpIcon";
 import panel from "@/styles/panel.module.scss";
 import {
-  getMyWithdrawals, Withdrawal, WITHDRAWAL_STATUS_LABELS,
+  getMyWithdrawals, Withdrawal, WITHDRAWAL_STATUS_LABELS, PIX_KEY_TYPES, PIX_KEY_TYPE_LABELS, PixKeyType,
 } from "@/src/services/withdrawalService";
 import {
-  getLeaderWallet, LeaderWallet, PAY_TYPE_LABELS, CREDIT_STATUS_LABELS,
+  getLeaderWallet, LeaderWallet, PAY_TYPE_LABELS, CREDIT_STATUS_LABELS, updateLeaderPix,
 } from "@/src/services/agencyMemberService";
 import { useAuth } from "@/src/hooks/useAuth";
+
+/** Máscara/validação da chave conforme o tipo escolhido. */
+const PIX_KIND: Record<PixKeyType, FieldKind> = {
+  cpf: "cpf", cnpj: "cnpj", email: "email", telefone: "phone", aleatoria: "text",
+};
+
+function LeaderPixCard({ wallet, onSaved }: { wallet: LeaderWallet | null; onSaved: () => void | Promise<unknown> }) {
+  const [editing, setEditing] = useState(false);
+  const [pixKey, setPixKey] = useState(wallet?.pixKey ?? "");
+  const [pixKeyType, setPixKeyType] = useState<PixKeyType | "">(wallet?.pixKeyType ?? "");
+  const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const pixKind: FieldKind = pixKeyType ? PIX_KIND[pixKeyType] : "text";
+
+  const startEdit = () => {
+    setPixKey(wallet?.pixKey ?? "");
+    setPixKeyType(wallet?.pixKeyType ?? "");
+    setMsg(null);
+    setEditing(true);
+  };
+
+  const save = async () => {
+    if (!pixKeyType || !pixKey.trim()) { setMsg({ type: "error", text: "Selecione o tipo e informe a chave." }); return; }
+    setSaving(true);
+    setMsg(null);
+    try {
+      await updateLeaderPix(pixKey.trim(), pixKeyType);
+      setEditing(false);
+      await onSaved();
+    } catch (err) {
+      setMsg({ type: "error", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={panel.card}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <strong>
+          Chave Pix cadastrada
+          <HelpIcon title="Pra que serve">
+            <p>
+              Guardada aqui pra ficar registrada no seu cadastro — não substitui a chave que você
+              informa a cada saque, que continua sendo pedida de novo na hora.
+            </p>
+          </HelpIcon>
+        </strong>
+        {!editing && (
+          <button className={panel.ghostBtn} onClick={startEdit}>
+            {wallet?.pixKey ? "Editar" : "Cadastrar"}
+          </button>
+        )}
+      </div>
+      {!editing ? (
+        <p className={panel.muted} style={{ marginTop: "0.5rem" }}>
+          {wallet?.pixKey
+            ? `${PIX_KEY_TYPE_LABELS[wallet.pixKeyType as PixKeyType]}: ${wallet.pixKey}`
+            : "Nenhuma chave cadastrada ainda."}
+        </p>
+      ) : (
+        <div className={panel.form} style={{ marginTop: "0.5rem" }}>
+          <label>Tipo da chave</label>
+          <select value={pixKeyType} onChange={(e) => setPixKeyType(e.target.value as PixKeyType | "")}>
+            <option value="">Selecione…</option>
+            {PIX_KEY_TYPES.map((t) => <option key={t} value={t}>{PIX_KEY_TYPE_LABELS[t]}</option>)}
+          </select>
+          <FormField label="Chave Pix" kind={pixKind} required value={pixKey} onChange={setPixKey} />
+          {msg && <p className={panel.error}>{msg.text}</p>}
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button className={panel.primaryBtn} disabled={saving} onClick={save}>
+              {saving ? "Salvando…" : "Salvar"}
+            </button>
+            <button className={panel.ghostBtn} disabled={saving} onClick={() => setEditing(false)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function LeaderPayments() {
   const { profile, refresh } = useAuth();
@@ -46,6 +129,8 @@ function LeaderPayments() {
               ? " Você ganha esse valor por cada vaga que um colaborador do seu grupo conclui. Quando o colaborador cumpre a escala, o crédito entra sozinho; casos de desistência/falta ficam aguardando a agência liberar."
               : " Os créditos são lançados pela sua agência."}
           </p>
+
+          <LeaderPixCard wallet={wallet} onSaved={load} />
 
           <div className={panel.balanceCard}>
             <span className={panel.muted}>Saldo disponível para saque</span>

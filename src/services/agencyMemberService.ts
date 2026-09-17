@@ -1,4 +1,5 @@
 import api from "@/src/services/api";
+import type { PixKeyType } from "@/src/services/withdrawalService";
 
 export type LeaderPayType = "hora" | "diaria" | "mensal" | "por_colaborador";
 
@@ -67,6 +68,8 @@ export interface AgencyMember {
   availableBalance: number;
   teamRoleId?: string | null;
   teamRole?: { id: string; name: string; position: number } | null;
+  pixKey?: string | null;
+  pixKeyType?: PixKeyType | null;
   permissions: AgencyMemberPermissions;
   scope: { freelancerIds: string[]; branchIds: string[] };
   payments: AgencyMemberPayment[];
@@ -86,6 +89,8 @@ export const createAgencyMember = async (payload: {
   payType: LeaderPayType;
   payAmount: number;
   teamRoleId?: string | null;
+  pixKey?: string | null;
+  pixKeyType?: PixKeyType | null;
   freelancerIds?: string[];
   branchIds?: string[];
 }): Promise<AgencyMember> => (await api.post("/agency/members", payload)).data;
@@ -97,6 +102,8 @@ export const updateAgencyMember = async (
     payAmount?: number;
     active?: boolean;
     teamRoleId?: string | null;
+    pixKey?: string | null;
+    pixKeyType?: PixKeyType | null;
     permissions?: AgencyMemberPermissions;
   }
 ): Promise<AgencyMember> => (await api.put(`/agency/members/${id}`, payload)).data;
@@ -132,6 +139,8 @@ export interface LeaderWallet {
   payType: LeaderPayType | null;
   payAmount: number | null;
   availableBalance: number;
+  pixKey?: string | null;
+  pixKeyType?: PixKeyType | null;
   payments: AgencyMemberPayment[];
   jobCredits: LeaderJobCredit[];
   creditsReleasedTotal: number;
@@ -140,6 +149,12 @@ export interface LeaderWallet {
 
 export const getLeaderWallet = async (): Promise<LeaderWallet> =>
   (await api.get("/leader/wallet")).data;
+
+/** O próprio líder informa/atualiza a chave Pix do cadastro (distinta da chave pedida a cada saque). */
+export const updateLeaderPix = async (
+  pixKey: string,
+  pixKeyType: PixKeyType
+): Promise<LeaderWallet> => (await api.put("/leader/wallet/pix", { pixKey, pixKeyType })).data;
 
 export const getMemberJobCredits = async (
   status?: LeaderJobCreditStatus

@@ -11,6 +11,7 @@ import {
   deactivateAgencyMember, resetAgencyMemberPassword, AgencyMember, LeaderPayType, PAY_TYPE_LABELS,
   AgencyMemberPermissions, AGENCY_MEMBER_FEATURES, AGENCY_MEMBER_FEATURE_LABELS,
 } from "@/src/services/agencyMemberService";
+import { PIX_KEY_TYPES, PIX_KEY_TYPE_LABELS, PixKeyType } from "@/src/services/withdrawalService";
 import {
   getAgencyPartners, createAgencyPartner, updateAgencyPartner, deactivateAgencyPartner,
   resetAgencyPartnerPassword, AgencyPartner, AgencyPartnerPermissions, AGENCY_PARTNER_FEATURES,
@@ -53,7 +54,10 @@ function TeamPage() {
   const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", payType: "mensal" as LeaderPayType, payAmount: "", teamRoleId: "" });
+  const [form, setForm] = useState({
+    name: "", email: "", password: "", phone: "", payType: "mensal" as LeaderPayType, payAmount: "",
+    teamRoleId: "", pixKey: "", pixKeyType: "" as PixKeyType | "",
+  });
   const [createError, setCreateError] = useState<string | null>(null);
 
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -68,7 +72,9 @@ function TeamPage() {
   const [scopeError, setScopeError] = useState<string | null>(null);
 
   const [payMember, setPayMember] = useState<AgencyMember | null>(null);
-  const [payForm, setPayForm] = useState({ payType: "mensal" as LeaderPayType, payAmount: "" });
+  const [payForm, setPayForm] = useState({
+    payType: "mensal" as LeaderPayType, payAmount: "", pixKey: "", pixKeyType: "" as PixKeyType | "",
+  });
   const [payError, setPayError] = useState<string | null>(null);
 
   const [memberPermMember, setMemberPermMember] = useState<AgencyMember | null>(null);
@@ -124,13 +130,15 @@ function TeamPage() {
       { name: "phone", value: form.phone, kind: "phone" },
     ]);
     if (Object.keys(errs).length) { setCreateError("Confira o e-mail e o telefone."); return; }
+    if (form.pixKey.trim() && !form.pixKeyType) { setCreateError("Selecione o tipo da chave Pix."); return; }
     try {
       await createAgencyMember({
         name: form.name, email: form.email, password: form.password, phone: form.phone || undefined,
         payType: form.payType, payAmount: amount, teamRoleId: form.teamRoleId || null,
+        pixKey: form.pixKey.trim() || null, pixKeyType: form.pixKeyType || null,
       });
       setCreateOpen(false);
-      setForm({ name: "", email: "", password: "", phone: "", payType: "mensal", payAmount: "", teamRoleId: "" });
+      setForm({ name: "", email: "", password: "", phone: "", payType: "mensal", payAmount: "", teamRoleId: "", pixKey: "", pixKeyType: "" });
       setMsg({ type: "success", text: "Líder cadastrado." });
       await load();
     } catch (err) {
@@ -202,7 +210,10 @@ function TeamPage() {
 
   const openPay = (m: AgencyMember) => {
     setPayMember(m);
-    setPayForm({ payType: m.payType ?? "mensal", payAmount: m.payAmount != null ? String(m.payAmount) : "" });
+    setPayForm({
+      payType: m.payType ?? "mensal", payAmount: m.payAmount != null ? String(m.payAmount) : "",
+      pixKey: m.pixKey ?? "", pixKeyType: m.pixKeyType ?? "",
+    });
     setPayError(null);
   };
 
@@ -211,8 +222,12 @@ function TeamPage() {
     setPayError(null);
     const amount = Number(payForm.payAmount);
     if (!(amount > 0)) { setPayError("Informe o valor."); return; }
+    if (payForm.pixKey.trim() && !payForm.pixKeyType) { setPayError("Selecione o tipo da chave Pix."); return; }
     try {
-      await updateAgencyMember(payMember.id, { payType: payForm.payType, payAmount: amount });
+      await updateAgencyMember(payMember.id, {
+        payType: payForm.payType, payAmount: amount,
+        pixKey: payForm.pixKey.trim() || null, pixKeyType: payForm.pixKeyType || null,
+      });
       setPayMember(null);
       await load();
     } catch (err) {
@@ -509,6 +524,19 @@ function TeamPage() {
             <p className={panel.muted} style={{ fontSize: "0.8rem" }}>{PAY_TYPE_HINT[form.payType]}</p>
             <label>{form.payType === "por_colaborador" ? "Valor por colaborador que trabalhou (R$)" : "Valor (R$)"}</label>
             <input type="number" min="0.01" step="0.01" value={form.payAmount} onChange={(e) => setForm({ ...form, payAmount: e.target.value })} />
+            <label>
+              Chave Pix do líder (opcional)
+              <HelpIcon title="Chave Pix">
+                <p>Fica guardada no cadastro para consulta — o líder também pode informar ou trocar depois, na própria carteira dele.</p>
+              </HelpIcon>
+            </label>
+            <select value={form.pixKeyType} onChange={(e) => setForm({ ...form, pixKeyType: e.target.value as PixKeyType | "" })}>
+              <option value="">— sem chave —</option>
+              {PIX_KEY_TYPES.map((t) => <option key={t} value={t}>{PIX_KEY_TYPE_LABELS[t]}</option>)}
+            </select>
+            {form.pixKeyType && (
+              <input placeholder="Chave Pix" value={form.pixKey} onChange={(e) => setForm({ ...form, pixKey: e.target.value })} />
+            )}
             {createError && <p className={panel.error}>{createError}</p>}
             <button className={panel.primaryBtn} onClick={submitCreate}>Cadastrar</button>
           </div>
@@ -584,6 +612,19 @@ function TeamPage() {
                 ? "Vale para as vagas concluídas a partir de agora. Você pode ajustar este valor quando quiser."
                 : "Para creditar a carteira do líder, use “Pagamento a líderes” na tela de Pagamentos."}
             </p>
+            <label>
+              Chave Pix do líder
+              <HelpIcon title="Chave Pix">
+                <p>Fica guardada no cadastro para consulta — o líder também pode informar ou trocar depois, na própria carteira dele.</p>
+              </HelpIcon>
+            </label>
+            <select value={payForm.pixKeyType} onChange={(e) => setPayForm({ ...payForm, pixKeyType: e.target.value as PixKeyType | "" })}>
+              <option value="">— sem chave —</option>
+              {PIX_KEY_TYPES.map((t) => <option key={t} value={t}>{PIX_KEY_TYPE_LABELS[t]}</option>)}
+            </select>
+            {payForm.pixKeyType && (
+              <input placeholder="Chave Pix" value={payForm.pixKey} onChange={(e) => setPayForm({ ...payForm, pixKey: e.target.value })} />
+            )}
             {payError && <p className={panel.error}>{payError}</p>}
             <button className={panel.primaryBtn} onClick={savePay}>Salvar</button>
           </div>
