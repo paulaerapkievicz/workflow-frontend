@@ -30,7 +30,7 @@ export default function OnboardingBanner() {
   return (
     <p className={panel.error} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
       Onboarding pendente — {what} para aceitar vagas.
-      <Link href="/freelancer/onboarding" className={panel.ghostBtn}>Ir para o onboarding</Link>
+      <Link href="/freelancer/profile" className={panel.ghostBtn}>Ir para o meu perfil</Link>
     </p>
   );
 }

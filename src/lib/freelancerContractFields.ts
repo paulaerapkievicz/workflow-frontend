@@ -14,7 +14,7 @@ export type ContractField = {
 
 /**
  * Seções e campos do perfil contratual do onboarding — fonte única usada tanto no formulário
- * de preenchimento do colaborador (`/freelancer/onboarding`) quanto na revisão/exibição
+ * de preenchimento do colaborador (`/freelancer/profile`) quanto na revisão/exibição
  * somente-leitura pela agência (tela de aprovação + seção no cadastro do colaborador).
  */
 export const CONTRACT_SECTIONS: { title: string; fields: ContractField[] }[] = [
