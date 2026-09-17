@@ -7,6 +7,7 @@ import panel from "@/styles/panel.module.scss";
 import {
   getContract, saveContract, getUniform, requestUniform, confirmUniformReceived,
   syncUniformPayment, SHIRT_SIZES, UNIFORM_STATUS_LABELS, UniformOrder, PHOTO_STATUS_LABELS,
+  FREELANCER_PIX_KEY_TYPES, PIX_KEY_TYPE_LABELS, type FreelancerPixKeyType,
 } from "@/src/services/onboardingService";
 import { photoUrl } from "@/src/services/jobPhotoService";
 import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
@@ -67,7 +68,6 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
       { key: "bankBranch", label: "Agência", required: true, kind: "digits" },
       { key: "bankAccount", label: "Conta", required: true, kind: "digits" },
       { key: "bankAccountType", label: "Tipo de conta" },
-      { key: "pixKey", label: "Chave Pix" },
     ],
   },
   {
@@ -80,7 +80,15 @@ const SECTIONS: { title: string; fields: Field[] }[] = [
 ];
 
 const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields);
-const REQUIRED_KEYS = ALL_FIELDS.filter((f) => f.required).map((f) => f.key).concat("shirtSize");
+const REQUIRED_KEYS = ALL_FIELDS.filter((f) => f.required).map((f) => f.key).concat("shirtSize", "pixKey", "pixKeyType");
+
+/** Tipo de chave Pix -> tipo do campo (máscara + validação do FormField). */
+const PIX_FIELD_KIND: Record<FreelancerPixKeyType, FieldKind> = {
+  cpf: "cpf",
+  email: "email",
+  telefone: "phone",
+  aleatoria: "text",
+};
 
 function OnboardingPage() {
   const { profile, refresh } = useAuth();
@@ -123,6 +131,8 @@ function OnboardingPage() {
         const v: Record<string, string> = {};
         for (const f of ALL_FIELDS) v[f.key] = (c[f.key] as string) ?? "";
         v.shirtSize = (c.shirtSize as string) ?? "";
+        v.pixKey = (c.pixKey as string) ?? "";
+        v.pixKeyType = (c.pixKeyType as string) ?? "";
         setValues(v);
         setContractDone(!!c.completedAt);
       }
@@ -149,10 +159,11 @@ function OnboardingPage() {
   const save = async () => {
     setMsg(null);
     setShowErrors(true);
+    const pixKind = PIX_FIELD_KIND[(values.pixKeyType as FreelancerPixKeyType) || "aleatoria"];
     const fieldErrs = validateForm(
       ALL_FIELDS.filter((f) => f.kind).map((f) => ({
         name: f.key, value: values[f.key] ?? "", kind: f.kind!, required: f.required,
-      }))
+      })).concat([{ name: "pixKey", value: values.pixKey ?? "", kind: pixKind, required: true }])
     );
     if (Object.keys(fieldErrs).length) {
       setMsg({ type: "err", text: "Confira os campos destacados — há valores inválidos." });
@@ -314,6 +325,51 @@ function OnboardingPage() {
                     </div>
                   </div>
                 ))}
+                <div style={{ marginTop: "0.8rem" }}>
+                  <p style={{ fontWeight: 600, margin: "0.4rem 0", display: "flex", alignItems: "center", gap: 4 }}>
+                    Chave Pix
+                    <HelpIcon title="Chave Pix pessoal">
+                      <p>
+                        A chave Pix cadastrada aqui precisa ser <strong>sua</strong> — a mesma pessoa do
+                        CPF, do e-mail de login ou do telefone informados no seu cadastro, conforme o
+                        tipo escolhido. Chave de terceiro (de outra pessoa) é recusada.
+                      </p>
+                      <p>
+                        Sem uma chave Pix própria cadastrada não é possível aceitar vagas — é o único
+                        jeito de você receber o pagamento.
+                      </p>
+                    </HelpIcon>
+                  </p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.6rem" }}>
+                    <label className={panel.filterField}>
+                      <span>Tipo de chave Pix *</span>
+                      <select
+                        value={values.pixKeyType ?? ""}
+                        onChange={(e) => set("pixKeyType", e.target.value)}
+                        aria-invalid={(showErrors && !values.pixKeyType) || undefined}
+                        style={
+                          showErrors && !values.pixKeyType
+                            ? { borderColor: "var(--danger)", background: "var(--danger-soft)" }
+                            : undefined
+                        }
+                      >
+                        <option value="">Selecione…</option>
+                        {FREELANCER_PIX_KEY_TYPES.map((t) => (
+                          <option key={t} value={t}>{PIX_KEY_TYPE_LABELS[t]}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <FormField
+                      label="Chave Pix"
+                      kind={PIX_FIELD_KIND[(values.pixKeyType as FreelancerPixKeyType) || "aleatoria"]}
+                      required
+                      value={values.pixKey ?? ""}
+                      onChange={(v) => set("pixKey", v)}
+                      error={showErrors && !(values.pixKey ?? "").trim() ? "Campo obrigatório" : undefined}
+                      hint="Precisa ser a sua própria chave — não pode ser de terceiros."
+                    />
+                  </div>
+                </div>
                 <div style={{ marginTop: "0.8rem" }}>
                   <label className={panel.filterField} style={{ maxWidth: 220 }}>
                     <span>Tamanho da camiseta *</span>

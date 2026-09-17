@@ -13,6 +13,16 @@ export const UNIFORM_STATUS_LABELS: Record<UniformStatus, string> = {
 
 export type PhotoStatus = "none" | "pending" | "approved" | "rejected";
 
+/** Sem "cnpj" — chave Pix do onboarding é pessoal, não pode representar uma empresa. */
+export const FREELANCER_PIX_KEY_TYPES = ["cpf", "email", "telefone", "aleatoria"] as const;
+export type FreelancerPixKeyType = (typeof FREELANCER_PIX_KEY_TYPES)[number];
+export const PIX_KEY_TYPE_LABELS: Record<FreelancerPixKeyType, string> = {
+  cpf: "CPF",
+  email: "E-mail",
+  telefone: "Telefone",
+  aleatoria: "Aleatória",
+};
+
 export const PHOTO_STATUS_LABELS: Record<PhotoStatus, string> = {
   none: "Nenhuma foto enviada",
   pending: "Em análise",
