@@ -31,7 +31,7 @@ import {
 
 const fmtDateTime = (d: string) => new Date(d).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" });
 
-type TabId = "perfil" | "uniforme" | "foto" | "contrato";
+type TabId = "perfil" | "uniforme" | "contrato";
 
 function ProfilePage() {
   const { profile, refresh } = useAuth();
@@ -47,6 +47,9 @@ function ProfilePage() {
   const [uniformErr, setUniformErr] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [profilePhotoErr, setProfilePhotoErr] = useState<string | null>(null);
+  // Campos de opção com "Outra…" (ex.: nacionalidade): força o modo texto-livre mesmo
+  // quando o valor atual (ainda vazio) bateria com o placeholder, não com uma opção real.
+  const [customOptionFields, setCustomOptionFields] = useState<Record<string, boolean>>({});
   const profilePhotoUrl = (profile?.profilePhotoUrl as string | null | undefined) ?? null;
   const appPaymentEnabledForFreelancers =
     (profile as { affiliatedAgency?: { appPaymentEnabledForFreelancers?: boolean } } | null)
@@ -242,14 +245,13 @@ function ProfilePage() {
 
   const tabs = useMemo(() => {
     const list: { id: TabId; label: string; badge?: number }[] = [
-      { id: "perfil", label: "Perfil contratual", badge: contractDone ? 0 : missing.length },
+      {
+        id: "perfil",
+        label: "Perfil contratual",
+        badge: (contractDone ? 0 : missing.length) + (requirePhotoApproval && photoStatus === "rejected" ? 1 : 0),
+      },
     ];
     if (requireUniformPurchase) list.push({ id: "uniforme", label: "Uniforme" });
-    list.push({
-      id: "foto",
-      label: "Foto",
-      badge: requirePhotoApproval && photoStatus === "rejected" ? 1 : 0,
-    });
     if (contractDone) list.push({ id: "contrato", label: "Contrato", badge: contractReadyToSign ? 1 : 0 });
     return list;
   }, [contractDone, missing.length, requireUniformPurchase, requirePhotoApproval, photoStatus, contractReadyToSign]);
@@ -301,6 +303,10 @@ function ProfilePage() {
                           {sec.fields.map((f) => {
                             const invalid =
                               showErrors && f.required && !(values[f.key] ?? "").trim();
+                            const invalidStyle = invalid
+                              ? { borderColor: "var(--danger)", background: "var(--danger-soft)" }
+                              : undefined;
+
                             if (f.kind) {
                               return (
                                 <FormField
@@ -312,9 +318,59 @@ function ProfilePage() {
                                   value={values[f.key] ?? ""}
                                   onChange={(v) => set(f.key, v)}
                                   error={invalid ? "Campo obrigatório" : undefined}
+                                  hint={f.hint}
+                                  autoComplete={f.autoComplete}
                                 />
                               );
                             }
+
+                            if (f.options) {
+                              const raw = values[f.key] ?? "";
+                              const known = f.options.some((o) => o.value === raw);
+                              const isOther = f.allowOther && (customOptionFields[f.key] || (!!raw && !known));
+                              return (
+                                <div key={f.key} className={panel.filterField}>
+                                  <label>
+                                    <span>
+                                      {f.label}
+                                      {f.required ? " *" : ""}
+                                    </span>
+                                    <select
+                                      value={isOther ? "__outra__" : known ? raw : ""}
+                                      aria-invalid={invalid || undefined}
+                                      style={invalidStyle}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (v === "__outra__") {
+                                          setCustomOptionFields((cur) => ({ ...cur, [f.key]: true }));
+                                          set(f.key, "");
+                                        } else {
+                                          setCustomOptionFields((cur) => ({ ...cur, [f.key]: false }));
+                                          set(f.key, v);
+                                        }
+                                      }}
+                                    >
+                                      <option value="">Selecione…</option>
+                                      {f.options.map((o) => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                      ))}
+                                      {f.allowOther && <option value="__outra__">Outra…</option>}
+                                    </select>
+                                  </label>
+                                  {isOther && (
+                                    <input
+                                      style={{ marginTop: "0.4rem", ...(invalidStyle ?? {}) }}
+                                      placeholder="Especifique"
+                                      value={raw}
+                                      onChange={(e) => set(f.key, e.target.value)}
+                                      aria-invalid={invalid || undefined}
+                                    />
+                                  )}
+                                  {f.hint && <small className={panel.muted} style={{ textTransform: "none", fontWeight: 400 }}>{f.hint}</small>}
+                                </div>
+                              );
+                            }
+
                             return (
                               <label key={f.key} className={panel.filterField}>
                                 <span>
@@ -326,12 +382,16 @@ function ProfilePage() {
                                   value={values[f.key] ?? ""}
                                   onChange={(e) => set(f.key, e.target.value)}
                                   aria-invalid={invalid || undefined}
-                                  style={
-                                    invalid
-                                      ? { borderColor: "var(--danger)", background: "var(--danger-soft)" }
-                                      : undefined
-                                  }
+                                  autoComplete={f.autoComplete}
+                                  list={f.suggestions ? `${f.key}-suggestions` : undefined}
+                                  style={invalidStyle}
                                 />
+                                {f.suggestions && (
+                                  <datalist id={`${f.key}-suggestions`}>
+                                    {f.suggestions.map((s) => <option key={s} value={s} />)}
+                                  </datalist>
+                                )}
+                                {f.hint && <small className={panel.muted} style={{ textTransform: "none", fontWeight: 400 }}>{f.hint}</small>}
                               </label>
                             );
                           })}
@@ -401,7 +461,42 @@ function ProfilePage() {
                         </select>
                       </label>
                     </div>
-                    <button className={panel.primaryBtn} onClick={save} disabled={saving} style={{ marginTop: "0.8rem" }}>
+
+                    <div style={{ marginTop: "1.2rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <p style={{ fontWeight: 600, margin: 0 }}>Foto</p>
+                        {requirePhotoApproval && (
+                          <span className={`${panel.badge} ${photoStatus === "approved" ? panel.badgeDone : panel.badgePending}`}>
+                            {PHOTO_STATUS_LABELS[photoStatus]}
+                          </span>
+                        )}
+                      </div>
+                      <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
+                        {requirePhotoApproval
+                          ? "Envie uma foto sua. A sua agência precisa aprovar antes que ela valha como foto de perfil e libere vagas."
+                          : "Essa foto é mostrada ao supermercado quando você aceita uma vaga, para identificação de quem vai atender."}
+                      </p>
+                      {requirePhotoApproval && photoStatus === "rejected" && photoRejectionReason && (
+                        <p className={panel.error}>Motivo da recusa: {photoRejectionReason} — envie outra foto.</p>
+                      )}
+                      {profilePhotoErr && <p className={panel.error}>{profilePhotoErr}</p>}
+                      {profilePhotoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={photoUrl(profilePhotoUrl)}
+                          alt="Foto de perfil"
+                          style={{ width: 120, height: 120, objectFit: "cover", borderRadius: "50%", marginTop: "0.5rem" }}
+                        />
+                      )}
+                      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end", marginTop: "0.5rem" }}>
+                        <FileField label="Foto" accept="image/*" file={profilePhoto} onChange={setProfilePhoto} />
+                        <button className={panel.primaryBtn} disabled={busy || !profilePhoto} onClick={sendProfilePhoto}>
+                          {busy ? "Enviando…" : profilePhotoUrl ? "Trocar foto" : "Enviar foto"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button className={panel.primaryBtn} onClick={save} disabled={saving} style={{ marginTop: "1.2rem" }}>
                       {saving ? "Salvando…" : "Salvar perfil"}
                     </button>
                   </>
@@ -468,42 +563,6 @@ function ProfilePage() {
                         )}
                       </div>
                     )}
-                  </>
-                )}
-
-                {tab === "foto" && (
-                  <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <strong>Foto</strong>
-                      {requirePhotoApproval && (
-                        <span className={`${panel.badge} ${photoStatus === "approved" ? panel.badgeDone : panel.badgePending}`}>
-                          {PHOTO_STATUS_LABELS[photoStatus]}
-                        </span>
-                      )}
-                    </div>
-                    <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
-                      {requirePhotoApproval
-                        ? "Envie uma foto sua. A sua agência precisa aprovar antes que ela valha como foto de perfil e libere vagas."
-                        : "Essa foto é mostrada ao supermercado quando você aceita uma vaga, para identificação de quem vai atender."}
-                    </p>
-                    {requirePhotoApproval && photoStatus === "rejected" && photoRejectionReason && (
-                      <p className={panel.error}>Motivo da recusa: {photoRejectionReason} — envie outra foto.</p>
-                    )}
-                    {profilePhotoErr && <p className={panel.error}>{profilePhotoErr}</p>}
-                    {profilePhotoUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={photoUrl(profilePhotoUrl)}
-                        alt="Foto de perfil"
-                        style={{ width: 120, height: 120, objectFit: "cover", borderRadius: "50%", marginTop: "0.5rem" }}
-                      />
-                    )}
-                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end", marginTop: "0.5rem" }}>
-                      <FileField label="Foto" accept="image/*" file={profilePhoto} onChange={setProfilePhoto} />
-                      <button className={panel.primaryBtn} disabled={busy || !profilePhoto} onClick={sendProfilePhoto}>
-                        {busy ? "Enviando…" : profilePhotoUrl ? "Trocar foto" : "Enviar foto"}
-                      </button>
-                    </div>
                   </>
                 )}
 
