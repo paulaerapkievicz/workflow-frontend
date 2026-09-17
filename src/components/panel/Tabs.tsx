@@ -3,6 +3,8 @@ import panel from "@/styles/panel.module.scss";
 export interface TabDef {
   id: string;
   label: string;
+  /** Contador opcional (ex.: campos faltando, pendências) — mostrado como um badge ao lado do rótulo. */
+  badge?: number;
 }
 
 interface Props {
@@ -25,6 +27,9 @@ export default function Tabs({ tabs, active, onChange }: Props) {
           onClick={() => onChange(t.id)}
         >
           {t.label}
+          {!!t.badge && (
+            <span className={panel.badge} style={{ marginLeft: 6 }}>{t.badge}</span>
+          )}
         </button>
       ))}
     </div>
