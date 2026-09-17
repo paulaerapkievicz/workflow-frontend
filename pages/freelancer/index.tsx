@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import PanelPage from "@/src/components/panel/PanelPage";
 import panel from "@/styles/panel.module.scss";
+import app from "@/styles/freelancerApp.module.scss";
 import {
   getAvailableJobs, acceptJob, Job, formatShifts, formatShiftPeriods, minutesToHours, mapUrl, readGeolocation,
 } from "@/src/services/jobService";
@@ -13,6 +14,7 @@ import { fmtDate } from "@/src/lib/datetime";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import { SkeletonCard } from "@/src/components/common/Skeleton";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange } from "@/src/lib/dateRange";
 
@@ -20,6 +22,7 @@ function AvailableJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
   const [fnFilter, setFnFilter] = useState("");
   const [branchFilter, setBranchFilter] = useState("");
@@ -41,11 +44,14 @@ function AvailableJobs() {
 
   const accept = async (id: string) => {
     setError(null);
+    setAcceptingId(id);
     try {
       await acceptJob(id);
       await load();
     } catch (err) {
       setError(axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro ao aceitar." : "Erro ao aceitar.");
+    } finally {
+      setAcceptingId(null);
     }
   };
 
@@ -106,123 +112,123 @@ function AvailableJobs() {
   }, [jobs, fnFilter, branchFilter, superFilter, range, me, maxKm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <>
-      <Head><title>Vagas disponíveis | Colaborador</title></Head>
-      <main className={panel.container}>
-        <Sidebar />
-        <section className={panel.content}>
-          <header className={panel.header}>
-            <h1>
-              Vagas disponíveis
-              <HelpIcon title="Como funciona esta lista">
-                <p>Você vê apenas vagas das funções marcadas no seu perfil e cujo turno ainda não passou.</p>
-                <p>Só é possível aceitar uma vaga por período — sem horários sobrepostos.</p>
-              </HelpIcon>
-            </h1>
-          </header>
-          <OnboardingBanner />
-          {error && <p className={panel.error}>{error}</p>}
+    <PanelPage
+      title="Vagas disponíveis | Colaborador"
+      heading={
+        <>
+          Vagas disponíveis
+          <HelpIcon title="Como funciona esta lista">
+            <p>Você vê apenas vagas das funções marcadas no seu perfil e cujo turno ainda não passou.</p>
+            <p>Só é possível aceitar uma vaga por período — sem horários sobrepostos.</p>
+          </HelpIcon>
+        </>
+      }
+      sidebar={<Sidebar />}
+    >
+      <OnboardingBanner />
+      {error && <p className={panel.error}>{error}</p>}
 
-          <CollapsibleFilterBar>
-            <DateRangeQuickFilter value={range} onChange={setRange} />
-            <label className={panel.filterField}>
-              <span>Supermercado</span>
-              <select value={superFilter} onChange={(e) => setSuperFilter(e.target.value)}>
-                <option value="">Todos</option>
-                {supermarketNames.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </label>
-            <label className={panel.filterField}>
-              <span>Função</span>
-              <select value={fnFilter} onChange={(e) => setFnFilter(e.target.value)}>
-                <option value="">Todas</option>
-                {functions.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </label>
-            <label className={panel.filterField}>
-              <span>Loja</span>
-              <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
-                <option value="">Todas</option>
-                {branchNames.map((b) => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </label>
-            <label className={panel.filterField}>
-              <span>Até (km)</span>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={maxKm}
-                onChange={(e) => setMaxKm(e.target.value)}
-                placeholder="sem limite"
-                disabled={!me}
-              />
-            </label>
-            <button type="button" className={panel.ghostBtn} onClick={useMyLocation} disabled={locBusy}>
-              {locBusy ? "Localizando…" : me ? "Atualizar minha localização" : "Ordenar pelas mais próximas"}
-            </button>
-            {(fnFilter || branchFilter || superFilter || maxKm || range.preset !== "todas") && (
-              <button
-                type="button"
-                className={panel.ghostBtn}
-                onClick={() => {
-                  setFnFilter("");
-                  setBranchFilter("");
-                  setSuperFilter("");
-                  setMaxKm("");
-                  setRange({ preset: "todas" });
-                }}
-              >
-                Limpar
-              </button>
-            )}
-          </CollapsibleFilterBar>
+      <CollapsibleFilterBar>
+        <DateRangeQuickFilter value={range} onChange={setRange} />
+        <label className={panel.filterField}>
+          <span>Supermercado</span>
+          <select value={superFilter} onChange={(e) => setSuperFilter(e.target.value)}>
+            <option value="">Todos</option>
+            {supermarketNames.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+        <label className={panel.filterField}>
+          <span>Função</span>
+          <select value={fnFilter} onChange={(e) => setFnFilter(e.target.value)}>
+            <option value="">Todas</option>
+            {functions.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </label>
+        <label className={panel.filterField}>
+          <span>Loja</span>
+          <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
+            <option value="">Todas</option>
+            {branchNames.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </label>
+        <label className={panel.filterField}>
+          <span>Até (km)</span>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={maxKm}
+            onChange={(e) => setMaxKm(e.target.value)}
+            placeholder="sem limite"
+            disabled={!me}
+          />
+        </label>
+        <button type="button" className={panel.ghostBtn} onClick={useMyLocation} disabled={locBusy}>
+          {locBusy ? "Localizando…" : me ? "Atualizar minha localização" : "Ordenar pelas mais próximas"}
+        </button>
+        {(fnFilter || branchFilter || superFilter || maxKm || range.preset !== "todas") && (
+          <button
+            type="button"
+            className={panel.ghostBtn}
+            onClick={() => {
+              setFnFilter("");
+              setBranchFilter("");
+              setSuperFilter("");
+              setMaxKm("");
+              setRange({ preset: "todas" });
+            }}
+          >
+            Limpar
+          </button>
+        )}
+      </CollapsibleFilterBar>
 
-          {loading ? (
-            <p>Carregando…</p>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table className={panel.table}>
-                <thead>
-                  <tr>
-                    <th>Título</th><th>Supermercado</th><th>Filial</th>
-                    {me && <th>Distância</th>}
-                    <th>Função</th><th>Data</th><th>Turno</th><th>Horário</th><th>Horas</th><th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((j) => {
-                    const d = distanceOf(j);
-                    return (
-                      <tr key={j.id}>
-                        <td>{j.title}</td>
-                        <td>{j.jobSupermarket?.name ?? "—"}</td>
-                        <td>
-                          {j.jobBranch?.name ?? "—"}
-                          {j.jobBranch?.address && (
-                            <> <a href={mapUrl(j.jobBranch.address) ?? "#"} target="_blank" rel="noreferrer">mapa</a></>
-                          )}
-                        </td>
-                        {me && <td>{d == null ? "—" : formatDistance(d)}</td>}
-                        <td>{j.jobCategory?.name ?? "—"}</td>
-                        <td>{fmtDate(j.startTime)}</td>
-                        <td>{formatShiftPeriods(j)}</td>
-                        <td>{formatShifts(j.shifts)}</td>
-                        <td>{minutesToHours(j.contractedMinutes)}</td>
-                        <td><button className={panel.primaryBtn} onClick={() => accept(j.id)}>Aceitar</button></td>
-                      </tr>
-                    );
-                  })}
-                  {rows.length === 0 && (
-                    <tr><td colSpan={me ? 10 : 9} className={panel.muted}>Nenhuma vaga disponível no momento.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </main>
-    </>
+      {loading ? (
+        <div className={app.jobGrid}>
+          <SkeletonCard /><SkeletonCard /><SkeletonCard />
+        </div>
+      ) : rows.length === 0 ? (
+        <p className={app.emptyState}>Nenhuma vaga disponível no momento.</p>
+      ) : (
+        <div className={app.jobGrid}>
+          {rows.map((j) => {
+            const d = distanceOf(j);
+            return (
+              <div key={j.id} className={app.card}>
+                <div className={app.cardTop}>
+                  <div>
+                    <p className={app.cardTitle}>{j.title}</p>
+                    <p className={app.cardMeta}>
+                      {j.jobSupermarket?.name ?? "—"}
+                      {j.jobBranch?.name ? ` — ${j.jobBranch.name}` : ""}
+                      {j.jobBranch?.address && (
+                        <> · <a href={mapUrl(j.jobBranch.address) ?? "#"} target="_blank" rel="noreferrer">mapa</a></>
+                      )}
+                    </p>
+                  </div>
+                  {d != null && <span className={app.distanceTag}>{formatDistance(d)}</span>}
+                </div>
+                <p className={app.cardMeta}>
+                  {j.jobCategory?.name ?? "—"} · {fmtDate(j.startTime)}
+                </p>
+                <p className={app.cardMeta}>
+                  {formatShiftPeriods(j)} · {formatShifts(j.shifts)} · {minutesToHours(j.contractedMinutes)}
+                </p>
+                <div className={app.cardFooter}>
+                  <button
+                    className={panel.primaryBtn}
+                    disabled={acceptingId === j.id}
+                    onClick={() => accept(j.id)}
+                  >
+                    {acceptingId === j.id ? "Aceitando…" : "Aceitar"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </PanelPage>
   );
 }
 

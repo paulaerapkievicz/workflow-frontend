@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import PanelPage from "@/src/components/panel/PanelPage";
 import panel from "@/styles/panel.module.scss";
 import Tabs from "@/src/components/panel/Tabs";
 import {
@@ -262,26 +262,25 @@ function ProfilePage() {
   }, [tabs, tab]);
 
   return (
-    <>
-      <Head><title>Meu perfil | Colaborador</title></Head>
-      <main className={panel.container}>
-        <Sidebar />
-        <section className={panel.content}>
-          <header className={panel.header}>
-            <h1>
-              Meu perfil
-              <HelpIcon title="Como funciona o seu perfil">
-                <p>
-                  Tudo sobre o seu cadastro fica centralizado aqui, em abas: os dados do onboarding, o
-                  uniforme e a foto (quando exigidos pela sua agência) e o contrato — inclusive a
-                  assinatura eletrônica.
-                </p>
-              </HelpIcon>
-            </h1>
-          </header>
-          {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
+    <PanelPage
+      title="Meu perfil | Colaborador"
+      heading={
+        <>
+          Meu perfil
+          <HelpIcon title="Como funciona o seu perfil">
+            <p>
+              Tudo sobre o seu cadastro fica centralizado aqui, em abas: os dados do onboarding, o
+              uniforme e a foto (quando exigidos pela sua agência) e o contrato — inclusive a
+              assinatura eletrônica.
+            </p>
+          </HelpIcon>
+        </>
+      }
+      sidebar={<Sidebar />}
+    >
+      {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
 
-          {loading ? (
+      {loading ? (
             <p>Carregando…</p>
           ) : (
             <>
@@ -657,9 +656,7 @@ function ProfilePage() {
               </div>
             </>
           )}
-        </section>
-      </main>
-    </>
+    </PanelPage>
   );
 }
 

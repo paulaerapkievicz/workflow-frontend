@@ -1,13 +1,14 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import Head from "next/head";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import PanelPage from "@/src/components/panel/PanelPage";
 import StatusBadge from "@/src/components/StatusBadge";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
 import JobMovementsTable from "@/src/components/JobMovementsTable";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import { SkeletonCard, SkeletonTableRows } from "@/src/components/common/Skeleton";
 import panel from "@/styles/panel.module.scss";
 import {
   getFreelancerReport, FreelancerReport, FreelancerPaymentStatus, PAYMENT_STATUS_FILTER_LABELS,
@@ -18,6 +19,7 @@ import { fmtDate } from "@/src/lib/datetime";
 
 function FreelancerPayments() {
   const [report, setReport] = useState<FreelancerReport | null>(null);
+  const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [range, setRange] = useDateRangeFilter("freelancer-payments-daterange", { preset: "todas" });
@@ -26,7 +28,12 @@ function FreelancerPayments() {
   const [paymentStatus, setPaymentStatus] = useState<FreelancerPaymentStatus | "">("");
 
   const load = async () => {
-    setReport(await getFreelancerReport());
+    setLoading(true);
+    try {
+      setReport(await getFreelancerReport());
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load().catch(() => {}); }, []);
@@ -53,13 +60,14 @@ function FreelancerPayments() {
   );
 
   return (
-    <>
-      <Head><title>Carteira | Colaborador</title></Head>
-      <main className={panel.container}>
-        <Sidebar />
-        <section className={panel.content}>
-          <header className={panel.header}><h1>Carteira</h1></header>
-
+    <PanelPage title="Carteira | Colaborador" heading="Carteira" sidebar={<Sidebar />}>
+      {loading || !report ? (
+        <>
+          <SkeletonCard lines={1} />
+          <SkeletonTableRows rows={4} />
+        </>
+      ) : (
+        <>
           <CollapsibleFilterBar>
             <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
             <CategoryBranchFilter
@@ -134,9 +142,9 @@ function FreelancerPayments() {
               </tbody>
             </table>
           </div>
-        </section>
-      </main>
-    </>
+        </>
+      )}
+    </PanelPage>
   );
 }
 

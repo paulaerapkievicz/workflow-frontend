@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import Head from "next/head";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
+import PanelPage from "@/src/components/panel/PanelPage";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
 import JobMovementsTable from "@/src/components/JobMovementsTable";
+import { SkeletonCard, SkeletonStatGrid, SkeletonTableRows } from "@/src/components/common/Skeleton";
 import panel from "@/styles/panel.module.scss";
 import {
   getFreelancerReport, downloadFreelancerReportPdf, FreelancerReport,
@@ -71,90 +72,86 @@ function ReportsPage() {
   };
 
   return (
-    <>
-      <Head><title>Relatório | Colaborador</title></Head>
-      <main className={panel.container}>
-        <Sidebar />
-        <section className={panel.content}>
-          <header className={panel.header}><h1>Relatório de trabalhos</h1></header>
-
-          {loading || !report ? (
-            <p>Carregando…</p>
-          ) : (
-            <>
-              {reputation && (
-                <div className={panel.card} style={{ marginBottom: "1rem" }}>
-                  <div className={panel.tableToolbar}><strong>Minha reputação</strong></div>
-                  <FreelancerReputation reputation={reputation} compact />
-                  <AssignedLeaders leaders={leaders} />
-                </div>
-              )}
-
-              <div className={panel.cards}>
-                <div className={panel.card}><h2>{items.length}</h2><p>Trabalhos concluídos</p></div>
-                <div className={panel.card}><h2>{hrs(items.reduce((a, i) => a + i.workedHours, 0))}</h2><p>Horas trabalhadas</p></div>
-                <div className={panel.card}><h2>{money(items.reduce((a, i) => a + i.amount, 0))}</h2><p>Total recebido</p></div>
-                <div className={panel.card}><h2>{money(report.totals.availableBalance)}</h2><p>Saldo na carteira</p></div>
-              </div>
-
-              <CollapsibleFilterBar>
-                <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
-                <CategoryBranchFilter
-                  categoryId={categoryId} onCategoryChange={setCategoryId}
-                  branchId={branchId} onBranchChange={setBranchId}
-                  branches={branches}
-                />
-              </CollapsibleFilterBar>
-
-              <div>
-                <button className={panel.ghostBtn} onClick={downloadPdf} disabled={pdfBusy}>
-                  {pdfBusy ? "Baixando…" : "Baixar PDF"}
-                </button>
-              </div>
-
-              <div style={{ overflowX: "auto" }}>
-                <table className={panel.table} style={{ marginTop: "1rem" }}>
-                  <thead>
-                    <tr><th>Data</th><th>Vaga</th><th>Função</th><th>Local</th><th>Horas contr.</th><th>Horas trab.</th><th>Valor recebido</th><th></th></tr>
-                  </thead>
-                  <tbody>
-                    {items.map((i) => (
-                      <Fragment key={i.jobId}>
-                        <tr>
-                          <td>{fmtDate(i.date)}</td>
-                          <td>{i.title}</td>
-                          <td>{i.categoryName ?? "—"}</td>
-                          <td>{i.supermarketName ?? "—"}{i.branchName ? ` · ${i.branchName}` : ""}</td>
-                          <td>{hrs(i.contractedHours)}</td>
-                          <td>{hrs(i.workedHours)}</td>
-                          <td>{money(i.amount)}</td>
-                          <td>
-                            <button
-                              className={panel.ghostBtn}
-                              onClick={() => setExpandedId((cur) => (cur === i.jobId ? null : i.jobId))}
-                            >
-                              {expandedId === i.jobId ? "Ocultar" : "Movimentações"}
-                            </button>
-                          </td>
-                        </tr>
-                        {expandedId === i.jobId && (
-                          <tr>
-                            <td colSpan={8}>
-                              <JobMovementsTable shifts={i.shifts} />
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    ))}
-                    {items.length === 0 && <tr><td colSpan={8}>Nenhum trabalho concluído neste filtro.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </>
+    <PanelPage title="Relatório | Colaborador" heading="Relatório de trabalhos" sidebar={<Sidebar />}>
+      {loading || !report ? (
+        <>
+          <SkeletonCard lines={2} />
+          <SkeletonStatGrid count={4} />
+          <SkeletonTableRows rows={4} />
+        </>
+      ) : (
+        <>
+          {reputation && (
+            <div className={panel.card}>
+              <div className={panel.tableToolbar}><strong>Minha reputação</strong></div>
+              <FreelancerReputation reputation={reputation} compact />
+              <AssignedLeaders leaders={leaders} />
+            </div>
           )}
-        </section>
-      </main>
-    </>
+
+          <div className={panel.cards}>
+            <div className={panel.card}><h2>{items.length}</h2><p>Trabalhos concluídos</p></div>
+            <div className={panel.card}><h2>{hrs(items.reduce((a, i) => a + i.workedHours, 0))}</h2><p>Horas trabalhadas</p></div>
+            <div className={panel.card}><h2>{money(items.reduce((a, i) => a + i.amount, 0))}</h2><p>Total recebido</p></div>
+            <div className={panel.card}><h2>{money(report.totals.availableBalance)}</h2><p>Saldo na carteira</p></div>
+          </div>
+
+          <CollapsibleFilterBar>
+            <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
+            <CategoryBranchFilter
+              categoryId={categoryId} onCategoryChange={setCategoryId}
+              branchId={branchId} onBranchChange={setBranchId}
+              branches={branches}
+            />
+          </CollapsibleFilterBar>
+
+          <div>
+            <button className={panel.ghostBtn} onClick={downloadPdf} disabled={pdfBusy}>
+              {pdfBusy ? "Baixando…" : "Baixar PDF"}
+            </button>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table className={panel.table}>
+              <thead>
+                <tr><th>Data</th><th>Vaga</th><th>Função</th><th>Local</th><th>Horas contr.</th><th>Horas trab.</th><th>Valor recebido</th><th></th></tr>
+              </thead>
+              <tbody>
+                {items.map((i) => (
+                  <Fragment key={i.jobId}>
+                    <tr>
+                      <td>{fmtDate(i.date)}</td>
+                      <td>{i.title}</td>
+                      <td>{i.categoryName ?? "—"}</td>
+                      <td>{i.supermarketName ?? "—"}{i.branchName ? ` · ${i.branchName}` : ""}</td>
+                      <td>{hrs(i.contractedHours)}</td>
+                      <td>{hrs(i.workedHours)}</td>
+                      <td>{money(i.amount)}</td>
+                      <td>
+                        <button
+                          className={panel.ghostBtn}
+                          onClick={() => setExpandedId((cur) => (cur === i.jobId ? null : i.jobId))}
+                        >
+                          {expandedId === i.jobId ? "Ocultar" : "Movimentações"}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedId === i.jobId && (
+                      <tr>
+                        <td colSpan={8}>
+                          <JobMovementsTable shifts={i.shifts} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+                {items.length === 0 && <tr><td colSpan={8}>Nenhum trabalho concluído neste filtro.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </PanelPage>
   );
 }
 

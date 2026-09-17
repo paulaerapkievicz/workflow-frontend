@@ -11,6 +11,7 @@ const ToastComponent = function ({ isOpen, message, color }: props) {
     <Toast
       className={`${color} text-white fixed-top ms-auto mt-3`}
       isOpen={isOpen}
+      transition={{ timeout: 150 }}
     >
       <ToastBody className="text-center">{message}</ToastBody>
     </Toast>

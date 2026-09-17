@@ -6,17 +6,20 @@ import 'react-quill-new/dist/quill.snow.css';
 import Header from '@/src/components/Header';
 import Footer from '@/src/components/Footer';
 import StatusColorVars from '@/src/components/StatusColorVars';
+import { ToastProvider } from '@/src/hooks/useToast';
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <StatusColorVars />
-      <Header />
-      <div style={{ flex: 1, paddingTop: '64px', display: 'flex', flexDirection: 'column' }}>
-        <Component {...pageProps} />
+    <ToastProvider>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <StatusColorVars />
+        <Header />
+        <div style={{ flex: 1, paddingTop: '64px', display: 'flex', flexDirection: 'column' }}>
+          <Component {...pageProps} />
+        </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
+    </ToastProvider>
   );
 }
 

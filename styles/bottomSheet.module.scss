@@ -1,0 +1,88 @@
+@use './variables' as *;
+
+// ===========================================================================
+// Bottom sheet reutilizável — menu de ações / confirmação, com cara de app
+// nativo (desliza de baixo). Próprio, separado de sidebar.module.scss (que já
+// tem um "Mais" parecido, porém hardcoded ali e compartilhado por todos os
+// papéis) pra este poder evoluir livremente sem risco de regressão alheia.
+// ===========================================================================
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(9, 14, 27, 0);
+  transition: background 0.2s ease;
+}
+
+.backdropVisible {
+  background: rgba(9, 14, 27, 0.5);
+}
+
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 20px 20px 0 0;
+  padding: 1rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.25);
+  transform: translateY(100%);
+  transition: transform 0.22s ease;
+}
+
+.sheetVisible {
+  transform: translateY(0);
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--border);
+}
+
+// ----- Lista de ações (usada pelo menu "..." de uma vaga, por ex.) -----
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 0.5rem;
+  border: none;
+  background: none;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+
+  &:active { background: var(--surface-2); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.itemDanger { color: var(--danger); }
+
+.itemIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .backdrop { transition: none; }
+}

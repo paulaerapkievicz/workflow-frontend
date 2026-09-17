@@ -25,7 +25,8 @@ export type SidebarIconName =
   | "chart"
   | "compass"
   | "help"
-  | "more";
+  | "more"
+  | "camera";
 
 const PATHS: Record<SidebarIconName, React.ReactNode> = {
   dashboard: (
@@ -205,6 +206,12 @@ const PATHS: Record<SidebarIconName, React.ReactNode> = {
       <circle cx="5" cy="12" r="1.8" fill="currentColor" stroke="none" />
       <circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
       <circle cx="19" cy="12" r="1.8" fill="currentColor" stroke="none" />
+    </>
+  ),
+  camera: (
+    <>
+      <path d="M4 8.5h2.4l1.3-2h8.6l1.3 2H20a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 20.5H4A1.5 1.5 0 0 1 2.5 19v-9A1.5 1.5 0 0 1 4 8.5Z" />
+      <circle cx="12" cy="14" r="3.6" />
     </>
   ),
 };

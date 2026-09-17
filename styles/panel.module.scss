@@ -688,6 +688,30 @@ body[data-theme='dark'] {
   &:hover { background: var(--danger-soft); }
 }
 
+// ----- Skeleton: blocos "pulsando" no lugar de "Carregando…" -----
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--surface-hover), transparent);
+    animation: skeletonShimmer 1.4s infinite;
+  }
+}
+
+@keyframes skeletonShimmer {
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+}
+
 // ----- FileField: input de arquivo estilizado -----
 .fileField {
   display: inline-flex;

@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import Head from "next/head";
 import axios from "axios";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import Modal from "@/src/components/common/Modal";
+import BottomSheet from "@/src/components/common/BottomSheet";
+import ConfirmDialog from "@/src/components/common/ConfirmDialog";
 import HelpIcon from "@/src/components/common/HelpIcon";
 import RequireAuth from "@/src/components/RequireAuth";
+import PanelPage from "@/src/components/panel/PanelPage";
 import StatusBadge from "@/src/components/StatusBadge";
 import SidebarIcon from "@/src/components/panel/SidebarIcon";
 import HelpHint from "@/src/components/HelpHint";
 import JobMovementsTable from "@/src/components/JobMovementsTable";
 import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
+import { SkeletonCard } from "@/src/components/common/Skeleton";
 import panel from "@/styles/panel.module.scss";
+import app from "@/styles/freelancerApp.module.scss";
+import bottomSheet from "@/styles/bottomSheet.module.scss";
 import {
   getJobs, checkIn, checkOut, startBreak, endBreak, withdrawJob, readGeolocation, canFreelancerCancel,
   hasOpenBreak, mapUrl, mapEmbedUrl, Job, JobShift, formatShifts,
@@ -20,6 +25,7 @@ import { getJobPhotos, uploadJobPhoto, photoUrl, JobPhoto } from "@/src/services
 import { downloadFreelancerReportPdf } from "@/src/services/billingService";
 import { authService } from "@/src/services/authService";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useToast } from "@/src/hooks/useToast";
 import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
 import { fmtDate } from "@/src/lib/datetime";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
@@ -40,9 +46,20 @@ interface AffiliatedAgency {
   breaksEnabled?: boolean;
 }
 
+type ConfirmKind = "cancel" | "giveup";
+
+function ChevronIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 function MyJobs() {
   const freelancerId = authService.getProfileId();
   const { profile } = useAuth();
+  const { showToast } = useToast();
   const agency = ((profile as { affiliatedAgency?: AffiliatedAgency } | null)?.affiliatedAgency) ?? {};
   const cancelWindow = agency.cancellationWindowMinutes ?? 30;
   const requirePhoto = agency.requireCheckoutPhoto ?? true;
@@ -62,12 +79,16 @@ function MyJobs() {
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [photoCount, setPhotoCount] = useState<Record<string, number>>({});
-  const [banners, setBanners] = useState<Record<string, { type: "error" | "success"; text: string }>>({});
+  const [banners, setBanners] = useState<Record<string, { type: "error"; text: string }>>({});
   const [checkoutFile, setCheckoutFile] = useState<File | null>(null);
   const [attaching, setAttaching] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [sheetJobId, setSheetJobId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ jobId: string; kind: ConfirmKind } | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [expandedMovements, setExpandedMovements] = useState<Set<string>>(new Set());
 
-  const setBanner = (jobId: string, msg: { type: "error" | "success"; text: string } | null) =>
+  const setBanner = (jobId: string, msg: { type: "error"; text: string } | null) =>
     setBanners((cur) => {
       if (!msg) {
         const rest = { ...cur };
@@ -75,6 +96,13 @@ function MyJobs() {
         return rest;
       }
       return { ...cur, [jobId]: msg };
+    });
+
+  const toggleMovements = (jobId: string) =>
+    setExpandedMovements((cur) => {
+      const next = new Set(cur);
+      if (next.has(jobId)) next.delete(jobId); else next.add(jobId);
+      return next;
     });
 
   const mine = useMemo(
@@ -152,13 +180,12 @@ function MyJobs() {
     }
   };
 
-  const cancel = async (jobId: string) => {
-    if (!confirm("Confirmar desistência desta vaga? Ela voltará a ficar disponível.")) return;
+  const doCancel = async (jobId: string) => {
     setBanner(jobId, null);
     setBusy(jobId);
     try {
       await withdrawJob(jobId);
-      setBanner(jobId, { type: "success", text: "Vaga cancelada. Ela voltou para o pool." });
+      showToast("Vaga cancelada. Ela voltou para o pool.", "success");
       await load();
     } catch (err) {
       setBanner(jobId, { type: "error", text: errText(err) });
@@ -167,26 +194,29 @@ function MyJobs() {
     }
   };
 
-  const giveUp = async (jobId: string) => {
-    if (
-      !confirm(
-        "Desistir da vaga agora? O turno atual será encerrado com as horas já trabalhadas (que você recebe normalmente) e o restante da vaga volta para o pool, para outro colaborador terminar."
-      )
-    )
-      return;
+  const doGiveUp = async (jobId: string) => {
     setBanner(jobId, null);
     setBusy(jobId);
     try {
       await withdrawJob(jobId);
-      setBanner(jobId, {
-        type: "success",
-        text: "Você saiu da vaga. As horas trabalhadas foram registradas e o restante voltou para o pool.",
-      });
+      showToast("Você saiu da vaga. As horas trabalhadas foram registradas e o restante voltou para o pool.", "success");
       await load();
     } catch (err) {
       setBanner(jobId, { type: "error", text: errText(err) });
     } finally {
       setBusy(null);
+    }
+  };
+
+  const confirmActionRun = async () => {
+    if (!confirmAction) return;
+    setConfirmBusy(true);
+    try {
+      if (confirmAction.kind === "cancel") await doCancel(confirmAction.jobId);
+      else await doGiveUp(confirmAction.jobId);
+    } finally {
+      setConfirmBusy(false);
+      setConfirmAction(null);
     }
   };
 
@@ -208,7 +238,7 @@ function MyJobs() {
       setFile(null);
       setCaption("");
     } catch (err) {
-      alert(errText(err));
+      showToast(errText(err), "danger");
     } finally {
       setUploading(false);
     }
@@ -223,7 +253,7 @@ function MyJobs() {
       const next = await getJobPhotos(jobId);
       setPhotoCount((c) => ({ ...c, [jobId]: next.length }));
       setCheckoutFile(null);
-      setBanner(jobId, { type: "success", text: "Foto anexada. Você já pode fazer o check-out." });
+      showToast("Foto anexada. Você já pode fazer o check-out.", "success");
     } catch (err) {
       setBanner(jobId, { type: "error", text: errText(err) });
     } finally {
@@ -235,238 +265,300 @@ function MyJobs() {
   const nextPending = (j: Job) => sortShifts(j.shifts).find((s) => (s.status ?? "pending") === "pending");
   const allDone = (j: Job) => sortShifts(j.shifts).every((s) => s.status === "done");
   const mapJob = mine.find((j) => j.id === mapJobId) ?? null;
+  const sheetJob = mine.find((j) => j.id === sheetJobId) ?? null;
 
   return (
-    <>
-      <Head><title>Meus trabalhos | Colaborador</title></Head>
-      <main className={panel.container}>
-        <Sidebar />
-        <section className={panel.content}>
-          <header className={panel.header}>
-            <h1>
-              Meus trabalhos
-              <HelpIcon title="Como funciona o ponto">
-                <p>Check-in e check-out por turno usam a sua localização para comprovar a presença no local.</p>
-                <p>
-                  Você pode desistir de uma vaga aceita até <strong>{cancelWindow} min</strong> antes do início
-                  (prazo definido pela sua agência). Fora desse prazo, peça o cancelamento à agência.
-                </p>
-              </HelpIcon>
-            </h1>
-          </header>
-          <OnboardingBanner />
+    <PanelPage
+      title="Meus trabalhos | Colaborador"
+      heading={
+        <>
+          Meus trabalhos
+          <HelpIcon title="Como funciona o ponto">
+            <p>Check-in e check-out por turno usam a sua localização para comprovar a presença no local.</p>
+            <p>
+              Você pode desistir de uma vaga aceita até <strong>{cancelWindow} min</strong> antes do início
+              (prazo definido pela sua agência). Fora desse prazo, peça o cancelamento à agência.
+            </p>
+          </HelpIcon>
+        </>
+      }
+      sidebar={<Sidebar />}
+    >
+      <OnboardingBanner />
 
-          <CollapsibleFilterBar>
-            <DateRangeQuickFilter
-              value={range}
-              onChange={setRange}
-              presets={["hoje", "semana", "mes", "custom", "todas"]}
-            />
-            <label className={panel.filterField}>
-              <span>Status</span>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">Todos</option>
-                {Object.entries(STATUS_LABELS).map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </select>
-            </label>
-            <CategoryBranchFilter
-              categoryId={categoryId} onCategoryChange={setCategoryId}
-              branchId={branchId} onBranchChange={setBranchId}
-              branches={branches}
-            />
-          </CollapsibleFilterBar>
+      <CollapsibleFilterBar>
+        <DateRangeQuickFilter
+          value={range}
+          onChange={setRange}
+          presets={["hoje", "semana", "mes", "custom", "todas"]}
+        />
+        <label className={panel.filterField}>
+          <span>Status</span>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">Todos</option>
+            {Object.entries(STATUS_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+        </label>
+        <CategoryBranchFilter
+          categoryId={categoryId} onCategoryChange={setCategoryId}
+          branchId={branchId} onBranchChange={setBranchId}
+          branches={branches}
+        />
+      </CollapsibleFilterBar>
 
-          <div>
-            <button className={panel.ghostBtn} onClick={downloadPdf} disabled={pdfBusy}>
-              {pdfBusy ? "Baixando…" : "Baixar PDF"}
-            </button>
-          </div>
+      <div>
+        <button className={panel.ghostBtn} onClick={downloadPdf} disabled={pdfBusy}>
+          {pdfBusy ? "Baixando…" : "Baixar PDF"}
+        </button>
+      </div>
 
-          {loading ? (
-            <p>Carregando…</p>
-          ) : mine.length === 0 ? (
-            <p className={panel.muted}>Você ainda não aceitou nenhuma vaga.</p>
-          ) : visible.length === 0 ? (
-            <p className={panel.muted}>Nenhuma vaga neste período.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {visible.map((j) => {
-                const shifts = sortShifts(j.shifts);
-                const cur = currentShift(j);
-                const nxt = nextPending(j);
-                const busyElsewhere = mine.some((other) => other.id !== j.id && currentShift(other));
-                const isCanceled = j.status === "canceled";
-                return (
-                  <div key={j.id} className={panel.card}>
-                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-                      <div>
-                        <strong>{j.title}</strong>
-                        <p className={panel.muted}>
-                          {j.jobBranch?.name}{j.jobBranch?.address ? ` — ${j.jobBranch.address}` : ""}
-                        </p>
-                        <p className={panel.muted}>
-                          {fmtDate(j.startTime)} · {formatShiftPeriods(j)} · {formatShifts(j.shifts)}
-                        </p>
-                        {j.jobBranch?.address && (
-                          <button
-                            className={panel.ghostBtn}
-                            style={{ marginTop: 4, display: "inline-flex", alignItems: "center", gap: 6 }}
-                            onClick={() => setMapJobId(j.id)}
-                          >
-                            <SidebarIcon name="pin" size={14} /> Ver no mapa
-                          </button>
-                        )}
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <StatusBadge status={j.status} />
-                        {(j.status === "completed" || isCanceled) && j.grossAmount != null && (
-                          <p className={panel.muted}>Valor: R$ {Number(j.grossAmount).toFixed(2)}</p>
-                        )}
-                        {j.status === "completed" && j.settlementHold && (
-                          <p className={panel.muted}>
-                            Pagamento em análise pela agência (horas acima do turno contratado).
-                          </p>
-                        )}
-                      </div>
-                    </div>
+      {loading ? (
+        <div className={app.jobList}>
+          <SkeletonCard lines={3} /><SkeletonCard lines={3} />
+        </div>
+      ) : mine.length === 0 ? (
+        <p className={app.emptyState}>Você ainda não aceitou nenhuma vaga.</p>
+      ) : visible.length === 0 ? (
+        <p className={app.emptyState}>Nenhuma vaga neste período.</p>
+      ) : (
+        <div className={app.jobList}>
+          {visible.map((j) => {
+            const shifts = sortShifts(j.shifts);
+            const cur = currentShift(j);
+            const nxt = nextPending(j);
+            const busyElsewhere = mine.some((other) => other.id !== j.id && currentShift(other));
+            const isCanceled = j.status === "canceled";
+            const canCancel = !isCanceled && j.status === "accepted";
+            const canGiveUp = j.status === "in_progress" && !hasOpenBreak(j.shifts);
+            const canPhotos = isCanceled || ["accepted", "in_progress", "completed"].includes(j.status);
+            const hasOverflow = canCancel || canGiveUp || canPhotos;
+            const movementsOpen = expandedMovements.has(j.id);
 
-                    {isCanceled && (
-                      <p className={`${panel.badge} ${panel.badgeCanceled}`} style={{ marginTop: "0.5rem" }}>
-                        Cancelada pela agência — registro dos turnos já trabalhados.
-                      </p>
-                    )}
-
-                    {banners[j.id] && (
-                      <p
-                        className={banners[j.id].type === "error" ? panel.error : panel.success}
-                        style={{ marginTop: "0.5rem" }}
+            return (
+              <div key={j.id} className={app.card}>
+                <div className={app.cardTop}>
+                  <div>
+                    <p className={app.cardTitle}>{j.title}</p>
+                    <p className={app.cardMeta}>
+                      {j.jobBranch?.name}{j.jobBranch?.address ? ` — ${j.jobBranch.address}` : ""}
+                    </p>
+                    <p className={app.cardMeta}>
+                      {fmtDate(j.startTime)} · {formatShiftPeriods(j)} · {formatShifts(j.shifts)}
+                    </p>
+                    {j.jobBranch?.address && (
+                      <button
+                        className={panel.linkBtn}
+                        style={{ marginTop: 4, display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}
+                        onClick={() => setMapJobId(j.id)}
                       >
-                        {banners[j.id].text}
+                        <SidebarIcon name="pin" size={14} /> Ver no mapa
+                      </button>
+                    )}
+                  </div>
+                  <div className={app.cardStatusCol}>
+                    <StatusBadge status={j.status} />
+                    {(j.status === "completed" || isCanceled) && j.grossAmount != null && (
+                      <span className={panel.muted}>R$ {Number(j.grossAmount).toFixed(2)}</span>
+                    )}
+                    {j.status === "completed" && j.settlementHold && (
+                      <span className={panel.muted}>Pagamento em análise pela agência.</span>
+                    )}
+                  </div>
+                </div>
+
+                {isCanceled && (
+                  <p className={`${panel.badge} ${panel.badgeCanceled}`}>
+                    Cancelada pela agência — registro dos turnos já trabalhados.
+                  </p>
+                )}
+
+                {banners[j.id] && <p className={panel.error}>{banners[j.id].text}</p>}
+
+                {shifts.length > 0 && (
+                  <div>
+                    <button type="button" className={app.disclosureBtn} onClick={() => toggleMovements(j.id)}>
+                      {movementsOpen ? "Ocultar movimentações" : "Ver movimentações"}
+                      <span className={`${app.disclosureChevron} ${movementsOpen ? app.disclosureChevronOpen : ""}`}>
+                        <ChevronIcon />
+                      </span>
+                    </button>
+                    {movementsOpen && <JobMovementsTable shifts={shifts} />}
+                  </div>
+                )}
+
+                {j.status === "in_progress" && cur && requirePhoto && (
+                  <div>
+                    {(photoCount[j.id] ?? 0) === 0 && (
+                      <p className={panel.muted}>
+                        Este trabalho exige foto de comprovação. Anexe a foto para concluir o check-out.
                       </p>
                     )}
+                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => setCheckoutFile(e.target.files?.[0] ?? null)}
+                      />
+                      <button
+                        className={panel.secondaryBtn}
+                        disabled={!checkoutFile || attaching}
+                        onClick={() => attachCheckoutPhoto(j.id)}
+                      >
+                        {attaching ? "Anexando…" : "Anexar foto"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                    {shifts.length > 0 && <JobMovementsTable shifts={shifts} />}
-
-                    {j.status === "in_progress" && cur && requirePhoto && (
-                      <div style={{ marginTop: "0.5rem" }}>
-                        {(photoCount[j.id] ?? 0) === 0 && (
-                          <p className={panel.muted}>
-                            Este trabalho exige foto de comprovação. Anexe a foto para concluir o check-out.
-                          </p>
+                <div className={app.actionsRow}>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                    {!isCanceled && ["accepted", "in_progress"].includes(j.status) && !cur && nxt && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <button
+                          className={panel.primaryBtn}
+                          disabled={busy === j.id || busyElsewhere}
+                          onClick={() => geoAction(j.id, (geo) => checkIn(j.id, geo))}
+                        >
+                          {busy === j.id ? "Localizando…" : `Check-in${shifts.length > 1 ? ` (${nxt.label || "próximo turno"})` : ""}`}
+                        </button>
+                        {busyElsewhere && (
+                          <HelpHint text="Finalize o turno em andamento em outra vaga antes de iniciar este." />
                         )}
-                        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={(e) => setCheckoutFile(e.target.files?.[0] ?? null)}
-                          />
-                          <button
-                            className={panel.secondaryBtn}
-                            disabled={!checkoutFile || attaching}
-                            onClick={() => attachCheckoutPhoto(j.id)}
-                          >
-                            {attaching ? "Anexando…" : "Anexar foto"}
-                          </button>
-                        </div>
-                      </div>
+                      </span>
                     )}
 
-                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
-                      {!isCanceled && ["accepted", "in_progress"].includes(j.status) && !cur && nxt && (
+                    {j.status === "in_progress" && cur && breaksAllowed(j) && (
+                      hasOpenBreak(j.shifts) ? (
+                        <button
+                          className={panel.secondaryBtn}
+                          disabled={busy === j.id}
+                          onClick={() => geoAction(j.id, (geo) => endBreak(j.id, geo))}
+                        >
+                          {busy === j.id ? "Localizando…" : "Retomar ponto"}
+                        </button>
+                      ) : (
+                        <button
+                          className={panel.secondaryBtn}
+                          disabled={busy === j.id}
+                          onClick={() => geoAction(j.id, (geo) => startBreak(j.id, geo))}
+                        >
+                          {busy === j.id ? "Localizando…" : "Pausar ponto"}
+                        </button>
+                      )
+                    )}
+
+                    {j.status === "in_progress" && cur && (() => {
+                      const openBreak = hasOpenBreak(j.shifts);
+                      return (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                           <button
                             className={panel.primaryBtn}
-                            disabled={busy === j.id || busyElsewhere}
-                            onClick={() => geoAction(j.id, (geo) => checkIn(j.id, geo))}
+                            disabled={busy === j.id || openBreak}
+                            onClick={() => geoAction(j.id, (geo) => checkOut(j.id, geo))}
                           >
-                            {busy === j.id ? "Localizando…" : `Check-in${shifts.length > 1 ? ` (${nxt.label || "próximo turno"})` : ""}`}
+                            {busy === j.id ? "Localizando…" : "Check-out"}
                           </button>
-                          {busyElsewhere && (
-                            <HelpHint text="Finalize o turno em andamento em outra vaga antes de iniciar este." />
-                          )}
+                          {openBreak && <HelpHint text="Retome o ponto antes de finalizar o turno." />}
                         </span>
-                      )}
+                      );
+                    })()}
 
-                      {j.status === "in_progress" && cur && breaksAllowed(j) && (
-                        hasOpenBreak(j.shifts) ? (
-                          <button
-                            className={panel.secondaryBtn}
-                            disabled={busy === j.id}
-                            onClick={() => geoAction(j.id, (geo) => endBreak(j.id, geo))}
-                          >
-                            {busy === j.id ? "Localizando…" : "Retomar ponto"}
-                          </button>
-                        ) : (
-                          <button
-                            className={panel.secondaryBtn}
-                            disabled={busy === j.id}
-                            onClick={() => geoAction(j.id, (geo) => startBreak(j.id, geo))}
-                          >
-                            {busy === j.id ? "Localizando…" : "Pausar ponto"}
-                          </button>
-                        )
-                      )}
-
-                      {j.status === "in_progress" && cur && (() => {
-                        const openBreak = hasOpenBreak(j.shifts);
-                        return (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <button
-                              className={panel.primaryBtn}
-                              disabled={busy === j.id || openBreak}
-                              onClick={() => geoAction(j.id, (geo) => checkOut(j.id, geo))}
-                            >
-                              {busy === j.id ? "Localizando…" : "Check-out"}
-                            </button>
-                            {openBreak && <HelpHint text="Retome o ponto antes de finalizar o turno." />}
-                          </span>
-                        );
-                      })()}
-
-                      {j.status === "in_progress" && !cur && allDone(j) && (
-                        <span className={panel.muted}>Todos os turnos concluídos.</span>
-                      )}
-
-                      {j.status === "accepted" && (() => {
-                        const withinWindow = canFreelancerCancel(j, cancelWindow);
-                        return (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <button
-                              className={panel.secondaryBtn}
-                              disabled={!withinWindow || busy === j.id}
-                              onClick={() => withinWindow && cancel(j.id)}
-                            >
-                              Desistir da vaga
-                            </button>
-                            {!withinWindow && (
-                              <HelpHint text="Fora do prazo de cancelamento. Peça o cancelamento à agência." />
-                            )}
-                          </span>
-                        );
-                      })()}
-
-                      {j.status === "in_progress" && !hasOpenBreak(j.shifts) && (
-                        <button className={panel.secondaryBtn} disabled={busy === j.id} onClick={() => giveUp(j.id)}>
-                          Desistir no meio do turno
-                        </button>
-                      )}
-
-                      {(isCanceled || ["accepted", "in_progress", "completed"].includes(j.status)) && (
-                        <button className={panel.secondaryBtn} onClick={() => openPhotos(j)}>
-                          Fotos ({photoCount[j.id] ?? j.jobPhotos?.length ?? 0})
-                        </button>
-                      )}
-                    </div>
+                    {j.status === "in_progress" && !cur && allDone(j) && (
+                      <span className={panel.muted}>Todos os turnos concluídos.</span>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </main>
+
+                  {hasOverflow && (
+                    <button
+                      type="button"
+                      className={app.overflowBtn}
+                      aria-label="Mais ações desta vaga"
+                      onClick={() => setSheetJobId(j.id)}
+                    >
+                      <SidebarIcon name="more" size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <BottomSheet open={!!sheetJob} onClose={() => setSheetJobId(null)} title={sheetJob?.title}>
+        {sheetJob && (
+          <div className={bottomSheet.itemList}>
+            {sheetJob.status === "accepted" && (() => {
+              const withinWindow = canFreelancerCancel(sheetJob, cancelWindow);
+              return (
+                <button
+                  type="button"
+                  className={`${bottomSheet.item} ${bottomSheet.itemDanger}`}
+                  disabled={!withinWindow || busy === sheetJob.id}
+                  onClick={() => {
+                    setSheetJobId(null);
+                    setConfirmAction({ jobId: sheetJob.id, kind: "cancel" });
+                  }}
+                >
+                  <span className={bottomSheet.itemIcon}><SidebarIcon name="alert" size={18} /></span>
+                  <span>
+                    Desistir da vaga
+                    {!withinWindow && (
+                      <><br /><small className={panel.muted}>Fora do prazo — peça o cancelamento à agência.</small></>
+                    )}
+                  </span>
+                </button>
+              );
+            })()}
+
+            {sheetJob.status === "in_progress" && !hasOpenBreak(sheetJob.shifts) && (
+              <button
+                type="button"
+                className={`${bottomSheet.item} ${bottomSheet.itemDanger}`}
+                disabled={busy === sheetJob.id}
+                onClick={() => {
+                  setSheetJobId(null);
+                  setConfirmAction({ jobId: sheetJob.id, kind: "giveup" });
+                }}
+              >
+                <span className={bottomSheet.itemIcon}><SidebarIcon name="alert" size={18} /></span>
+                Desistir no meio do turno
+              </button>
+            )}
+
+            {(sheetJob.status === "canceled" || ["accepted", "in_progress", "completed"].includes(sheetJob.status)) && (
+              <button
+                type="button"
+                className={bottomSheet.item}
+                onClick={() => {
+                  setSheetJobId(null);
+                  openPhotos(sheetJob);
+                }}
+              >
+                <span className={bottomSheet.itemIcon}><SidebarIcon name="camera" size={18} /></span>
+                Fotos ({photoCount[sheetJob.id] ?? sheetJob.jobPhotos?.length ?? 0})
+              </button>
+            )}
+          </div>
+        )}
+      </BottomSheet>
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.kind === "cancel" ? "Desistir da vaga?" : "Desistir no meio do turno?"}
+        message={
+          confirmAction?.kind === "cancel"
+            ? "Confirmar desistência desta vaga? Ela voltará a ficar disponível."
+            : "O turno atual será encerrado com as horas já trabalhadas (que você recebe normalmente) e o restante da vaga volta para o pool, para outro colaborador terminar."
+        }
+        danger
+        busy={confirmBusy}
+        onConfirm={confirmActionRun}
+        onCancel={() => setConfirmAction(null)}
+      />
 
       {mapJob && (
         <Modal title={`Local — ${mapJob.jobBranch?.name ?? ""}`} onClose={() => setMapJobId(null)}>
@@ -516,7 +608,7 @@ function MyJobs() {
           </div>
         </Modal>
       )}
-    </>
+    </PanelPage>
   );
 }
 
