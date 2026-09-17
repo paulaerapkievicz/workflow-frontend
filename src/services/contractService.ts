@@ -103,6 +103,9 @@ export const signMyContract = async (body: {
 
 export const myContractDocumentUrl = () => `${BASE}/freelancer/contract/document`;
 
+/** Rascunho do contrato (sem assinatura) — pode ser baixado antes de assinar. */
+export const myContractPreviewPdfUrl = () => `${BASE}/freelancer/contract/preview-pdf`;
+
 // ---- Público ----
 export const verifyContract = async (id: string): Promise<ContractVerification> =>
   (await api.get(`/contracts/verify/${id}`)).data;

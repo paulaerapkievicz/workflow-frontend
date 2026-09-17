@@ -10,7 +10,8 @@ import { isValidCpf } from "@/src/lib/validators";
 import { maskCpf } from "@/src/lib/masks";
 import panel from "@/styles/panel.module.scss";
 import {
-  getMyAgreement, signMyContract, myContractDocumentUrl, openProtectedPdf, FreelancerAgreement,
+  getMyAgreement, signMyContract, myContractDocumentUrl, myContractPreviewPdfUrl, openProtectedPdf,
+  FreelancerAgreement,
 } from "@/src/services/contractService";
 
 const fmt = (d: string) => new Date(d).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" });
@@ -99,6 +100,14 @@ function ContractPage() {
               )}
 
               <ContractDocument html={data.renderedHtml} />
+
+              {!data.signedCurrent && (
+                <p style={{ marginTop: "0.75rem" }}>
+                  <button className={panel.ghostBtn} onClick={() => openProtectedPdf(myContractPreviewPdfUrl())}>
+                    Baixar PDF (rascunho, sem assinatura)
+                  </button>
+                </p>
+              )}
 
               {!data.signedCurrent && (
                 <div className={panel.card} style={{ marginTop: "1rem", maxWidth: 520 }}>
