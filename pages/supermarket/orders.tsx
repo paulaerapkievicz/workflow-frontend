@@ -124,8 +124,10 @@ function OrdersPage() {
       ? `A função "${categoryName(categoryId)}" ainda não tem valor/hora configurado para ${branchName(branchIdSel) || "esta filial"}. Peça para a agência configurar em Supermercados → "Valores/hora" antes de lançar vagas para essa função — sem isso a vaga não aparece para nenhum freelancer.`
       : null;
 
-  const load = async () => {
-    setLoading(true);
+  // `silent` evita o flash do skeleton no refresh automático de fundo (só a 1ª carga
+  // e as recargas depois de uma ação do próprio usuário mostram o "Carregando…").
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [b, c, o, r] = await Promise.all([
         getBranches(), getCategories(), getOrders(), getSupermarketRates(supermarketId),
@@ -135,10 +137,16 @@ function OrdersPage() {
       setOrders(o);
       setRates(r);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
-  useEffect(() => { load().catch(() => setError("Erro ao carregar dados.")); }, []); // eslint-disable-line
+  // Recarrega sozinho a cada 30s — sem isso, uma vaga recém-aceita pelo colaborador só
+  // aparecia atualizada aqui depois de um F5 manual (a lista carregava uma vez só).
+  useEffect(() => {
+    load().catch(() => setError("Erro ao carregar dados."));
+    const t = setInterval(() => load(true).catch(() => {}), 30000);
+    return () => clearInterval(t);
+  }, []); // eslint-disable-line
 
   /** Título padrão da vaga: "<Função> - <Filial>" (quando ambos já conhecidos). */
   const autoTitle = (categoryId: string, branchIdSel: string) => {

@@ -113,7 +113,13 @@ function AgencyOrdersPage() {
       if (agencyId) { try { setFreelancers(await getMyFreelancers(agencyId)); } catch { /* ignore */ } }
     } finally { setLoading(false); }
   }, [agencyId]);
-  useEffect(() => { load(); }, [load]);
+  // Recarrega sozinho a cada 30s — sem isso, uma vaga recém-aceita pelo colaborador só
+  // aparecia atualizada aqui depois de um F5 manual (a lista carregava uma vez só).
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [load]);
 
   const rows = useMemo(
     () =>

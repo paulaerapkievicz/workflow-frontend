@@ -115,7 +115,13 @@ function LeaderOrdersPage() {
       try { setFreelancers((await api.get("/freelancers")).data as AgencyFreelancer[]); } catch { /* ignore */ }
     } finally { setLoading(false); }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  // Recarrega sozinho a cada 30s — sem isso, uma vaga recém-aceita pelo colaborador só
+  // aparecia atualizada aqui depois de um F5 manual (a lista carregava uma vez só).
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [load]);
 
   const openReassign = (j: Job) => {
     setReassignTarget(j);

@@ -645,9 +645,12 @@ body[data-theme='dark'] {
     h1 { font-size: 1.25rem; }
   }
 
-  .cards { grid-template-columns: 1fr; }
+  // 2 (ou mais, se couber) por linha em vez de 1 por linha — a maioria dos cards
+  // aqui é só um número + um rótulo curto, não precisa da largura toda do celular.
+  .cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.7rem; }
 
-  .card { padding: 1.1rem; }
+  .card { padding: 0.9rem 1rem; }
+  .cards .card h2 { font-size: 1.4rem; }
 
   // Cada filtro ocupa a linha inteira em vez de espremer vários por linha.
   .filterBar { padding: 0.75rem; gap: 0.6rem; }

@@ -75,8 +75,10 @@ function JobsPage() {
 
   const hhmm = fmtTime;
 
-  const load = async () => {
-    setLoading(true);
+  // `silent` evita o flash do skeleton no refresh automático de fundo (só a 1ª carga
+  // e as recargas depois de uma ação do próprio usuário mostram o "Carregando…").
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const supermarketId = authService.getProfileId() ?? "";
       const [j, b, c, r, a] = await Promise.all([
@@ -89,10 +91,16 @@ function JobsPage() {
       setRates(r);
       setAlerts(a);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
-  useEffect(() => { load(); }, []);
+  // Recarrega sozinho a cada 30s — sem isso, uma vaga recém-aceita pelo colaborador só
+  // aparecia atualizada aqui depois de um F5 manual (a lista carregava uma vez só).
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 30000);
+    return () => clearInterval(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const branchName = (id: string) => branches.find((b) => b.id === id)?.name ?? "—";
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? "—";
