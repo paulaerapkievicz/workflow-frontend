@@ -344,7 +344,8 @@ function BillingPage() {
                           )}
                         </td>
                         <td className={panel.actionsStack}>
-                          {c.status === "pending" && canPayInvoices && (
+                          {c.status === "pending" && canPayInvoices &&
+                            (!c.paymentProofStatus || c.paymentProofStatus === "rejected") && (
                             <button className={panel.ghostBtn} onClick={() => openAdjustments(c)}>
                               Contestar
                             </button>
