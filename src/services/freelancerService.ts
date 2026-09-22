@@ -31,7 +31,12 @@ export const createFreelancer = async (freelancer: Omit<Freelancer, "id" | "crea
 // Atualizar freelancer (campos de perfil — o backend ignora o resto)
 export const updateFreelancer = async (
   id: string,
-  data: Partial<{ name: string; email: string; phone: string; skills: string }>
+  data: Partial<{
+    name: string; email: string; phone: string; skills: string;
+    /** Só agência/sócio/admin conseguem alterar — o backend ignora se vier de um colaborador. */
+    walletVisibleOverride: boolean | null;
+    reportVisibleOverride: boolean | null;
+  }>
 ): Promise<Freelancer> => {
   const response = await api.put(`/freelancers/${id}`, data);
   return response.data;

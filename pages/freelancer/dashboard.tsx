@@ -1,288 +1,221 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import axios from "axios";
 import Sidebar from "@/src/components/freelancer/Sidebar";
 import RequireAuth from "@/src/components/RequireAuth";
 import PanelPage from "@/src/components/panel/PanelPage";
-import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
-import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
-import CategoryBranchFilter, { BranchOption } from "@/src/components/freelancer/CategoryBranchFilter";
-import Tabs from "@/src/components/panel/Tabs";
-import { SkeletonStatGrid } from "@/src/components/common/Skeleton";
+import JobCarousel from "@/src/components/freelancer/JobCarousel";
 import panel from "@/styles/panel.module.scss";
 import styles from "@/styles/dashboard.module.scss";
-import { getJobs, getAvailableJobs, Job, formatShifts, minutesToHours } from "@/src/services/jobService";
 import {
-  getFreelancerReport, getFreelancerOutcomes, FreelancerReport, FreelancerOutcomes,
-  FreelancerOutcome, FreelancerPaymentStatus, FREELANCER_OUTCOME_LABELS, PAYMENT_STATUS_FILTER_LABELS,
-} from "@/src/services/billingService";
-import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
-import FreelancerReputation from "@/src/components/FreelancerReputation";
-import HelpIcon from "@/src/components/common/HelpIcon";
+  getJobs, getAvailableJobs, acceptJob, checkIn, checkOut, readGeolocation, Job,
+  currentShift, nextPendingShift, sortShifts,
+} from "@/src/services/jobService";
+import { getJobPhotos, uploadJobPhoto } from "@/src/services/jobPhotoService";
+import { distanceInMeters } from "@/src/lib/distance";
+import { fmtTime, fmtDate, isoDateBR } from "@/src/lib/datetime";
 import { useAuth } from "@/src/hooks/useAuth";
-import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
-import { inDateRange, dateRangeLabel } from "@/src/lib/dateRange";
-import { fmtDate, fmtTime, isoDateBR } from "@/src/lib/datetime";
 
-const OUTCOME_TILES: FreelancerOutcome[] = ["accepted", "active", "completed", "withdrawnEarly", "abandoned"];
+interface AffiliatedAgency {
+  requireCheckoutPhoto?: boolean;
+}
 
-type TabId = "resumo" | "detalhamento";
+const errText = (err: unknown) =>
+  axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : err instanceof Error ? err.message : "Erro.";
 
-function Dashboard() {
+function Home() {
   const { profile } = useAuth();
-  const freelancerId = (profile as { id?: string } | null)?.id ?? "";
+  const requirePhoto = ((profile as { affiliatedAgency?: AffiliatedAgency } | null)?.affiliatedAgency)?.requireCheckoutPhoto ?? true;
+
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [report, setReport] = useState<FreelancerReport | null>(null);
-  const [outcomes, setOutcomes] = useState<FreelancerOutcomes | null>(null);
-  const [reputation, setReputation] = useState<Reputation | null>(null);
-  const [availableCount, setAvailableCount] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TabId>("resumo");
+  const [photoCount, setPhotoCount] = useState(0);
+  const [checkoutFile, setCheckoutFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [range, setRange] = useDateRangeFilter("freelancer-dashboard-daterange", { preset: "mes" });
-  const [categoryId, setCategoryId] = useState("");
-  const [branchId, setBranchId] = useState("");
-  const [paymentStatus, setPaymentStatus] = useState<FreelancerPaymentStatus | "">("");
-  const [outcomeFilter, setOutcomeFilter] = useState<FreelancerOutcome | "">("");
+  const [nearby, setNearby] = useState<Job[]>([]);
+  const [me, setMe] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = async () => {
     setLoading(true);
-    Promise.all([
-      getJobs().then(setJobs).catch(() => {}),
-      getFreelancerReport().then(setReport).catch(() => {}),
-      getFreelancerOutcomes().then(setOutcomes).catch(() => {}),
-      getAvailableJobs().then((list) => setAvailableCount(list.length)).catch(() => {}),
-    ]).finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (freelancerId) getFreelancerReputation(freelancerId).then(setReputation).catch(() => {});
-  }, [freelancerId]);
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-
-  const currentJob = jobs.find((j) => j.status === "in_progress") ?? null;
+    try {
+      setJobs(await getJobs());
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { load(); }, []);
 
   const todayStr = isoDateBR(new Date());
   const isToday = (j: Job) => isoDateBR(j.startTime) === todayStr;
 
-  // Turno de hoje ainda não iniciado — é o que dispara a notificação "Hoje, HH:MM às HH:MM…".
-  const todaysJob = jobs
-    .filter((j) => j.status === "accepted" && isToday(j))
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ?? null;
+  const focusJob =
+    jobs.find((j) => j.status === "in_progress") ??
+    jobs
+      .filter((j) => j.status === "accepted")
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ??
+    null;
 
-  // Sem nada hoje: ainda assim mostra a próxima vaga aceita (data futura), se houver.
-  const nextJob = jobs
-    .filter((j) => j.status === "accepted" && !isToday(j))
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ?? null;
+  useEffect(() => {
+    setCheckoutFile(null);
+    if (!focusJob || focusJob.status !== "in_progress") { setPhotoCount(0); return; }
+    getJobPhotos(focusJob.id).then((p) => setPhotoCount(p.length)).catch(() => setPhotoCount(0));
+  }, [focusJob?.id, focusJob?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const earnedInPeriod = (report?.items ?? [])
-    .filter((i) => inDateRange(i.date, range))
-    .reduce((s, i) => s + Number(i.amount ?? 0), 0);
-  const periodLabel = range.preset === "todas" ? "todas as datas" : dateRangeLabel(range);
+  useEffect(() => {
+    if (focusJob) return;
+    getAvailableJobs().then(setNearby).catch(() => {});
+    readGeolocation().then((geo) => setMe({ latitude: geo.latitude, longitude: geo.longitude })).catch(() => {});
+  }, [focusJob]);
 
-  const branches: BranchOption[] = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const i of report?.items ?? []) if (i.branchId && i.branchName) map.set(i.branchId, i.branchName);
-    for (const i of outcomes?.items ?? []) if (i.branchId && i.branchName) map.set(i.branchId, i.branchName);
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [report, outcomes]);
+  const geoAction = async (fn: (geo: Awaited<ReturnType<typeof readGeolocation>>) => Promise<unknown>) => {
+    setError(null);
+    setBusy(true);
+    try {
+      const geo = await readGeolocation();
+      await fn(geo);
+      await load();
+    } catch (err) {
+      setError(errText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  const paymentStatusByJob = useMemo(() => {
-    const map = new Map<string, FreelancerPaymentStatus | null>();
-    for (const i of report?.items ?? []) map.set(i.jobId, i.paymentStatus);
-    return map;
-  }, [report]);
+  const attachPhoto = async () => {
+    if (!focusJob || !checkoutFile) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await uploadJobPhoto(focusJob.id, checkoutFile);
+      setPhotoCount((c) => c + 1);
+      setCheckoutFile(null);
+    } catch (err) {
+      setError(errText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  const filteredOutcomeItems = useMemo(
-    () =>
-      (outcomes?.items ?? [])
-        .filter((i) => inDateRange(i.date, range))
-        .filter((i) => !categoryId || i.categoryId === categoryId)
-        .filter((i) => !branchId || i.branchId === branchId),
-    [outcomes, range, categoryId, branchId]
-  );
+  const accept = async (id: string) => {
+    setError(null);
+    setAcceptingId(id);
+    try {
+      await acceptJob(id);
+      await load();
+    } catch (err) {
+      setError(errText(err));
+    } finally {
+      setAcceptingId(null);
+    }
+  };
 
-  const counts = useMemo(() => {
-    const c: Record<FreelancerOutcome, number> = {
-      accepted: 0, active: 0, completed: 0, abandoned: 0, withdrawnEarly: 0,
-    };
-    for (const i of filteredOutcomeItems) c[i.outcome]++;
-    return c;
-  }, [filteredOutcomeItems]);
+  const distanceOf = (j: Job): number | null => {
+    if (!me || j.jobBranch?.latitude == null || j.jobBranch?.longitude == null) return null;
+    return distanceInMeters(me.latitude, me.longitude, Number(j.jobBranch.latitude), Number(j.jobBranch.longitude));
+  };
 
-  const workedHours = useMemo(
-    () =>
-      (report?.items ?? [])
-        .filter((i) => inDateRange(i.date, range))
-        .filter((i) => !categoryId || i.categoryId === categoryId)
-        .filter((i) => !branchId || i.branchId === branchId)
-        .reduce((s, i) => s + i.workedHours, 0),
-    [report, range, categoryId, branchId]
-  );
+  const sortedNearby = me
+    ? [...nearby].sort((a, b) => {
+        const da = distanceOf(a);
+        const db = distanceOf(b);
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return da - db;
+      })
+    : nearby;
 
-  const rows = useMemo(
-    () =>
-      filteredOutcomeItems
-        .filter((i) => !outcomeFilter || i.outcome === outcomeFilter)
-        .filter((i) => !paymentStatus || paymentStatusByJob.get(i.jobId) === paymentStatus),
-    [filteredOutcomeItems, outcomeFilter, paymentStatus, paymentStatusByJob]
-  );
+  const renderFocusCard = () => {
+    if (!focusJob) return null;
 
-  const openShift = currentJob
-    ? [...(currentJob.shifts ?? [])].sort((a, b) => a.position - b.position).find((s) => s.status === "in_progress")
-    : null;
-  const elapsed = openShift?.checkInAt
-    ? Math.max(0, Math.round((now - new Date(openShift.checkInAt).getTime()) / 60000))
-    : null;
+    const local = `${focusJob.jobSupermarket?.name ?? "—"}${focusJob.jobBranch?.name ? ` — ${focusJob.jobBranch.name}` : ""}`;
+
+    if (focusJob.status === "in_progress") {
+      const cur = currentShift(focusJob);
+      if (cur) {
+        const needsPhoto = requirePhoto && photoCount === 0;
+        return (
+          <div className={styles.highlightCardDark}>
+            <h3>Turno em andamento</h3>
+            <p>{focusJob.jobCategory?.name ?? "Vaga"} no {local}</p>
+            {needsPhoto ? (
+              <>
+                <p>Anexe uma foto pra liberar o check-out.</p>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => setCheckoutFile(e.target.files?.[0] ?? null)}
+                  />
+                  <button className={styles.darkCardBtn} disabled={!checkoutFile || busy} onClick={attachPhoto}>
+                    {busy ? "Anexando…" : "Anexar foto"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button className={styles.darkCardBtn} disabled={busy} onClick={() => geoAction((geo) => checkOut(focusJob.id, geo))}>
+                {busy ? "Localizando…" : "Check-out"}
+              </button>
+            )}
+          </div>
+        );
+      }
+
+      const nxt = nextPendingShift(focusJob);
+      if (nxt) {
+        return (
+          <div className={styles.highlightCardDark}>
+            <h3>Próximo turno, {fmtTime(nxt.startTime)} às {fmtTime(nxt.endTime)}</h3>
+            <p>{focusJob.jobCategory?.name ?? "Vaga"} no {local}</p>
+            <button className={styles.darkCardBtn} disabled={busy} onClick={() => geoAction((geo) => checkIn(focusJob.id, geo))}>
+              {busy ? "Localizando…" : "Check-in"}
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className={styles.highlightCardDark}>
+          <h3>Turnos concluídos</h3>
+          <Link href="/freelancer/jobs" className={styles.darkCardBtn}>Ver detalhes</Link>
+        </div>
+      );
+    }
+
+    // accepted, ainda não iniciada — mostra só o próximo turno, não todos.
+    const nxt = nextPendingShift(focusJob) ?? sortShifts(focusJob.shifts)[0];
+    return (
+      <div className={styles.highlightCardDark}>
+        <h3>{isToday(focusJob) ? "Hoje" : fmtDate(focusJob.startTime)}{nxt ? `, ${fmtTime(nxt.startTime)} às ${fmtTime(nxt.endTime)}` : ""}</h3>
+        <p>{focusJob.jobCategory?.name ?? "Vaga"} no {local}</p>
+        <button className={styles.darkCardBtn} disabled={busy} onClick={() => geoAction((geo) => checkIn(focusJob.id, geo))}>
+          {busy ? "Localizando…" : "Check-in"}
+        </button>
+      </div>
+    );
+  };
 
   return (
-    <PanelPage title="Dashboard | Colaborador" heading="Painel do Colaborador" sidebar={<Sidebar />}>
-      <div className={styles.miniGrid}>
-        {currentJob ? (
-          <div className={styles.highlightCard}>
-            <h3>Turno em andamento</h3>
-            <p className={panel.muted}>
-              {currentJob.jobSupermarket?.name ?? "—"}{currentJob.jobBranch?.name ? ` — ${currentJob.jobBranch.name}` : ""}
-            </p>
-            <p className={panel.muted}>{formatShifts(currentJob.shifts)}</p>
-            {elapsed != null && <strong>{Math.floor(elapsed / 60)}h{String(elapsed % 60).padStart(2, "0")} trabalhadas</strong>}
-            <Link href="/freelancer/jobs" className={panel.linkBtn}>Ir para o ponto</Link>
-          </div>
-        ) : todaysJob ? (
-          <div className={styles.highlightCard}>
-            <h3>Hoje, {fmtTime(todaysJob.startTime)} às {fmtTime(todaysJob.endTime)}</h3>
-            <p className={panel.muted}>
-              {todaysJob.jobCategory?.name ?? "Vaga"} no {todaysJob.jobSupermarket?.name ?? "—"}
-              {todaysJob.jobBranch?.name ? ` — ${todaysJob.jobBranch.name}` : ""}
-            </p>
-            <Link href="/freelancer/jobs" className={panel.linkBtn}>Ver vaga e fazer check-in</Link>
-          </div>
-        ) : (
-          <div className={styles.highlightCard}>
-            <h3>Você está livre hoje!</h3>
-            <p className={panel.muted}>
-              {availableCount == null
-                ? "Confira as vagas disponíveis pra você."
-                : availableCount > 0
-                ? `Existem ${availableCount} vaga${availableCount === 1 ? "" : "s"} aberta${availableCount === 1 ? "" : "s"} na sua região.`
-                : "Nenhuma vaga aberta pra você no momento."}
-            </p>
-            {nextJob && (
-              <p className={panel.muted}>
-                Próxima vaga aceita: {fmtDate(nextJob.startTime)} · {formatShifts(nextJob.shifts)}
-              </p>
-            )}
-            <Link href="/freelancer" className={panel.linkBtn}>Ver vagas</Link>
-          </div>
-        )}
-
-        {reputation && (
-          <div className={styles.highlightCard}>
-            <h3>Sua reputação</h3>
-            <FreelancerReputation reputation={reputation} compact />
-          </div>
-        )}
-      </div>
-
-      <CollapsibleFilterBar>
-        <DateRangeQuickFilter value={range} onChange={setRange} presets={["hoje", "semana", "mes", "custom", "todas"]} />
-        <CategoryBranchFilter
-          categoryId={categoryId} onCategoryChange={setCategoryId}
-          branchId={branchId} onBranchChange={setBranchId}
-          branches={branches}
-        />
-        <label className={panel.filterField}>
-          <span>Situação do pagamento</span>
-          <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as FreelancerPaymentStatus | "")}>
-            <option value="">Todas</option>
-            {Object.entries(PAYMENT_STATUS_FILTER_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
-        </label>
-      </CollapsibleFilterBar>
-
-      <Tabs
-        tabs={[
-          { id: "resumo", label: "Resumo" },
-          { id: "detalhamento", label: "Detalhamento", badge: rows.length || undefined },
-        ]}
-        active={tab}
-        onChange={(id) => setTab(id as TabId)}
-      />
+    <PanelPage title="Home | Colaborador" heading="Olá!" sidebar={<Sidebar />}>
+      {error && <p className={panel.error}>{error}</p>}
 
       {loading ? (
-        <SkeletonStatGrid count={4} />
-      ) : tab === "resumo" ? (
-        <>
-          <h2 style={{ fontSize: "1.1rem" }}>Resumo do período</h2>
-          <div className={panel.cards}>
-            <div className={panel.card}><h2>{minutesToHours(Math.round(workedHours * 60))}</h2><p>Horas trabalhadas</p></div>
-            <div className={panel.card} style={{ position: "relative" }}>
-              <div style={{ position: "absolute", top: "0.9rem", right: "0.9rem" }}>
-                <HelpIcon title="Ganhos Previstos">
-                  <p>Baseado nas horas já trabalhadas e aprovadas no período selecionado ({periodLabel}).</p>
-                </HelpIcon>
-              </div>
-              <h2>R$ {earnedInPeriod.toFixed(2)}</h2>
-              <p>Ganhos Previstos</p>
-            </div>
-          </div>
-
-          <h2 style={{ fontSize: "1.1rem" }}>Desfecho das vagas</h2>
-          <div className={panel.cards}>
-            {OUTCOME_TILES.map((o) => (
-              <button
-                key={o}
-                type="button"
-                className={panel.card}
-                style={{
-                  cursor: "pointer",
-                  textAlign: "left",
-                  border: outcomeFilter === o ? "2px solid var(--primary)" : undefined,
-                }}
-                onClick={() => {
-                  setOutcomeFilter((v) => (v === o ? "" : o));
-                  setTab("detalhamento");
-                }}
-              >
-                <h2>{counts[o]}</h2>
-                <p>{FREELANCER_OUTCOME_LABELS[o]}</p>
-              </button>
-            ))}
-          </div>
-        </>
+        <p className={panel.muted}>Carregando…</p>
+      ) : focusJob ? (
+        renderFocusCard()
       ) : (
-        <>
-          <h2 style={{ fontSize: "1.1rem" }}>Detalhamento</h2>
-          {outcomeFilter && (
-            <p className={panel.muted}>
-              Filtrado por: <strong>{FREELANCER_OUTCOME_LABELS[outcomeFilter]}</strong>{" "}
-              <button type="button" className={panel.linkBtn} onClick={() => setOutcomeFilter("")}>limpar</button>
-            </p>
+        <div className={styles.highlightCard}>
+          <h3>Vagas próximas à sua região</h3>
+          {sortedNearby.length === 0 ? (
+            <p className={panel.muted}>Nenhuma vaga disponível no momento.</p>
+          ) : (
+            <JobCarousel jobs={sortedNearby.slice(0, 8)} distanceOf={distanceOf} acceptingId={acceptingId} onAccept={accept} />
           )}
-          <div style={{ overflowX: "auto" }}>
-            <table className={panel.table}>
-              <thead><tr><th>Data</th><th>Vaga</th><th>Função</th><th>Loja</th><th>Desfecho</th></tr></thead>
-              <tbody>
-                {rows.map((i) => (
-                  <tr key={`${i.jobId}-${i.outcome}`}>
-                    <td>{fmtDate(i.date)}</td>
-                    <td>{i.title}</td>
-                    <td>{i.categoryName ?? "—"}</td>
-                    <td>{i.supermarketName ?? "—"}{i.branchName ? ` · ${i.branchName}` : ""}</td>
-                    <td>{FREELANCER_OUTCOME_LABELS[i.outcome]}</td>
-                  </tr>
-                ))}
-                {rows.length === 0 && <tr><td colSpan={5}>Nada neste filtro.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </>
+          <Link href="/freelancer" className={panel.linkBtn}>Ver todas as vagas</Link>
+        </div>
       )}
     </PanelPage>
   );
@@ -291,7 +224,7 @@ function Dashboard() {
 export default function Page() {
   return (
     <RequireAuth role="freelancer" enforceOnboarding>
-      <Dashboard />
+      <Home />
     </RequireAuth>
   );
 }

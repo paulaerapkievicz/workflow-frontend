@@ -53,7 +53,11 @@ function FreelancersPage() {
   const [showEditReviews, setShowEditReviews] = useState(false);
   const [editContract, setEditContract] = useState<FreelancerContract | null>(null);
   const [showEditOnboarding, setShowEditOnboarding] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", skills: "" });
+  const [editForm, setEditForm] = useState({
+    name: "", email: "", phone: "", skills: "",
+    walletVisible: "inherit" as "inherit" | "on" | "off",
+    reportVisible: "inherit" as "inherit" | "on" | "off",
+  });
   const [editError, setEditError] = useState<string | null>(null);
   const [catMsg, setCatMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -120,7 +124,11 @@ function FreelancersPage() {
   const openEdit = (f: AgencyFreelancer) => {
     setEditError(null);
     setCatMsg(null);
-    setEditForm({ name: f.name, email: f.email, phone: f.phone ?? "", skills: f.skills ?? "" });
+    setEditForm({
+      name: f.name, email: f.email, phone: f.phone ?? "", skills: f.skills ?? "",
+      walletVisible: f.walletVisibleOverride == null ? "inherit" : f.walletVisibleOverride ? "on" : "off",
+      reportVisible: f.reportVisibleOverride == null ? "inherit" : f.reportVisibleOverride ? "on" : "off",
+    });
     setEditId(f.id);
     setEditReputation(null);
     setEditLeaders(null);
@@ -134,11 +142,20 @@ function FreelancersPage() {
     getFreelancerContractForAgency(f.id).then(setEditContract).catch(() => setEditContract(null));
   };
 
+  const toOverride = (v: "inherit" | "on" | "off"): boolean | null => (v === "inherit" ? null : v === "on");
+
   const saveEdit = async () => {
     if (!editId) return;
     setEditError(null);
     try {
-      await updateFreelancer(editId, editForm);
+      await updateFreelancer(editId, {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+        skills: editForm.skills,
+        walletVisibleOverride: toOverride(editForm.walletVisible),
+        reportVisibleOverride: toOverride(editForm.reportVisible),
+      });
       setEditId(null);
       await load();
     } catch (err) {
@@ -376,6 +393,26 @@ function FreelancersPage() {
             <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
             <label>Telefone</label>
             <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+
+            <label>Menu Carteira</label>
+            <select
+              value={editForm.walletVisible}
+              onChange={(e) => setEditForm({ ...editForm, walletVisible: e.target.value as "inherit" | "on" | "off" })}
+            >
+              <option value="inherit">Herdar da agência</option>
+              <option value="on">Sempre visível</option>
+              <option value="off">Sempre oculto</option>
+            </select>
+            <label>Menu Relatório</label>
+            <select
+              value={editForm.reportVisible}
+              onChange={(e) => setEditForm({ ...editForm, reportVisible: e.target.value as "inherit" | "on" | "off" })}
+            >
+              <option value="inherit">Herdar da agência</option>
+              <option value="on">Sempre visível</option>
+              <option value="off">Sempre oculto</option>
+            </select>
+
             <ResetPasswordAction
               label={editForm.name || "este colaborador"}
               onReset={() => resetFreelancerPassword(editId)}

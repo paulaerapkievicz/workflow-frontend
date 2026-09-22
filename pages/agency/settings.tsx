@@ -67,6 +67,8 @@ function SettingsPage() {
     allowSelfRegistration: false,
     appPaymentEnabledForSupermarkets: true,
     appPaymentEnabledForFreelancers: true,
+    walletVisibleToFreelancers: false,
+    reportVisibleToFreelancers: false,
     loginEmailPolicy: "informed" as "informed" | "pattern",
   });
   const [tiers, setTiers] = useState<UnfilledAlertTier[]>([]);
@@ -116,6 +118,8 @@ function SettingsPage() {
           allowSelfRegistration: s.allowSelfRegistration,
           appPaymentEnabledForSupermarkets: s.appPaymentEnabledForSupermarkets,
           appPaymentEnabledForFreelancers: s.appPaymentEnabledForFreelancers,
+          walletVisibleToFreelancers: s.walletVisibleToFreelancers,
+          reportVisibleToFreelancers: s.reportVisibleToFreelancers,
           loginEmailPolicy: s.loginEmailPolicy ?? "informed",
         });
       })
@@ -162,6 +166,8 @@ function SettingsPage() {
         allowSelfRegistration: form.allowSelfRegistration,
         appPaymentEnabledForSupermarkets: form.appPaymentEnabledForSupermarkets,
         appPaymentEnabledForFreelancers: form.appPaymentEnabledForFreelancers,
+        walletVisibleToFreelancers: form.walletVisibleToFreelancers,
+        reportVisibleToFreelancers: form.reportVisibleToFreelancers,
         loginEmailPolicy: form.loginEmailPolicy,
       });
       setSettings(s);
@@ -450,6 +456,24 @@ function SettingsPage() {
                         Desligado (padrão), o colaborador só vê foto, nome, e-mail, telefone e chave
                         Pix no próprio perfil. Ligado, ele também consulta (sem editar) os dados do
                         pré-cadastro e o contrato assinado.
+                      </span>
+                    </div>
+
+                    <div className={panel.card} style={{ marginTop: "0.6rem" }}>
+                      <label className={panel.toggleRow}>
+                        <Switch checked={form.walletVisibleToFreelancers}
+                          onChange={(v) => setForm({ ...form, walletVisibleToFreelancers: v })} />
+                        Mostrar o menu Carteira pro colaborador
+                      </label>
+                      <label className={panel.toggleRow}>
+                        <Switch checked={form.reportVisibleToFreelancers}
+                          onChange={(v) => setForm({ ...form, reportVisibleToFreelancers: v })} />
+                        Mostrar o menu Relatório pro colaborador
+                      </label>
+                      <span className={panel.muted}>
+                        Desligado (padrão), esses menus somem do app do colaborador. Pra liberar só pra
+                        alguém específico sem ligar pra rede toda, use a visibilidade por colaborador em{" "}
+                        <strong>Colaboradores</strong>.
                       </span>
                     </div>
 

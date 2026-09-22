@@ -257,6 +257,22 @@ export const totalBreakMinutes = (shifts?: JobShift[] | null): number =>
 export const hasOpenBreak = (shifts?: JobShift[] | null): boolean =>
   (shifts ?? []).some((s) => (s.breaks ?? []).some((b) => !b.endAt));
 
+/** Turnos de uma vaga, em ordem. */
+export const sortShifts = (shifts?: JobShift[] | null): JobShift[] =>
+  [...(shifts ?? [])].sort((a, b) => a.position - b.position);
+
+/** Turno aberto no momento (check-in feito, check-out pendente). */
+export const currentShift = (job: Pick<Job, "shifts">): JobShift | undefined =>
+  sortShifts(job.shifts).find((s) => s.status === "in_progress");
+
+/** Próximo turno ainda não iniciado. */
+export const nextPendingShift = (job: Pick<Job, "shifts">): JobShift | undefined =>
+  sortShifts(job.shifts).find((s) => (s.status ?? "pending") === "pending");
+
+/** Todos os turnos da vaga já foram concluídos? */
+export const allShiftsDone = (job: Pick<Job, "shifts">): boolean =>
+  sortShifts(job.shifts).every((s) => s.status === "done");
+
 /** Vagas em andamento da rede da agência (tempo real). */
 export const getLiveJobs = async (): Promise<Job[]> => (await api.get("/jobs/live")).data;
 

@@ -18,8 +18,8 @@ import app from "@/styles/freelancerApp.module.scss";
 import bottomSheet from "@/styles/bottomSheet.module.scss";
 import {
   getJobs, checkIn, checkOut, startBreak, endBreak, withdrawJob, readGeolocation, canFreelancerCancel,
-  hasOpenBreak, mapUrl, mapEmbedUrl, Job, JobShift, formatShifts,
-  formatShiftPeriods, STATUS_LABELS,
+  hasOpenBreak, mapUrl, mapEmbedUrl, Job, formatShifts,
+  formatShiftPeriods, STATUS_LABELS, sortShifts, currentShift, nextPendingShift, allShiftsDone,
 } from "@/src/services/jobService";
 import { getJobPhotos, uploadJobPhoto, photoUrl, JobPhoto } from "@/src/services/jobPhotoService";
 import { downloadFreelancerReportPdf } from "@/src/services/billingService";
@@ -31,8 +31,6 @@ import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
 import { useDateRangeFilter } from "@/src/hooks/useDateRangeFilter";
 import { inDateRange, resolveDateBounds } from "@/src/lib/dateRange";
-
-const sortShifts = (shifts?: JobShift[]) => [...(shifts ?? [])].sort((a, b) => a.position - b.position);
 
 /** Prioridade de exibição: em andamento → aceita → concluída → cancelada. */
 const STATUS_ORDER: Record<string, number> = {
@@ -260,9 +258,6 @@ function MyJobs() {
     }
   };
 
-  const currentShift = (j: Job) => sortShifts(j.shifts).find((s) => s.status === "in_progress");
-  const nextPending = (j: Job) => sortShifts(j.shifts).find((s) => (s.status ?? "pending") === "pending");
-  const allDone = (j: Job) => sortShifts(j.shifts).every((s) => s.status === "done");
   const mapJob = mine.find((j) => j.id === mapJobId) ?? null;
   const sheetJob = mine.find((j) => j.id === sheetJobId) ?? null;
 
@@ -324,7 +319,7 @@ function MyJobs() {
           {visible.map((j) => {
             const shifts = sortShifts(j.shifts);
             const cur = currentShift(j);
-            const nxt = nextPending(j);
+            const nxt = nextPendingShift(j);
             const busyElsewhere = mine.some((other) => other.id !== j.id && currentShift(other));
             const isCanceled = j.status === "canceled";
             const canCancel = !isCanceled && j.status === "accepted";
@@ -463,7 +458,7 @@ function MyJobs() {
                       );
                     })()}
 
-                    {j.status === "in_progress" && !cur && allDone(j) && (
+                    {j.status === "in_progress" && !cur && allShiftsDone(j) && (
                       <span className={panel.muted}>Todos os turnos concluídos.</span>
                     )}
                   </div>

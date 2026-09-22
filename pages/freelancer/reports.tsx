@@ -10,6 +10,7 @@ import { SkeletonCard, SkeletonStatGrid, SkeletonTableRows } from "@/src/compone
 import panel from "@/styles/panel.module.scss";
 import {
   getFreelancerReport, downloadFreelancerReportPdf, FreelancerReport,
+  getFreelancerOutcomes, FreelancerOutcome, FreelancerOutcomes, FREELANCER_OUTCOME_LABELS,
 } from "@/src/services/billingService";
 import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
 import { getFreelancerLeaders, AssignedLeader } from "@/src/services/agencyMemberService";
@@ -26,6 +27,7 @@ const money = (v: number) => `R$ ${Number(v).toFixed(2)}`;
 function ReportsPage() {
   const { profile } = useAuth();
   const [report, setReport] = useState<FreelancerReport | null>(null);
+  const [outcomes, setOutcomes] = useState<FreelancerOutcomes | null>(null);
   const [reputation, setReputation] = useState<Reputation | null>(null);
   const [leaders, setLeaders] = useState<AssignedLeader[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,7 @@ function ReportsPage() {
 
   useEffect(() => {
     getFreelancerReport().then(setReport).catch(() => {}).finally(() => setLoading(false));
+    getFreelancerOutcomes().then(setOutcomes).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -60,6 +63,19 @@ function ReportsPage() {
         .filter((i) => !branchId || i.branchId === branchId),
     [report, range, categoryId, branchId]
   );
+
+  const OUTCOME_TILES: FreelancerOutcome[] = ["accepted", "active", "completed", "withdrawnEarly", "abandoned"];
+
+  const outcomeCounts = useMemo(() => {
+    const c: Record<FreelancerOutcome, number> = { accepted: 0, active: 0, completed: 0, abandoned: 0, withdrawnEarly: 0 };
+    for (const i of outcomes?.items ?? []) {
+      if (!inDateRange(i.date, range)) continue;
+      if (categoryId && i.categoryId !== categoryId) continue;
+      if (branchId && i.branchId !== branchId) continue;
+      c[i.outcome]++;
+    }
+    return c;
+  }, [outcomes, range, categoryId, branchId]);
 
   const downloadPdf = async () => {
     setPdfBusy(true);
@@ -104,6 +120,16 @@ function ReportsPage() {
               branches={branches}
             />
           </CollapsibleFilterBar>
+
+          <h2 style={{ fontSize: "1.1rem" }}>Desfecho das vagas</h2>
+          <div className={panel.cards}>
+            {OUTCOME_TILES.map((o) => (
+              <div key={o} className={panel.card}>
+                <h2>{outcomeCounts[o]}</h2>
+                <p>{FREELANCER_OUTCOME_LABELS[o]}</p>
+              </div>
+            ))}
+          </div>
 
           <div>
             <button className={panel.ghostBtn} onClick={downloadPdf} disabled={pdfBusy}>

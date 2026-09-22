@@ -14,10 +14,13 @@ import {
   getMyAgreement, myContractDocumentUrl, openProtectedPdf, type FreelancerAgreement,
 } from "@/src/services/contractService";
 import { photoUrl } from "@/src/services/jobPhotoService";
-import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
+import { uploadMyProfilePhoto, updateFreelancer } from "@/src/services/freelancerService";
+import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
+import FreelancerReputation from "@/src/components/FreelancerReputation";
 import { useAuth } from "@/src/hooks/useAuth";
 import FreelancerContractView from "@/src/components/FreelancerContractView";
 import PixKeyFields from "@/src/components/onboarding/PixKeyFields";
+import FormField from "@/src/components/FormField";
 import FileField from "@/src/components/FileField";
 import HelpIcon from "@/src/components/common/HelpIcon";
 import { validateForm } from "@/src/lib/validators";
@@ -44,6 +47,9 @@ function ProfilePage() {
   const [profilePhotoErr, setProfilePhotoErr] = useState<string | null>(null);
   const [agreement, setAgreement] = useState<FreelancerAgreement | null>(null);
   const [agreementLoading, setAgreementLoading] = useState(true);
+  const [contactValues, setContactValues] = useState({ email: "", phone: "" });
+  const [savingContact, setSavingContact] = useState(false);
+  const [reputation, setReputation] = useState<Reputation | null>(null);
 
   const profilePhotoUrl = (profile?.profilePhotoUrl as string | null | undefined) ?? null;
   const name = (profile?.name as string | undefined) ?? "";
@@ -89,6 +95,13 @@ function ProfilePage() {
     getMyAgreement().then(setAgreement).finally(() => setAgreementLoading(false));
   }, [showFullProfile]);
 
+  useEffect(() => { setContactValues({ email, phone }); }, [email, phone]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    getFreelancerReputation(profile.id).then(setReputation).catch(() => {});
+  }, [profile?.id]);
+
   const set = (k: string, v: string) => setValues((cur) => ({ ...cur, [k]: v }));
 
   const savePix = async () => {
@@ -109,6 +122,29 @@ function ProfilePage() {
       setMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
     } finally {
       setSavingPix(false);
+    }
+  };
+
+  const saveContact = async () => {
+    setMsg(null);
+    setShowErrors(true);
+    const fieldErrs = validateForm([
+      { name: "email", value: contactValues.email, kind: "email", required: true },
+      { name: "phone", value: contactValues.phone, kind: "phone", required: false },
+    ]);
+    if (Object.keys(fieldErrs).length || !profile?.id) {
+      setMsg({ type: "err", text: "Confira o e-mail e o telefone." });
+      return;
+    }
+    setSavingContact(true);
+    try {
+      await updateFreelancer(profile.id, { email: contactValues.email, phone: contactValues.phone });
+      await refresh();
+      setMsg({ type: "ok", text: "Contato atualizado." });
+    } catch (err) {
+      setMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
+    } finally {
+      setSavingContact(false);
     }
   };
 
@@ -238,19 +274,30 @@ function ProfilePage() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.6rem", marginTop: "1rem" }}>
+            <div style={{ marginTop: "1rem" }}>
               <div>
                 <span className={panel.muted} style={{ display: "block", fontSize: "0.72rem", textTransform: "uppercase" }}>Nome</span>
                 {name || "—"}
               </div>
-              <div>
-                <span className={panel.muted} style={{ display: "block", fontSize: "0.72rem", textTransform: "uppercase" }}>E-mail</span>
-                {email || "—"}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.6rem", marginTop: "0.6rem" }}>
+                <FormField
+                  label="E-mail"
+                  kind="email"
+                  required
+                  value={contactValues.email}
+                  onChange={(v) => setContactValues((c) => ({ ...c, email: v }))}
+                  error={showErrors && !contactValues.email.trim() ? "Campo obrigatório" : undefined}
+                />
+                <FormField
+                  label="Telefone"
+                  kind="phone"
+                  value={contactValues.phone}
+                  onChange={(v) => setContactValues((c) => ({ ...c, phone: v }))}
+                />
               </div>
-              <div>
-                <span className={panel.muted} style={{ display: "block", fontSize: "0.72rem", textTransform: "uppercase" }}>Telefone</span>
-                {phone || "—"}
-              </div>
+              <button className={panel.primaryBtn} onClick={saveContact} disabled={savingContact} style={{ marginTop: "0.6rem" }}>
+                {savingContact ? "Salvando…" : "Salvar contato"}
+              </button>
             </div>
 
             <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
@@ -260,6 +307,15 @@ function ProfilePage() {
               </button>
             </div>
           </div>
+
+          {reputation && (
+            <div className={panel.card}>
+              <strong>Minha reputação</strong>
+              <div style={{ marginTop: "0.6rem" }}>
+                <FreelancerReputation reputation={reputation} compact />
+              </div>
+            </div>
+          )}
 
           {tabs.length > 0 && (
             <>

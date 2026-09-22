@@ -277,6 +277,53 @@
   }
 }
 
+// ----- Card de foco da Home do colaborador (próxima ação) — tom mais escuro, pra se destacar
+// dos demais cards sem prejudicar a leitura (texto claro, botão em contraste). -----
+.highlightCardDark {
+  background: linear-gradient(155deg, var(--primary-dark), var(--primary));
+  border: 1px solid var(--primary-dark);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md, var(--shadow-sm));
+  padding: 1.4rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #fff;
+
+  h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  p {
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+// Botão de ação dentro do .highlightCardDark — claro, pra contrastar com o fundo escuro
+// (o primaryBtn padrão, na cor primária, se perderia num card já nessa cor).
+.darkCardBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #fff;
+  color: var(--primary-dark);
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1.05rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  align-self: flex-start;
+  margin-top: 0.3rem;
+
+  &:hover { background: rgba(255, 255, 255, 0.9); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
 .alertList {
   list-style: none;
   margin: 0;

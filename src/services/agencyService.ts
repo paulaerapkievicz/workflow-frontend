@@ -46,6 +46,10 @@ export interface AgencyFreelancer {
   agencyId: string | null;
   availableBalance: number;
   profilePhotoUrl?: string | null;
+  /** Override pessoal de visibilidade do menu Carteira. null = herda o padrão da agência. */
+  walletVisibleOverride?: boolean | null;
+  /** Override pessoal de visibilidade do menu Relatório. null = herda o padrão da agência. */
+  reportVisibleOverride?: boolean | null;
 }
 
 export const getAgencies = async (): Promise<Agency[]> => (await api.get("/agencies")).data;

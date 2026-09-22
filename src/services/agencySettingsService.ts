@@ -71,6 +71,10 @@ export interface AgencySettings {
   appPaymentEnabledForSupermarkets: boolean;
   /** Libera a compra do uniforme pelo app pros colaboradores (tudo ou nada). */
   appPaymentEnabledForFreelancers: boolean;
+  /** Mostra o menu Carteira pro colaborador (padrão da rede; override por pessoa em `/agency/freelancers`). */
+  walletVisibleToFreelancers: boolean;
+  /** Mostra o menu Relatório pro colaborador (padrão da rede; override por pessoa em `/agency/freelancers`). */
+  reportVisibleToFreelancers: boolean;
   /** E-mail de login das contas criadas sob a agência: o que a pessoa informou, ou o padrão
    *  nomesobrenome@workflow.com (nesse caso só a agência redefine a senha se esquecer). */
   loginEmailPolicy: "informed" | "pattern";
