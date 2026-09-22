@@ -8,12 +8,14 @@ import JobCarousel from "@/src/components/freelancer/JobCarousel";
 import panel from "@/styles/panel.module.scss";
 import styles from "@/styles/dashboard.module.scss";
 import {
-  getJobs, getAvailableJobs, acceptJob, checkIn, checkOut, readGeolocation, Job,
+  getJobs, getAvailableJobs, acceptJob, checkIn, checkOut, endBreak, readGeolocation, hasOpenBreak, Job, JobShift,
   currentShift, nextPendingShift, sortShifts,
 } from "@/src/services/jobService";
-import { getJobPhotos, uploadJobPhoto } from "@/src/services/jobPhotoService";
+import { shiftLabel } from "@/src/services/shifts";
+import { getJobPhotos, uploadJobPhoto, photoUrl } from "@/src/services/jobPhotoService";
+import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
 import { distanceInMeters } from "@/src/lib/distance";
-import { fmtTime, fmtDate, isoDateBR } from "@/src/lib/datetime";
+import { fmtDate, isoDateBR } from "@/src/lib/datetime";
 import { useAuth } from "@/src/hooks/useAuth";
 
 interface AffiliatedAgency {
@@ -23,12 +25,18 @@ interface AffiliatedAgency {
 const errText = (err: unknown) =>
   axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : err instanceof Error ? err.message : "Erro.";
 
+/** Rótulo do período de um turno — nome próprio se houver, senão manhã/tarde/noite/madrugada. */
+const periodOf = (s: JobShift) => (s.label && s.label.trim()) || shiftLabel(s.nominalPeriod);
+
 function Home() {
   const { profile } = useAuth();
   const requirePhoto = ((profile as { affiliatedAgency?: AffiliatedAgency } | null)?.affiliatedAgency)?.requireCheckoutPhoto ?? true;
+  const profilePhotoUrl = (profile?.profilePhotoUrl as string | null | undefined) ?? null;
+  const firstName = ((profile?.name as string | undefined) ?? "").split(" ")[0];
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reputation, setReputation] = useState<Reputation | null>(null);
   const [photoCount, setPhotoCount] = useState(0);
   const [checkoutFile, setCheckoutFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -47,6 +55,10 @@ function Home() {
     }
   };
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (profile?.id) getFreelancerReputation(profile.id).then(setReputation).catch(() => {});
+  }, [profile?.id]);
 
   const todayStr = isoDateBR(new Date());
   const isToday = (j: Job) => isoDateBR(j.startTime) === todayStr;
@@ -127,79 +139,115 @@ function Home() {
       })
     : nearby;
 
-  const renderFocusCard = () => {
-    if (!focusJob) return null;
-
-    const local = `${focusJob.jobSupermarket?.name ?? "—"}${focusJob.jobBranch?.name ? ` — ${focusJob.jobBranch.name}` : ""}`;
-
-    if (focusJob.status === "in_progress") {
-      const cur = currentShift(focusJob);
-      if (cur) {
-        const needsPhoto = requirePhoto && photoCount === 0;
-        return (
-          <div className={styles.highlightCardDark}>
-            <h3>Turno em andamento</h3>
-            <p>{focusJob.jobCategory?.name ?? "Vaga"} no {local}</p>
-            {needsPhoto ? (
-              <>
-                <p>Anexe uma foto pra liberar o check-out.</p>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => setCheckoutFile(e.target.files?.[0] ?? null)}
-                  />
-                  <button className={styles.darkCardBtn} disabled={!checkoutFile || busy} onClick={attachPhoto}>
-                    {busy ? "Anexando…" : "Anexar foto"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <button className={styles.darkCardBtn} disabled={busy} onClick={() => geoAction((geo) => checkOut(focusJob.id, geo))}>
-                {busy ? "Localizando…" : "Check-out"}
-              </button>
-            )}
-          </div>
-        );
-      }
-
-      const nxt = nextPendingShift(focusJob);
-      if (nxt) {
-        return (
-          <div className={styles.highlightCardDark}>
-            <h3>Próximo turno, {fmtTime(nxt.startTime)} às {fmtTime(nxt.endTime)}</h3>
-            <p>{focusJob.jobCategory?.name ?? "Vaga"} no {local}</p>
-            <button className={styles.darkCardBtn} disabled={busy} onClick={() => geoAction((geo) => checkIn(focusJob.id, geo))}>
-              {busy ? "Localizando…" : "Check-in"}
-            </button>
-          </div>
-        );
-      }
-
-      return (
-        <div className={styles.highlightCardDark}>
-          <h3>Turnos concluídos</h3>
-          <Link href="/freelancer/jobs" className={styles.darkCardBtn}>Ver detalhes</Link>
-        </div>
-      );
-    }
-
-    // accepted, ainda não iniciada — mostra só o próximo turno, não todos.
-    const nxt = nextPendingShift(focusJob) ?? sortShifts(focusJob.shifts)[0];
+  /** Card único de foco: mesma estrutura sempre — cabeçalho (dia + período), função, local, botão. */
+  const renderFocus = (headline: string, shift: JobShift | undefined, job: Job, action: { label: string; onClick?: () => void; href?: string; disabled?: boolean }) => {
+    const local = `${job.jobSupermarket?.name ?? "—"}${job.jobBranch?.name ? ` — ${job.jobBranch.name}` : ""}`;
     return (
       <div className={styles.highlightCardDark}>
-        <h3>{isToday(focusJob) ? "Hoje" : fmtDate(focusJob.startTime)}{nxt ? `, ${fmtTime(nxt.startTime)} às ${fmtTime(nxt.endTime)}` : ""}</h3>
-        <p>{focusJob.jobCategory?.name ?? "Vaga"} no {local}</p>
-        <button className={styles.darkCardBtn} disabled={busy} onClick={() => geoAction((geo) => checkIn(focusJob.id, geo))}>
-          {busy ? "Localizando…" : "Check-in"}
-        </button>
+        <p className={styles.focusHeadline}>{headline}{shift ? `, ${periodOf(shift)}` : ""}</p>
+        <p className={styles.focusTitle}>{job.jobCategory?.name ?? "Vaga"}</p>
+        <p className={styles.focusLocal}>{local}</p>
+        {action.href ? (
+          <Link href={action.href} className={styles.focusActionBtn}>{action.label}</Link>
+        ) : (
+          <button className={styles.focusActionBtn} disabled={action.disabled} onClick={action.onClick}>
+            {action.label}
+          </button>
+        )}
       </div>
     );
   };
 
+  const renderFocusCard = () => {
+    if (!focusJob) return null;
+    const headline = isToday(focusJob) ? "Hoje" : fmtDate(focusJob.startTime);
+
+    if (focusJob.status === "in_progress") {
+      const cur = currentShift(focusJob);
+      if (cur) {
+        if (hasOpenBreak(focusJob.shifts)) {
+          return renderFocus(headline, cur, focusJob, {
+            label: busy ? "Localizando…" : "Retomar ponto",
+            disabled: busy,
+            onClick: () => geoAction((geo) => endBreak(focusJob.id, geo)),
+          });
+        }
+        const needsPhoto = requirePhoto && photoCount === 0;
+        if (needsPhoto) {
+          const local = `${focusJob.jobSupermarket?.name ?? "—"}${focusJob.jobBranch?.name ? ` — ${focusJob.jobBranch.name}` : ""}`;
+          return (
+            <div className={styles.highlightCardDark}>
+              <p className={styles.focusHeadline}>{headline}, {periodOf(cur)}</p>
+              <p className={styles.focusTitle}>{focusJob.jobCategory?.name ?? "Vaga"}</p>
+              <p className={styles.focusLocal}>{local}</p>
+              <p className={styles.focusLocal}>Anexe uma foto pra liberar o check-out.</p>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => setCheckoutFile(e.target.files?.[0] ?? null)}
+                />
+                <button className={styles.focusActionBtn} disabled={!checkoutFile || busy} onClick={attachPhoto}>
+                  {busy ? "Anexando…" : "Anexar foto"}
+                </button>
+              </div>
+            </div>
+          );
+        }
+        return renderFocus(headline, cur, focusJob, {
+          label: busy ? "Localizando…" : "Check-out",
+          disabled: busy,
+          onClick: () => geoAction((geo) => checkOut(focusJob.id, geo)),
+        });
+      }
+
+      const nxt = nextPendingShift(focusJob);
+      if (nxt) {
+        return renderFocus(headline, nxt, focusJob, {
+          label: busy ? "Localizando…" : "Check-in",
+          disabled: busy,
+          onClick: () => geoAction((geo) => checkIn(focusJob.id, geo)),
+        });
+      }
+
+      return renderFocus(headline, undefined, focusJob, { label: "Ver detalhes", href: "/freelancer/jobs" });
+    }
+
+    // accepted, ainda não iniciada — mostra só o próximo turno, não todos.
+    const nxt = nextPendingShift(focusJob) ?? sortShifts(focusJob.shifts)[0];
+    return renderFocus(headline, nxt, focusJob, {
+      label: busy ? "Localizando…" : "Check-in",
+      disabled: busy,
+      onClick: () => geoAction((geo) => checkIn(focusJob.id, geo)),
+    });
+  };
+
   return (
-    <PanelPage title="Home | Colaborador" heading="Olá!" sidebar={<Sidebar />}>
+    <PanelPage
+      title="Home | Colaborador"
+      heading={
+        <span className={styles.homeGreeting}>
+          {profilePhotoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoUrl(profilePhotoUrl)} alt="" className={styles.homeAvatar} />
+          ) : (
+            <span className={styles.homeAvatarFallback} aria-hidden="true">
+              {(firstName || "?").charAt(0).toUpperCase()}
+            </span>
+          )}
+          <span>
+            <span className={styles.homeGreetingName}>Olá, {firstName || "colaborador"}</span>
+            {reputation?.ratingAvg != null && reputation.ratingCount > 0 && (
+              <span className={styles.homeRating}>
+                <span className={styles.homeRatingStar}>★</span> {reputation.ratingAvg.toFixed(1).replace(".", ",")}
+              </span>
+            )}
+          </span>
+        </span>
+      }
+      sidebar={<Sidebar />}
+    >
       {error && <p className={panel.error}>{error}</p>}
 
       {loading ? (

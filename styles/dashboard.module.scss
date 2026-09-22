@@ -277,51 +277,115 @@
   }
 }
 
-// ----- Card de foco da Home do colaborador (próxima ação) — tom mais escuro, pra se destacar
-// dos demais cards sem prejudicar a leitura (texto claro, botão em contraste). -----
+// ----- Cabeçalho "Olá, Nome" da Home do colaborador — foto + saudação + nota, no lugar do
+// <h1> padrão do PanelPage (ver `heading` em pages/freelancer/dashboard.tsx). -----
+.homeGreeting {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.homeAvatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.homeAvatarFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 1.3rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.homeGreetingName {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.homeRating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.homeRatingStar {
+  color: #f5a623;
+}
+
+// ----- Card de foco da Home do colaborador (próxima ação) — tom mais escuro, ocupa mais espaço
+// e fica centralizado na tela, pra ficar no centro das atenções sem prejudicar a leitura
+// (texto claro, botão em cor de destaque). -----
 .highlightCardDark {
   background: linear-gradient(155deg, var(--primary-dark), var(--primary));
   border: 1px solid var(--primary-dark);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md, var(--shadow-sm));
-  padding: 1.4rem 1.5rem;
+  padding: 2.2rem 1.8rem;
+  max-width: 480px;
+  min-height: 260px;
+  margin: 1rem auto 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 0.3rem;
   color: #fff;
-
-  h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #fff;
-  }
-
-  p {
-    color: rgba(255, 255, 255, 0.85);
-  }
 }
 
-// Botão de ação dentro do .highlightCardDark — claro, pra contrastar com o fundo escuro
-// (o primaryBtn padrão, na cor primária, se perderia num card já nessa cor).
-.darkCardBtn {
-  display: inline-flex;
+.focusHeadline {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.focusTitle {
+  margin: 0.5rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.focusLocal {
+  margin: 0.15rem 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+}
+
+// Botão de ação dentro do .highlightCardDark — cor de destaque (mesma da marca), grande e
+// full-width, sempre no mesmo estilo não importa qual seja a ação (check-in/check-out/retomar).
+.focusActionBtn {
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  background: #fff;
-  color: var(--primary-dark);
+  justify-content: center;
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 0.6rem 1.05rem;
+  border-radius: 14px;
+  padding: 1rem 1.4rem;
+  margin-top: 1.4rem;
   cursor: pointer;
   font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  align-self: flex-start;
-  margin-top: 0.3rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 14px 26px -14px rgba(0, 0, 0, 0.5);
+  transition: background 0.15s ease, transform 0.12s ease;
 
-  &:hover { background: rgba(255, 255, 255, 0.9); }
-  &:disabled { opacity: 0.6; cursor: not-allowed; }
+  &:hover { background: var(--accent-dark); transform: translateY(-1px); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 }
 
 .alertList {
