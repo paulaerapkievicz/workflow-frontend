@@ -62,6 +62,7 @@ function SettingsPage() {
     onboardingRequired: false,
     requireUniformPurchase: false,
     requirePhotoApproval: false,
+    showOnboardingDataToFreelancer: false,
     uniformPrice: "0",
     allowSelfRegistration: false,
     appPaymentEnabledForSupermarkets: true,
@@ -110,6 +111,7 @@ function SettingsPage() {
           onboardingRequired: s.onboardingRequired,
           requireUniformPurchase: s.requireUniformPurchase,
           requirePhotoApproval: s.requirePhotoApproval,
+          showOnboardingDataToFreelancer: s.showOnboardingDataToFreelancer,
           uniformPrice: String(s.uniformPrice),
           allowSelfRegistration: s.allowSelfRegistration,
           appPaymentEnabledForSupermarkets: s.appPaymentEnabledForSupermarkets,
@@ -155,6 +157,7 @@ function SettingsPage() {
         onboardingRequired: form.onboardingRequired,
         requireUniformPurchase: form.requireUniformPurchase,
         requirePhotoApproval: form.requirePhotoApproval,
+        showOnboardingDataToFreelancer: form.showOnboardingDataToFreelancer,
         uniformPrice: Number(form.uniformPrice),
         allowSelfRegistration: form.allowSelfRegistration,
         appPaymentEnabledForSupermarkets: form.appPaymentEnabledForSupermarkets,
@@ -434,6 +437,19 @@ function SettingsPage() {
                       <span className={panel.muted}>
                         Desligado (padrão), a foto enviada pelo colaborador no onboarding já vale
                         direto como foto de perfil, sem revisão.
+                      </span>
+                    </div>
+
+                    <div className={panel.card} style={{ marginTop: "0.6rem" }}>
+                      <label className={panel.toggleRow}>
+                        <Switch checked={form.showOnboardingDataToFreelancer}
+                          onChange={(v) => setForm({ ...form, showOnboardingDataToFreelancer: v })} />
+                        Mostrar dados do onboarding e contrato no perfil do colaborador
+                      </label>
+                      <span className={panel.muted}>
+                        Desligado (padrão), o colaborador só vê foto, nome, e-mail, telefone e chave
+                        Pix no próprio perfil. Ligado, ele também consulta (sem editar) os dados do
+                        pré-cadastro e o contrato assinado.
                       </span>
                     </div>
 

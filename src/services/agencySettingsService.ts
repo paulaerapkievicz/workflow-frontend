@@ -61,6 +61,8 @@ export interface AgencySettings {
   requireUniformPurchase: boolean;
   /** Exige aprovação da agência pra foto enviada no onboarding; sem isso, ela já vale direto. */
   requirePhotoApproval: boolean;
+  /** Mostra os dados do pré-cadastro (só consulta) e o contrato assinado no perfil do colaborador. */
+  showOnboardingDataToFreelancer: boolean;
   /** Preço do kit uniforme cobrado do colaborador. */
   uniformPrice: number;
   /** Permite que colaboradores se autocadastrem nesta agência (com aprovação depois). */

@@ -36,6 +36,8 @@ export interface FreelancerOnboarding {
   awaitingRegistration?: boolean;
   requireUniformPurchase?: boolean;
   requirePhotoApproval?: boolean;
+  /** Ligado pela agência: mostra os dados do pré-cadastro (consulta) e o contrato assinado no perfil. */
+  showFullProfile?: boolean;
   uniformStatus?: UniformStatus | null;
   photoStatus?: PhotoStatus;
   photoRejectionReason?: string | null;

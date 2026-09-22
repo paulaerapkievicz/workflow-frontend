@@ -8,40 +8,47 @@ import Tabs from "@/src/components/panel/Tabs";
 import {
   getContract, saveContract, getUniform, requestUniform, confirmUniformReceived,
   syncUniformPayment, SHIRT_SIZES, UNIFORM_STATUS_LABELS, UniformOrder, PHOTO_STATUS_LABELS,
-  type FreelancerOnboarding,
+  type FreelancerContract, type FreelancerOnboarding, type FreelancerPixKeyType,
 } from "@/src/services/onboardingService";
+import {
+  getMyAgreement, myContractDocumentUrl, openProtectedPdf, type FreelancerAgreement,
+} from "@/src/services/contractService";
 import { photoUrl } from "@/src/services/jobPhotoService";
 import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
 import { useAuth } from "@/src/hooks/useAuth";
-import ContractDataFields from "@/src/components/onboarding/ContractDataFields";
+import FreelancerContractView from "@/src/components/FreelancerContractView";
+import PixKeyFields from "@/src/components/onboarding/PixKeyFields";
 import FileField from "@/src/components/FileField";
 import HelpIcon from "@/src/components/common/HelpIcon";
 import { validateForm } from "@/src/lib/validators";
-import {
-  CONTRACT_ALL_FIELDS as ALL_FIELDS, CONTRACT_REQUIRED_KEYS as REQUIRED_KEYS, PIX_FIELD_KIND,
-} from "@/src/lib/freelancerContractFields";
-import type { FreelancerPixKeyType } from "@/src/services/onboardingService";
+import { maskCpf } from "@/src/lib/masks";
+import { PIX_FIELD_KIND } from "@/src/lib/freelancerContractFields";
 
-type TabId = "perfil" | "uniforme";
+type TabId = "onboarding" | "contrato" | "uniforme";
+
+const fmtDateTime = (d: string) => new Date(d).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" });
 
 function ProfilePage() {
   const { profile, refresh } = useAuth();
-  const [tab, setTab] = useState<TabId>("perfil");
+  const [tab, setTab] = useState<TabId | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
-  const [contractDone, setContractDone] = useState(false);
+  const [contract, setContract] = useState<FreelancerContract | null>(null);
   const [uniform, setUniform] = useState<UniformOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [savingPix, setSavingPix] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [uniformErr, setUniformErr] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [profilePhotoErr, setProfilePhotoErr] = useState<string | null>(null);
-  // Campos de opção com "Outra…" (ex.: nacionalidade): força o modo texto-livre mesmo
-  // quando o valor atual (ainda vazio) bateria com o placeholder, não com uma opção real.
-  const [customOptionFields, setCustomOptionFields] = useState<Record<string, boolean>>({});
+  const [agreement, setAgreement] = useState<FreelancerAgreement | null>(null);
+  const [agreementLoading, setAgreementLoading] = useState(true);
+
   const profilePhotoUrl = (profile?.profilePhotoUrl as string | null | undefined) ?? null;
+  const name = (profile?.name as string | undefined) ?? "";
+  const email = (profile?.email as string | undefined) ?? "";
+  const phone = (profile?.phone as string | undefined) ?? "";
   const appPaymentEnabledForFreelancers =
     (profile as { affiliatedAgency?: { appPaymentEnabledForFreelancers?: boolean } } | null)
       ?.affiliatedAgency?.appPaymentEnabledForFreelancers !== false;
@@ -50,19 +57,18 @@ function ProfilePage() {
   const requirePhotoApproval = !!onboarding?.requirePhotoApproval;
   const photoStatus = onboarding?.photoStatus ?? "none";
   const photoRejectionReason = onboarding?.photoRejectionReason ?? null;
+  // Ligado pela agência (Configurações -> Colaborador): mostra os dados do pré-cadastro (consulta)
+  // e o contrato assinado aqui. Desligado (padrão), só o cartão básico de contato aparece.
+  const showFullProfile = !!onboarding?.showFullProfile;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [c, u0] = await Promise.all([getContract(), getUniform()]);
       if (c) {
-        const v: Record<string, string> = {};
-        for (const f of ALL_FIELDS) v[f.key] = (c[f.key] as string) ?? "";
-        v.shirtSize = (c.shirtSize as string) ?? "";
-        v.pixKey = (c.pixKey as string) ?? "";
-        v.pixKeyType = (c.pixKeyType as string) ?? "";
+        const v: Record<string, string> = { pixKey: (c.pixKey as string) ?? "", pixKeyType: (c.pixKeyType as string) ?? "", shirtSize: (c.shirtSize as string) ?? "" };
         setValues(v);
-        setContractDone(!!c.completedAt);
+        setContract(c);
       }
       // Sem webhook público (dev local) o pagamento não se confirma sozinho:
       // ao reabrir a tela, checamos o status direto no Mercado Pago.
@@ -77,45 +83,32 @@ function ProfilePage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const missing = useMemo(
-    () => REQUIRED_KEYS.filter((k) => !(values[k] ?? "").trim()),
-    [values]
-  );
+  useEffect(() => {
+    if (!showFullProfile) { setAgreementLoading(false); return; }
+    setAgreementLoading(true);
+    getMyAgreement().then(setAgreement).finally(() => setAgreementLoading(false));
+  }, [showFullProfile]);
 
   const set = (k: string, v: string) => setValues((cur) => ({ ...cur, [k]: v }));
 
-  const save = async () => {
+  const savePix = async () => {
     setMsg(null);
     setShowErrors(true);
     const pixKind = PIX_FIELD_KIND[(values.pixKeyType as FreelancerPixKeyType) || "aleatoria"];
-    const fieldErrs = validateForm(
-      ALL_FIELDS.filter((f) => f.kind).map((f) => ({
-        name: f.key, value: values[f.key] ?? "", kind: f.kind!, required: f.required,
-      })).concat([{ name: "pixKey", value: values.pixKey ?? "", kind: pixKind, required: true }])
-    );
-    if (Object.keys(fieldErrs).length) {
-      setMsg({ type: "err", text: "Confira os campos destacados — há valores inválidos." });
+    const fieldErrs = validateForm([{ name: "pixKey", value: values.pixKey ?? "", kind: pixKind, required: true }]);
+    if (Object.keys(fieldErrs).length || !values.pixKeyType) {
+      setMsg({ type: "err", text: "Confira o tipo e a chave Pix." });
       return;
     }
-    setSaving(true);
+    setSavingPix(true);
     try {
-      const c = await saveContract(values);
-      setContractDone(!!c.completedAt);
-      setMsg(
-        c.completedAt
-          ? { type: "ok", text: "Perfil contratual concluído." }
-          : {
-              type: "err",
-              text: `Rascunho salvo — faltam ${missing.length} ${
-                missing.length === 1 ? "campo obrigatório" : "campos obrigatórios"
-              }, destacados em vermelho.`,
-            }
-      );
-      await refresh();
+      const c = await saveContract({ pixKey: values.pixKey, pixKeyType: values.pixKeyType });
+      setContract(c);
+      setMsg({ type: "ok", text: "Chave Pix atualizada." });
     } catch (err) {
       setMsg({ type: "err", text: axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : "Erro." });
     } finally {
-      setSaving(false);
+      setSavingPix(false);
     }
   };
 
@@ -176,20 +169,17 @@ function ProfilePage() {
   };
 
   const tabs = useMemo(() => {
-    const list: { id: TabId; label: string; badge?: number }[] = [
-      {
-        id: "perfil",
-        label: "Perfil contratual",
-        badge: (contractDone ? 0 : missing.length) + (requirePhotoApproval && photoStatus === "rejected" ? 1 : 0),
-      },
-    ];
+    const list: { id: TabId; label: string }[] = [];
+    if (showFullProfile) list.push({ id: "onboarding", label: "Dados do onboarding" });
+    if (showFullProfile) list.push({ id: "contrato", label: "Contrato" });
     if (requireUniformPurchase) list.push({ id: "uniforme", label: "Uniforme" });
     return list;
-  }, [contractDone, missing.length, requireUniformPurchase, requirePhotoApproval, photoStatus]);
+  }, [showFullProfile, requireUniformPurchase]);
 
-  // Se a aba ativa deixar de existir (ex.: a agência desliga uniforme obrigatório), volta pro perfil.
+  // Se a aba ativa deixar de existir (ex.: a agência desliga uma dessas opções), volta pra primeira.
   useEffect(() => {
-    if (!tabs.some((t) => t.id === tab)) setTab("perfil");
+    if (!tabs.length) { setTab(null); return; }
+    if (!tabs.some((t) => t.id === tab)) setTab(tabs[0].id);
   }, [tabs, tab]);
 
   return (
@@ -200,9 +190,9 @@ function ProfilePage() {
           Meu perfil
           <HelpIcon title="Como funciona o seu perfil">
             <p>
-              Seus dados contratuais e o uniforme (quando exigido pela sua agência) ficam
-              centralizados aqui, em abas. O pré-cadastro e a assinatura do contrato acontecem uma
-              vez só, no início, antes da sua ativação.
+              Aqui ficam seus dados de contato e sua chave Pix. O pré-cadastro e a assinatura do
+              contrato acontecem uma vez só, no início, antes da sua ativação — sua agência decide
+              se esses dados continuam visíveis aqui depois.
             </p>
           </HelpIcon>
         </>
@@ -212,64 +202,105 @@ function ProfilePage() {
       {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
 
       {loading ? (
-            <p>Carregando…</p>
-          ) : (
+        <p>Carregando…</p>
+      ) : (
+        <>
+          <div className={panel.card}>
+            <strong>Meus dados</strong>
+            <div style={{ marginTop: "0.8rem" }}>
+              {requirePhotoApproval && (
+                <span className={`${panel.badge} ${photoStatus === "approved" ? panel.badgeDone : panel.badgePending}`}>
+                  {PHOTO_STATUS_LABELS[photoStatus]}
+                </span>
+              )}
+              <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
+                {requirePhotoApproval
+                  ? "Envie uma foto sua. A sua agência precisa aprovar antes que ela valha como foto de perfil e libere vagas."
+                  : "Essa foto é mostrada ao supermercado quando você aceita uma vaga, para identificação de quem vai atender."}
+              </p>
+              {requirePhotoApproval && photoStatus === "rejected" && photoRejectionReason && (
+                <p className={panel.error}>Motivo da recusa: {photoRejectionReason} — envie outra foto.</p>
+              )}
+              {profilePhotoErr && <p className={panel.error}>{profilePhotoErr}</p>}
+              {profilePhotoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl(profilePhotoUrl)}
+                  alt="Foto de perfil"
+                  style={{ width: 120, height: 120, objectFit: "cover", borderRadius: "50%", marginTop: "0.5rem" }}
+                />
+              )}
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end", marginTop: "0.5rem" }}>
+                <FileField label="Foto" accept="image/*" file={profilePhoto} onChange={setProfilePhoto} />
+                <button className={panel.primaryBtn} disabled={busy || !profilePhoto} onClick={sendProfilePhoto}>
+                  {busy ? "Enviando…" : profilePhotoUrl ? "Trocar foto" : "Enviar foto"}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.6rem", marginTop: "1rem" }}>
+              <div>
+                <span className={panel.muted} style={{ display: "block", fontSize: "0.72rem", textTransform: "uppercase" }}>Nome</span>
+                {name || "—"}
+              </div>
+              <div>
+                <span className={panel.muted} style={{ display: "block", fontSize: "0.72rem", textTransform: "uppercase" }}>E-mail</span>
+                {email || "—"}
+              </div>
+              <div>
+                <span className={panel.muted} style={{ display: "block", fontSize: "0.72rem", textTransform: "uppercase" }}>Telefone</span>
+                {phone || "—"}
+              </div>
+            </div>
+
+            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+              <PixKeyFields values={values} set={set} showErrors={showErrors} />
+              <button className={panel.primaryBtn} onClick={savePix} disabled={savingPix} style={{ marginTop: "0.8rem" }}>
+                {savingPix ? "Salvando…" : "Salvar chave Pix"}
+              </button>
+            </div>
+          </div>
+
+          {tabs.length > 0 && (
             <>
-              <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as TabId)} />
+              <Tabs tabs={tabs} active={tab ?? tabs[0].id} onChange={(id) => setTab(id as TabId)} />
 
               <div className={panel.card}>
-                {tab === "perfil" && (
+                {tab === "onboarding" && showFullProfile && (
                   <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <strong>Perfil contratual</strong>
-                      <span className={`${panel.badge} ${contractDone ? panel.badgeDone : panel.badgePending}`}>
-                        {contractDone ? "Concluído" : `Faltam ${missing.length} campos`}
-                      </span>
+                    <strong>Dados do onboarding</strong>
+                    <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
+                      Só para consulta — os dados preenchidos no pré-cadastro. Pra corrigir algo, fale
+                      com a sua agência.
+                    </p>
+                    <div style={{ marginTop: "0.8rem" }}>
+                      <FreelancerContractView contract={contract} />
                     </div>
-                    <ContractDataFields
-                      values={values}
-                      set={set}
-                      showErrors={showErrors}
-                      customOptionFields={customOptionFields}
-                      setCustomOptionFields={setCustomOptionFields}
-                    />
-                    <div style={{ marginTop: "1.2rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <p style={{ fontWeight: 600, margin: 0 }}>Foto</p>
-                        {requirePhotoApproval && (
-                          <span className={`${panel.badge} ${photoStatus === "approved" ? panel.badgeDone : panel.badgePending}`}>
-                            {PHOTO_STATUS_LABELS[photoStatus]}
-                          </span>
-                        )}
-                      </div>
-                      <p className={panel.muted} style={{ marginTop: "0.4rem" }}>
-                        {requirePhotoApproval
-                          ? "Envie uma foto sua. A sua agência precisa aprovar antes que ela valha como foto de perfil e libere vagas."
-                          : "Essa foto é mostrada ao supermercado quando você aceita uma vaga, para identificação de quem vai atender."}
-                      </p>
-                      {requirePhotoApproval && photoStatus === "rejected" && photoRejectionReason && (
-                        <p className={panel.error}>Motivo da recusa: {photoRejectionReason} — envie outra foto.</p>
-                      )}
-                      {profilePhotoErr && <p className={panel.error}>{profilePhotoErr}</p>}
-                      {profilePhotoUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={photoUrl(profilePhotoUrl)}
-                          alt="Foto de perfil"
-                          style={{ width: 120, height: 120, objectFit: "cover", borderRadius: "50%", marginTop: "0.5rem" }}
-                        />
-                      )}
-                      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end", marginTop: "0.5rem" }}>
-                        <FileField label="Foto" accept="image/*" file={profilePhoto} onChange={setProfilePhoto} />
-                        <button className={panel.primaryBtn} disabled={busy || !profilePhoto} onClick={sendProfilePhoto}>
-                          {busy ? "Enviando…" : profilePhotoUrl ? "Trocar foto" : "Enviar foto"}
+                  </>
+                )}
+
+                {tab === "contrato" && showFullProfile && (
+                  <>
+                    <strong>Contrato</strong>
+                    {agreementLoading ? (
+                      <p style={{ marginTop: "0.5rem" }}>Carregando…</p>
+                    ) : agreement?.signature ? (
+                      <div style={{ marginTop: "0.5rem" }}>
+                        <span className={`${panel.badge} ${panel.badgeApproved}`}>Assinado</span>
+                        <p style={{ marginTop: "0.5rem" }}>
+                          Assinado em <strong>{fmtDateTime(agreement.signature.signedAt)}</strong> por{" "}
+                          {agreement.signature.signerName} (CPF {maskCpf(agreement.signature.signerCpf)}).
+                        </p>
+                        <p className={panel.muted}>
+                          Código de verificação: <code>{agreement.signature.contentHash.slice(0, 24)}…</code>
+                        </p>
+                        <button className={panel.primaryBtn} onClick={() => openProtectedPdf(myContractDocumentUrl())}>
+                          Baixar PDF do contrato
                         </button>
                       </div>
-                    </div>
-
-                    <button className={panel.primaryBtn} onClick={save} disabled={saving} style={{ marginTop: "1.2rem" }}>
-                      {saving ? "Salvando…" : "Salvar perfil"}
-                    </button>
+                    ) : (
+                      <p className={panel.muted} style={{ marginTop: "0.5rem" }}>Nenhum contrato assinado.</p>
+                    )}
                   </>
                 )}
 
@@ -279,9 +310,7 @@ function ProfilePage() {
                     {uniformErr && (
                       <p className={panel.error} style={{ marginTop: "0.5rem" }}>{uniformErr}</p>
                     )}
-                    {!contractDone ? (
-                      <p className={panel.muted}>Conclua o perfil contratual (aba anterior) para comprar o uniforme.</p>
-                    ) : !uniform ? (
+                    {!uniform ? (
                       <div style={{ marginTop: "0.5rem" }}>
                         <label className={panel.filterField} style={{ maxWidth: 220 }}>
                           <span>Tamanho da camiseta *</span>
@@ -346,10 +375,11 @@ function ProfilePage() {
                     )}
                   </>
                 )}
-
               </div>
             </>
           )}
+        </>
+      )}
     </PanelPage>
   );
 }

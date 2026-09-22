@@ -14,7 +14,9 @@ import { maskCpf } from "@/src/lib/masks";
 import {
   CONTRACT_ALL_FIELDS as ALL_FIELDS, CONTRACT_REQUIRED_KEYS as REQUIRED_KEYS, PIX_FIELD_KIND,
 } from "@/src/lib/freelancerContractFields";
-import { submitOnboardingDocuments, getContract, type FreelancerOnboarding, type FreelancerPixKeyType } from "@/src/services/onboardingService";
+import {
+  submitOnboardingDocuments, getContract, type FreelancerOnboarding, type FreelancerPixKeyType, type OnboardingStatus,
+} from "@/src/services/onboardingService";
 import { getMyAgreement, signMyContract, myContractDocumentUrl, myContractPreviewPdfUrl, openProtectedPdf, type FreelancerAgreement } from "@/src/services/contractService";
 
 const CENTER: React.CSSProperties = {
@@ -39,17 +41,26 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function WaitingCard({ title, message, reason }: { title: string; message: string; reason?: string | null }) {
+function WaitingCard({ title, message }: { title: string; message: string }) {
   return (
     <div className={panel.card}>
       <strong>{title}</strong>
       <p style={{ marginTop: "0.6rem" }}>{message}</p>
-      {reason && <p className={panel.error} style={{ marginTop: "0.6rem" }}>Motivo: {reason}</p>}
     </div>
   );
 }
 
-function DraftForm({ onSubmitted }: { onSubmitted: () => Promise<void> }) {
+interface DraftFormProps {
+  onSubmitted: () => Promise<void>;
+  rejectionReason?: string | null;
+  existingPhotos: {
+    documentIdPhotoUrl?: string | null;
+    addressProofPhotoUrl?: string | null;
+    documentSelfiePhotoUrl?: string | null;
+  };
+}
+
+function DraftForm({ onSubmitted, rejectionReason, existingPhotos }: DraftFormProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [customOptionFields, setCustomOptionFields] = useState<Record<string, boolean>>({});
   const [documentIdPhoto, setDocumentIdPhoto] = useState<File | null>(null);
@@ -77,10 +88,12 @@ function DraftForm({ onSubmitted }: { onSubmitted: () => Promise<void> }) {
     () => REQUIRED_KEYS.filter((k) => !(values[k] ?? "").trim()),
     [values]
   );
+  // Um documento já enviado antes (ex.: recusa da agência) não precisa ser reenviado — só quem
+  // ainda não tem nenhum arquivo salvo é obrigatório escolher agora.
   const missingPhotos = [
-    !documentIdPhoto && "foto do RG/CNH",
-    !addressProofPhoto && "foto do comprovante de residência",
-    !documentSelfiePhoto && "selfie do documento",
+    !documentIdPhoto && !existingPhotos.documentIdPhotoUrl && "foto do RG/CNH",
+    !addressProofPhoto && !existingPhotos.addressProofPhotoUrl && "foto do comprovante de residência",
+    !documentSelfiePhoto && !existingPhotos.documentSelfiePhotoUrl && "selfie do documento",
   ].filter((v): v is string => !!v);
 
   const submit = async () => {
@@ -118,6 +131,12 @@ function DraftForm({ onSubmitted }: { onSubmitted: () => Promise<void> }) {
         Preencha seus dados e envie os documentos abaixo. Sua agência vai revisar tudo antes de
         liberar as próximas etapas.
       </p>
+      {rejectionReason && (
+        <p className={panel.error} style={{ marginTop: "0.6rem" }}>
+          A agência recusou o envio anterior. Motivo: {rejectionReason} — corrija o que for preciso
+          e reenvie abaixo.
+        </p>
+      )}
       {msg && <p className={msg.type === "ok" ? panel.success : panel.error}>{msg.text}</p>}
 
       <ContractDataFields
@@ -131,9 +150,24 @@ function DraftForm({ onSubmitted }: { onSubmitted: () => Promise<void> }) {
       <div style={{ marginTop: "1.2rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
         <p style={{ fontWeight: 600, margin: "0 0 0.6rem" }}>Documentos</p>
         <div style={{ display: "grid", gap: "0.6rem", maxWidth: 340 }}>
-          <FileField label="Foto do RG/CNH" accept="image/*" capture="environment" file={documentIdPhoto} onChange={setDocumentIdPhoto} />
-          <FileField label="Foto do comprovante de residência" accept="image/*" capture="environment" file={addressProofPhoto} onChange={setAddressProofPhoto} />
-          <FileField label="Selfie" accept="image/*" capture="user" file={documentSelfiePhoto} onChange={setDocumentSelfiePhoto} />
+          <div>
+            <FileField label="Foto do RG/CNH" accept="image/*" capture="environment" file={documentIdPhoto} onChange={setDocumentIdPhoto} />
+            {existingPhotos.documentIdPhotoUrl && !documentIdPhoto && (
+              <small className={panel.muted}>Já enviado — escolha outro arquivo só se quiser substituir.</small>
+            )}
+          </div>
+          <div>
+            <FileField label="Foto do comprovante de residência" accept="image/*" capture="environment" file={addressProofPhoto} onChange={setAddressProofPhoto} />
+            {existingPhotos.addressProofPhotoUrl && !addressProofPhoto && (
+              <small className={panel.muted}>Já enviado — escolha outro arquivo só se quiser substituir.</small>
+            )}
+          </div>
+          <div>
+            <FileField label="Selfie" accept="image/*" capture="user" file={documentSelfiePhoto} onChange={setDocumentSelfiePhoto} />
+            {existingPhotos.documentSelfiePhotoUrl && !documentSelfiePhoto && (
+              <small className={panel.muted}>Já enviada — escolha outro arquivo só se quiser substituir.</small>
+            )}
+          </div>
         </div>
       </div>
 
@@ -244,6 +278,13 @@ function SignatureStep({ onSigned }: { onSigned: () => Promise<void> }) {
   );
 }
 
+const WAITING_TITLES: Partial<Record<OnboardingStatus, string>> = {
+  pending_docs_review: "Cadastro enviado",
+  pending_aso_upload: "Documentos aprovados",
+  pending_contract_generation: "Aguardando contrato",
+  pending_final_activation: "Contrato assinado",
+};
+
 function OnboardingGate() {
   const { profile, refresh } = useAuth();
   const onboarding = (profile as { onboarding?: FreelancerOnboarding } | null)?.onboarding;
@@ -260,7 +301,17 @@ function OnboardingGate() {
 
   switch (status) {
     case "draft":
-      return <DraftForm onSubmitted={refresh} />;
+      return (
+        <DraftForm
+          onSubmitted={refresh}
+          rejectionReason={onboarding?.statusReason}
+          existingPhotos={{
+            documentIdPhotoUrl: onboarding?.documentIdPhotoUrl,
+            addressProofPhotoUrl: onboarding?.addressProofPhotoUrl,
+            documentSelfiePhotoUrl: onboarding?.documentSelfiePhotoUrl,
+          }}
+        />
+      );
     case "pending_user_signature":
       return <SignatureStep onSigned={refresh} />;
     case "active":
@@ -268,9 +319,8 @@ function OnboardingGate() {
     default:
       return (
         <WaitingCard
-          title="Onboarding"
+          title={WAITING_TITLES[status] ?? "Onboarding"}
           message={onboarding?.phaseMessage ?? "Aguarde a agência avançar a próxima etapa."}
-          reason={onboarding?.statusReason}
         />
       );
   }
