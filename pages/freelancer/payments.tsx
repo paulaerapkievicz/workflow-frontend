@@ -150,7 +150,7 @@ function FreelancerPayments() {
 
 export default function Page() {
   return (
-    <RequireAuth role="freelancer">
+    <RequireAuth role="freelancer" enforceOnboarding>
       <FreelancerPayments />
     </RequireAuth>
   );

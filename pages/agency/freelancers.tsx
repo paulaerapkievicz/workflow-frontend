@@ -403,7 +403,7 @@ function FreelancersPage() {
             {editError && <p className={panel.error}>{editError}</p>}
             <button className={panel.primaryBtn} onClick={saveEdit}>Salvar</button>
 
-            {editContract?.approvedAt && (
+            {editContract?.completedAt && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
                 <button type="button" className={panel.ghostBtn} onClick={() => setShowEditOnboarding((v) => !v)}>
                   {showEditOnboarding ? "Ocultar dados do onboarding" : "Ver dados do onboarding"}

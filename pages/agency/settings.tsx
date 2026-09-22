@@ -397,11 +397,12 @@ function SettingsPage() {
                     <label className={panel.toggleRow}>
                       <Switch checked={form.onboardingRequired}
                         onChange={(v) => setForm({ ...form, onboardingRequired: v })} />
-                      Exigir onboarding (perfil contratual) antes de aceitar vagas
+                      Exigir onboarding completo antes de liberar o colaborador
                     </label>
                     <span className={panel.muted}>
-                      Sem isso, nada abaixo bloqueia vagas — cadastro, andamento e assinatura de
-                      contrato continuam disponíveis normalmente.
+                      Ligado, cada colaborador novo passa pelo funil completo (pré-cadastro com fotos
+                      de documento, triagem, ASO, contrato e assinatura) antes de poder aceitar vagas —
+                      só a agência ativa no final. Desligado, colaboradores novos já nascem ativos.
                     </span>
 
                     <div className={panel.card} style={{ marginTop: "0.6rem" }}>

@@ -9,10 +9,13 @@ import panel from "@/styles/panel.module.scss";
 import {
   getAgencyUniforms, shipUniform, markUniformPaid, UNIFORM_STATUS_LABELS, UniformOrder,
   getAgencyPhotoReviews, reviewFreelancerPhoto, PHOTO_STATUS_LABELS, FreelancerPhotoReview,
-  getOnboardingReviews, getFreelancerContractForAgency, approveOnboarding,
-  OnboardingReviewRow, FreelancerContract,
+  getFreelancerContractForAgency, FreelancerContract,
+  getOnboardingBoard, approveOnboardingDocuments, rejectOnboardingDocuments, uploadOnboardingAso,
+  releaseOnboardingContract, activateFreelancerOnboarding,
+  ONBOARDING_BOARD_COLUMNS, OnboardingBoard, OnboardingBoardFreelancer,
 } from "@/src/services/onboardingService";
 import FreelancerContractView from "@/src/components/FreelancerContractView";
+import FileField from "@/src/components/FileField";
 import { getAgencySettings } from "@/src/services/agencySettingsService";
 import {
   getPendingFreelancers, approveFreelancer, rejectFreelancer, PendingFreelancer,
@@ -27,15 +30,16 @@ function OnboardingPage() {
   const [orders, setOrders] = useState<UniformOrder[]>([]);
   const [photoReviews, setPhotoReviews] = useState<FreelancerPhotoReview[]>([]);
   const [pending, setPending] = useState<PendingFreelancer[]>([]);
-  const [onboardingReviews, setOnboardingReviews] = useState<OnboardingReviewRow[]>([]);
+  const [board, setBoard] = useState<OnboardingBoard>({});
   const [requireUniformPurchase, setRequireUniformPurchase] = useState(false);
   const [requirePhotoApproval, setRequirePhotoApproval] = useState(false);
   const [loading, setLoading] = useState(true);
   const [review, setReview] = useState<FreelancerPhotoReview | null>(null);
-  const [onboardingReview, setOnboardingReview] = useState<OnboardingReviewRow | null>(null);
+  const [onboardingReview, setOnboardingReview] = useState<OnboardingBoardFreelancer | null>(null);
   const [onboardingContract, setOnboardingContract] = useState<FreelancerContract | null>(null);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
   const [onboardingErr, setOnboardingErr] = useState<string | null>(null);
+  const [asoFile, setAsoFile] = useState<File | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [nameFilter, setNameFilter] = useState("");
   const [range, setRange] = useDateRangeFilter("agency-onboarding", { preset: "todas" });
@@ -43,24 +47,25 @@ function OnboardingPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [u, p, settings, photos, reviews] = await Promise.all([
+      const [u, p, settings, photos, onboardingBoard] = await Promise.all([
         getAgencyUniforms(), getPendingFreelancers(), getAgencySettings(), getAgencyPhotoReviews(),
-        getOnboardingReviews(),
+        getOnboardingBoard(),
       ]);
       setOrders(u);
       setPending(p);
       setPhotoReviews(photos);
-      setOnboardingReviews(reviews);
+      setBoard(onboardingBoard);
       setRequireUniformPurchase(settings.requireUniformPurchase);
       setRequirePhotoApproval(settings.requirePhotoApproval);
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const openOnboardingReview = async (row: OnboardingReviewRow) => {
+  const openOnboardingReview = async (row: OnboardingBoardFreelancer) => {
     setOnboardingReview(row);
     setOnboardingContract(null);
     setOnboardingErr(null);
+    setAsoFile(null);
     setOnboardingLoading(true);
     try {
       setOnboardingContract(await getFreelancerContractForAgency(row.id));
@@ -71,12 +76,12 @@ function OnboardingPage() {
     }
   };
 
-  const confirmOnboardingApproval = async () => {
+  const runOnboardingAction = async (fn: () => Promise<unknown>) => {
     if (!onboardingReview) return;
     setBusy(onboardingReview.id);
     setOnboardingErr(null);
     try {
-      await approveOnboarding(onboardingReview.id);
+      await fn();
       setOnboardingReview(null);
       await load();
     } catch (err) {
@@ -111,10 +116,15 @@ function OnboardingPage() {
     () => photoReviews.filter((f) => nameMatches(f.name) && inDateRange(f.profilePhotoSubmittedAt, range)),
     [photoReviews, nameMatches, range]
   );
-  const onboardingReviewsFiltered = useMemo(
-    () => onboardingReviews.filter((r) => nameMatches(r.name) && inDateRange(r.completedAt, range)),
-    [onboardingReviews, nameMatches, range]
-  );
+  const boardFiltered = useMemo(() => {
+    const out: OnboardingBoard = {};
+    for (const col of ONBOARDING_BOARD_COLUMNS) {
+      out[col.status] = (board[col.status] ?? []).filter(
+        (f) => nameMatches(f.name) && inDateRange(f.updatedAt, range)
+      );
+    }
+    return out;
+  }, [board, nameMatches, range]);
 
   const awaitingPayment = ordersFiltered.filter((o) => o.status === "pending_payment" && !o.paymentUrl);
   const toShip = ordersFiltered.filter((o) => o.status === "paid");
@@ -186,28 +196,36 @@ function OnboardingPage() {
                 </table>
               </div>
 
-              <h2 style={{ fontSize: "1.05rem", marginTop: "1.5rem" }}>Onboarding a aprovar ({onboardingReviewsFiltered.length})</h2>
+              <h2 style={{ fontSize: "1.05rem", marginTop: "1.5rem" }}>Esteira do onboarding</h2>
               <p className={panel.muted}>
-                Colaboradores que preencheram todo o perfil contratual (dados pessoais, endereço, dados
-                bancários, Pix) e aguardam você conferir e confirmar. Depois de aprovado, esses dados
-                passam a aparecer no cadastro do colaborador e libera a etapa de assinatura do contrato.
+                Colaboradores em cada fase do funil (pré-cadastro → triagem de documentos → ASO →
+                contrato → assinatura → ativação). Convites geram colaboradores em pré-cadastro; esta
+                esteira mostra o que ainda precisa de uma ação sua.
               </p>
-              <div style={{ overflowX: "auto" }}>
-                <table className={panel.table}>
-                  <thead><tr><th>Nome</th><th>E-mail</th><th>Preenchido em</th><th>Ação</th></tr></thead>
-                  <tbody>
-                    {onboardingReviewsFiltered.map((r) => (
-                      <tr key={r.id}>
-                        <td>{r.name}</td>
-                        <td>{r.email}</td>
-                        <td>{new Date(r.completedAt).toLocaleString("pt-BR")}</td>
-                        <td><button className={panel.ghostBtn} onClick={() => openOnboardingReview(r)}>Revisar</button></td>
-                      </tr>
-                    ))}
-                    {onboardingReviewsFiltered.length === 0 && <tr><td colSpan={4} className={panel.muted}>Nada a aprovar.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
+              {ONBOARDING_BOARD_COLUMNS.map((col) => {
+                const rows = boardFiltered[col.status] ?? [];
+                return (
+                  <div key={col.status} style={{ marginTop: "1rem" }}>
+                    <h3 style={{ fontSize: "0.95rem" }}>{col.label} ({rows.length})</h3>
+                    <div style={{ overflowX: "auto" }}>
+                      <table className={panel.table}>
+                        <thead><tr><th>Nome</th><th>E-mail</th><th>Atualizado em</th><th>Ação</th></tr></thead>
+                        <tbody>
+                          {rows.map((r) => (
+                            <tr key={r.id}>
+                              <td>{r.name}</td>
+                              <td>{r.email}</td>
+                              <td>{new Date(r.updatedAt).toLocaleString("pt-BR")}</td>
+                              <td><button className={panel.ghostBtn} onClick={() => openOnboardingReview(r)}>Ver</button></td>
+                            </tr>
+                          ))}
+                          {rows.length === 0 && <tr><td colSpan={4} className={panel.muted}>Ninguém nesta fase.</td></tr>}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
 
               {requireUniformPurchase && (
                 <>
@@ -350,20 +368,92 @@ function OnboardingPage() {
       )}
 
       {onboardingReview && (
-        <Modal title={`Revisar onboarding — ${onboardingReview.name}`} onClose={() => setOnboardingReview(null)}>
+        <Modal title={`Onboarding — ${onboardingReview.name}`} onClose={() => setOnboardingReview(null)}>
           {onboardingLoading ? (
             <p>Carregando…</p>
           ) : (
             <div style={{ display: "grid", gap: "1rem" }}>
               <FreelancerContractView contract={onboardingContract} />
-              {onboardingErr && <p className={panel.error}>{onboardingErr}</p>}
-              <button className={panel.primaryBtn} disabled={busy === onboardingReview.id} onClick={confirmOnboardingApproval}>
-                {busy === onboardingReview.id ? "Aprovando…" : "Aprovar onboarding"}
-              </button>
-              <p className={panel.muted} style={{ fontSize: "0.8rem", margin: 0 }}>
-                Ao aprovar, esses dados passam a aparecer no cadastro do colaborador e a etapa de
-                assinatura do contrato é liberada para ele.
-              </p>
+
+              {onboardingReview.onboardingStatus === "pending_docs_review" && (
+                <div style={{ display: "grid", gap: "0.5rem" }}>
+                  <strong>Documentos enviados</strong>
+                  <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                    {[
+                      { url: onboardingReview.documentIdPhotoUrl, label: "RG/CNH" },
+                      { url: onboardingReview.addressProofPhotoUrl, label: "Comprovante de residência" },
+                      { url: onboardingReview.documentSelfiePhotoUrl, label: "Selfie" },
+                    ].map(({ url, label }) => (
+                      <a key={label} href={url ? photoUrl(url) : undefined} target="_blank" rel="noreferrer"
+                        className={panel.ghostBtn} aria-disabled={!url}>
+                        {label}
+                      </a>
+                    ))}
+                  </div>
+                  {onboardingErr && <p className={panel.error}>{onboardingErr}</p>}
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <button className={panel.primaryBtn} disabled={busy === onboardingReview.id}
+                      onClick={() => runOnboardingAction(() => approveOnboardingDocuments(onboardingReview.id))}>
+                      {busy === onboardingReview.id ? "Aprovando…" : "Aprovar Documentos"}
+                    </button>
+                    <button className={panel.secondaryBtn} disabled={busy === onboardingReview.id}
+                      onClick={() => {
+                        const reason = prompt("Motivo da recusa (ex.: foto do RG ilegível):");
+                        if (reason) runOnboardingAction(() => rejectOnboardingDocuments(onboardingReview.id, reason));
+                      }}>
+                      Recusar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {onboardingReview.onboardingStatus === "pending_aso_upload" && (
+                <div style={{ display: "grid", gap: "0.5rem" }}>
+                  <strong>Exame admissional (ASO)</strong>
+                  <p className={panel.muted}>
+                    Anexe o PDF do ASO recebido da telemedicina depois de concluir a verificação de
+                    antecedentes por fora do sistema.
+                  </p>
+                  <FileField label="PDF do ASO" accept="application/pdf" file={asoFile} onChange={setAsoFile} />
+                  {onboardingErr && <p className={panel.error}>{onboardingErr}</p>}
+                  <button className={panel.primaryBtn} disabled={busy === onboardingReview.id || !asoFile}
+                    onClick={() => asoFile && runOnboardingAction(() => uploadOnboardingAso(onboardingReview.id, asoFile))}>
+                    {busy === onboardingReview.id ? "Enviando…" : "Enviar ASO"}
+                  </button>
+                </div>
+              )}
+
+              {onboardingReview.onboardingStatus === "pending_contract_generation" && (
+                <div style={{ display: "grid", gap: "0.5rem" }}>
+                  <p className={panel.muted}>
+                    ASO anexado e antecedentes verificados. Ao liberar, o contrato é gerado a partir do
+                    modelo ativo e a etapa de assinatura abre para o colaborador.
+                  </p>
+                  {onboardingErr && <p className={panel.error}>{onboardingErr}</p>}
+                  <button className={panel.primaryBtn} disabled={busy === onboardingReview.id}
+                    onClick={() => runOnboardingAction(() => releaseOnboardingContract(onboardingReview.id))}>
+                    {busy === onboardingReview.id ? "Liberando…" : "Liberar Contrato"}
+                  </button>
+                </div>
+              )}
+
+              {onboardingReview.onboardingStatus === "pending_user_signature" && (
+                <p className={panel.muted}>Aguardando o colaborador assinar o contrato.</p>
+              )}
+
+              {onboardingReview.onboardingStatus === "pending_final_activation" && (
+                <div style={{ display: "grid", gap: "0.5rem" }}>
+                  <p className={panel.muted}>
+                    Contrato assinado. Ao ativar, o colaborador sai da sala de espera e passa a ver e
+                    aceitar vagas normalmente.
+                  </p>
+                  {onboardingErr && <p className={panel.error}>{onboardingErr}</p>}
+                  <button className={panel.primaryBtn} disabled={busy === onboardingReview.id}
+                    onClick={() => runOnboardingAction(() => activateFreelancerOnboarding(onboardingReview.id))}>
+                    {busy === onboardingReview.id ? "Ativando…" : "Ativar Colaborador"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </Modal>

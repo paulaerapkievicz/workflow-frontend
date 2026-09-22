@@ -8,30 +8,21 @@ import Tabs from "@/src/components/panel/Tabs";
 import {
   getContract, saveContract, getUniform, requestUniform, confirmUniformReceived,
   syncUniformPayment, SHIRT_SIZES, UNIFORM_STATUS_LABELS, UniformOrder, PHOTO_STATUS_LABELS,
-  FREELANCER_PIX_KEY_TYPES, PIX_KEY_TYPE_LABELS, type FreelancerPixKeyType,
+  type FreelancerOnboarding,
 } from "@/src/services/onboardingService";
-import {
-  getMyAgreement, signMyContract, myContractDocumentUrl, myContractPreviewPdfUrl, openProtectedPdf,
-  FreelancerAgreement,
-} from "@/src/services/contractService";
 import { photoUrl } from "@/src/services/jobPhotoService";
 import { uploadMyProfilePhoto } from "@/src/services/freelancerService";
 import { useAuth } from "@/src/hooks/useAuth";
-import ContractDocument from "@/src/components/contract/ContractDocument";
-import FormField from "@/src/components/FormField";
+import ContractDataFields from "@/src/components/onboarding/ContractDataFields";
 import FileField from "@/src/components/FileField";
-import HelpHint from "@/src/components/HelpHint";
-import { validateForm, isValidCpf } from "@/src/lib/validators";
-import { maskCpf } from "@/src/lib/masks";
 import HelpIcon from "@/src/components/common/HelpIcon";
+import { validateForm } from "@/src/lib/validators";
 import {
-  CONTRACT_SECTIONS as SECTIONS, CONTRACT_ALL_FIELDS as ALL_FIELDS,
-  CONTRACT_REQUIRED_KEYS as REQUIRED_KEYS, PIX_FIELD_KIND,
+  CONTRACT_ALL_FIELDS as ALL_FIELDS, CONTRACT_REQUIRED_KEYS as REQUIRED_KEYS, PIX_FIELD_KIND,
 } from "@/src/lib/freelancerContractFields";
+import type { FreelancerPixKeyType } from "@/src/services/onboardingService";
 
-const fmtDateTime = (d: string) => new Date(d).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" });
-
-type TabId = "perfil" | "uniforme" | "contrato";
+type TabId = "perfil" | "uniforme";
 
 function ProfilePage() {
   const { profile, refresh } = useAuth();
@@ -54,30 +45,11 @@ function ProfilePage() {
   const appPaymentEnabledForFreelancers =
     (profile as { affiliatedAgency?: { appPaymentEnabledForFreelancers?: boolean } } | null)
       ?.affiliatedAgency?.appPaymentEnabledForFreelancers !== false;
-  const onboarding = (profile as {
-    onboarding?: {
-      requireUniformPurchase?: boolean;
-      requirePhotoApproval?: boolean;
-      photoStatus?: "none" | "pending" | "approved" | "rejected";
-      photoRejectionReason?: string | null;
-      contractDataApproved?: boolean;
-      contractTemplateAvailable?: boolean;
-      contractSigned?: boolean;
-    };
-  } | null)?.onboarding;
+  const onboarding = (profile as { onboarding?: FreelancerOnboarding } | null)?.onboarding;
   const requireUniformPurchase = !!onboarding?.requireUniformPurchase;
   const requirePhotoApproval = !!onboarding?.requirePhotoApproval;
   const photoStatus = onboarding?.photoStatus ?? "none";
   const photoRejectionReason = onboarding?.photoRejectionReason ?? null;
-
-  // ----- Contrato (assinatura eletrônica) -----
-  const [agreement, setAgreement] = useState<FreelancerAgreement | null>(null);
-  const [contractLoading, setContractLoading] = useState(true);
-  const [accepted, setAccepted] = useState(false);
-  const [signerName, setSignerName] = useState("");
-  const [signerCpf, setSignerCpf] = useState("");
-  const [contractBusy, setContractBusy] = useState(false);
-  const [contractMsg, setContractMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,19 +76,6 @@ function ProfilePage() {
     }
   }, []);
   useEffect(() => { load(); }, [load]);
-
-  const loadContract = useCallback(async () => {
-    setContractLoading(true);
-    try {
-      const d = await getMyAgreement();
-      setAgreement(d);
-      setSignerName(d.signerName ?? "");
-      setSignerCpf(d.signerCpf ?? "");
-    } finally {
-      setContractLoading(false);
-    }
-  }, []);
-  useEffect(() => { loadContract(); }, [loadContract]);
 
   const missing = useMemo(
     () => REQUIRED_KEYS.filter((k) => !(values[k] ?? "").trim()),
@@ -216,33 +175,6 @@ function ProfilePage() {
     }
   };
 
-  const signContract = async () => {
-    setContractMsg(null);
-    if (!isValidCpf(signerCpf)) {
-      setContractMsg({ type: "err", text: "Informe um CPF válido para assinar." });
-      return;
-    }
-    setContractBusy(true);
-    try {
-      await signMyContract({ accepted, signerName, signerCpf });
-      setContractMsg({ type: "ok", text: "Contrato assinado. Você já pode baixar o PDF." });
-      setAccepted(false);
-      await loadContract();
-      await refresh();
-    } catch (e) {
-      setContractMsg({ type: "err", text: axios.isAxiosError(e) ? e.response?.data?.message ?? "Erro." : "Erro." });
-    } finally {
-      setContractBusy(false);
-    }
-  };
-
-  const contractStatusLabel = agreement?.signedCurrent
-    ? "Assinado"
-    : onboarding?.contractDataApproved
-    ? onboarding?.contractTemplateAvailable ? "Pendente — pronto para assinar" : "Aguardando modelo de contrato"
-    : "Aguardando revisão da agência";
-  const contractReadyToSign = !agreement?.signedCurrent && !!onboarding?.contractDataApproved && !!onboarding?.contractTemplateAvailable;
-
   const tabs = useMemo(() => {
     const list: { id: TabId; label: string; badge?: number }[] = [
       {
@@ -252,9 +184,8 @@ function ProfilePage() {
       },
     ];
     if (requireUniformPurchase) list.push({ id: "uniforme", label: "Uniforme" });
-    if (contractDone) list.push({ id: "contrato", label: "Contrato", badge: contractReadyToSign ? 1 : 0 });
     return list;
-  }, [contractDone, missing.length, requireUniformPurchase, requirePhotoApproval, photoStatus, contractReadyToSign]);
+  }, [contractDone, missing.length, requireUniformPurchase, requirePhotoApproval, photoStatus]);
 
   // Se a aba ativa deixar de existir (ex.: a agência desliga uniforme obrigatório), volta pro perfil.
   useEffect(() => {
@@ -269,9 +200,9 @@ function ProfilePage() {
           Meu perfil
           <HelpIcon title="Como funciona o seu perfil">
             <p>
-              Tudo sobre o seu cadastro fica centralizado aqui, em abas: os dados do onboarding, o
-              uniforme e a foto (quando exigidos pela sua agência) e o contrato — inclusive a
-              assinatura eletrônica.
+              Seus dados contratuais e o uniforme (quando exigido pela sua agência) ficam
+              centralizados aqui, em abas. O pré-cadastro e a assinatura do contrato acontecem uma
+              vez só, no início, antes da sua ativação.
             </p>
           </HelpIcon>
         </>
@@ -295,153 +226,13 @@ function ProfilePage() {
                         {contractDone ? "Concluído" : `Faltam ${missing.length} campos`}
                       </span>
                     </div>
-                    {SECTIONS.map((sec) => (
-                      <div key={sec.title} style={{ marginTop: "0.8rem" }}>
-                        <p style={{ fontWeight: 600, margin: "0.4rem 0" }}>{sec.title}</p>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.6rem" }}>
-                          {sec.fields.map((f) => {
-                            const invalid =
-                              showErrors && f.required && !(values[f.key] ?? "").trim();
-                            const invalidStyle = invalid
-                              ? { borderColor: "var(--danger)", background: "var(--danger-soft)" }
-                              : undefined;
-
-                            if (f.kind) {
-                              return (
-                                <FormField
-                                  key={f.key}
-                                  label={f.label}
-                                  kind={f.kind}
-                                  required={f.required}
-                                  maxLength={f.maxLength}
-                                  value={values[f.key] ?? ""}
-                                  onChange={(v) => set(f.key, v)}
-                                  error={invalid ? "Campo obrigatório" : undefined}
-                                  hint={f.hint}
-                                  autoComplete={f.autoComplete}
-                                />
-                              );
-                            }
-
-                            if (f.options) {
-                              const raw = values[f.key] ?? "";
-                              const known = f.options.some((o) => o.value === raw);
-                              const isOther = f.allowOther && (customOptionFields[f.key] || (!!raw && !known));
-                              return (
-                                <div key={f.key} className={panel.filterField}>
-                                  <label>
-                                    <span>
-                                      {f.label}
-                                      {f.required ? " *" : ""}
-                                    </span>
-                                    <select
-                                      value={isOther ? "__outra__" : known ? raw : ""}
-                                      aria-invalid={invalid || undefined}
-                                      style={invalidStyle}
-                                      onChange={(e) => {
-                                        const v = e.target.value;
-                                        if (v === "__outra__") {
-                                          setCustomOptionFields((cur) => ({ ...cur, [f.key]: true }));
-                                          set(f.key, "");
-                                        } else {
-                                          setCustomOptionFields((cur) => ({ ...cur, [f.key]: false }));
-                                          set(f.key, v);
-                                        }
-                                      }}
-                                    >
-                                      <option value="">Selecione…</option>
-                                      {f.options.map((o) => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
-                                      ))}
-                                      {f.allowOther && <option value="__outra__">Outra…</option>}
-                                    </select>
-                                  </label>
-                                  {isOther && (
-                                    <input
-                                      style={{ marginTop: "0.4rem", ...(invalidStyle ?? {}) }}
-                                      placeholder="Especifique"
-                                      value={raw}
-                                      onChange={(e) => set(f.key, e.target.value)}
-                                      aria-invalid={invalid || undefined}
-                                    />
-                                  )}
-                                  {f.hint && <small className={panel.muted} style={{ textTransform: "none", fontWeight: 400 }}>{f.hint}</small>}
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <label key={f.key} className={panel.filterField}>
-                                <span>
-                                  {f.label}
-                                  {f.required ? " *" : ""}
-                                </span>
-                                <input
-                                  type={f.type === "date" ? "date" : "text"}
-                                  value={values[f.key] ?? ""}
-                                  onChange={(e) => set(f.key, e.target.value)}
-                                  aria-invalid={invalid || undefined}
-                                  autoComplete={f.autoComplete}
-                                  list={f.suggestions ? `${f.key}-suggestions` : undefined}
-                                  style={invalidStyle}
-                                />
-                                {f.suggestions && (
-                                  <datalist id={`${f.key}-suggestions`}>
-                                    {f.suggestions.map((s) => <option key={s} value={s} />)}
-                                  </datalist>
-                                )}
-                                {f.hint && <small className={panel.muted} style={{ textTransform: "none", fontWeight: 400 }}>{f.hint}</small>}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                    <div style={{ marginTop: "0.8rem" }}>
-                      <p style={{ fontWeight: 600, margin: "0.4rem 0", display: "flex", alignItems: "center", gap: 4 }}>
-                        Chave Pix
-                        <HelpIcon title="Chave Pix pessoal">
-                          <p>
-                            A chave Pix cadastrada aqui precisa ser <strong>sua</strong> — a mesma pessoa do
-                            CPF, do e-mail de login ou do telefone informados no seu cadastro, conforme o
-                            tipo escolhido. Chave de terceiro (de outra pessoa) é recusada.
-                          </p>
-                          <p>
-                            Sem uma chave Pix própria cadastrada não é possível aceitar vagas — é o único
-                            jeito de você receber o pagamento.
-                          </p>
-                        </HelpIcon>
-                      </p>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.6rem" }}>
-                        <label className={panel.filterField}>
-                          <span>Tipo de chave Pix *</span>
-                          <select
-                            value={values.pixKeyType ?? ""}
-                            onChange={(e) => set("pixKeyType", e.target.value)}
-                            aria-invalid={(showErrors && !values.pixKeyType) || undefined}
-                            style={
-                              showErrors && !values.pixKeyType
-                                ? { borderColor: "var(--danger)", background: "var(--danger-soft)" }
-                                : undefined
-                            }
-                          >
-                            <option value="">Selecione…</option>
-                            {FREELANCER_PIX_KEY_TYPES.map((t) => (
-                              <option key={t} value={t}>{PIX_KEY_TYPE_LABELS[t]}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <FormField
-                          label="Chave Pix"
-                          kind={PIX_FIELD_KIND[(values.pixKeyType as FreelancerPixKeyType) || "aleatoria"]}
-                          required
-                          value={values.pixKey ?? ""}
-                          onChange={(v) => set("pixKey", v)}
-                          error={showErrors && !(values.pixKey ?? "").trim() ? "Campo obrigatório" : undefined}
-                          hint="Precisa ser a sua própria chave — não pode ser de terceiros."
-                        />
-                      </div>
-                    </div>
+                    <ContractDataFields
+                      values={values}
+                      set={set}
+                      showErrors={showErrors}
+                      customOptionFields={customOptionFields}
+                      setCustomOptionFields={setCustomOptionFields}
+                    />
                     <div style={{ marginTop: "1.2rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <p style={{ fontWeight: 600, margin: 0 }}>Foto</p>
@@ -556,103 +347,6 @@ function ProfilePage() {
                   </>
                 )}
 
-                {tab === "contrato" && contractDone && (
-                  <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <strong>Contrato</strong>
-                      <span className={`${panel.badge} ${agreement?.signedCurrent ? panel.badgeDone : panel.badgePending}`}>
-                        {contractStatusLabel}
-                      </span>
-                    </div>
-
-                    {contractLoading ? (
-                      <p style={{ marginTop: "0.5rem" }}>Carregando…</p>
-                    ) : !agreement?.hasTemplate ? (
-                      <p className={panel.muted} style={{ marginTop: "0.5rem" }}>
-                        {agreement?.blockedReason ?? "A sua agência ainda não disponibilizou um modelo de contrato."}
-                      </p>
-                    ) : (
-                      <div style={{ marginTop: "0.5rem" }}>
-                        {contractMsg && (
-                          <p className={contractMsg.type === "ok" ? panel.success : panel.error}>{contractMsg.text}</p>
-                        )}
-
-                        {agreement.signedCurrent && agreement.signature && (
-                          <div className={panel.card} style={{ marginBottom: "1rem" }}>
-                            <span className={`${panel.badge} ${panel.badgeApproved}`}>Assinado</span>
-                            <p style={{ marginTop: "0.5rem" }}>
-                              Assinado em <strong>{fmtDateTime(agreement.signature.signedAt)}</strong> por{" "}
-                              {agreement.signature.signerName} (CPF {maskCpf(agreement.signature.signerCpf)}).
-                            </p>
-                            <p className={panel.muted}>
-                              Código de verificação: <code>{agreement.signature.contentHash.slice(0, 24)}…</code>
-                            </p>
-                            <button className={panel.primaryBtn} onClick={() => openProtectedPdf(myContractDocumentUrl())}>
-                              Baixar PDF do contrato
-                            </button>
-                          </div>
-                        )}
-
-                        {agreement.supersededSignature && !agreement.signedCurrent && (
-                          <p className={panel.error}>
-                            O modelo de contrato foi atualizado pela agência. Revise e assine a nova versão abaixo.
-                          </p>
-                        )}
-
-                        {!agreement.signedCurrent && agreement.blockedReason && (
-                          <p className={panel.error}>{agreement.blockedReason}</p>
-                        )}
-
-                        <ContractDocument html={agreement.renderedHtml} />
-
-                        {!agreement.signedCurrent && (
-                          <p style={{ marginTop: "0.75rem" }}>
-                            <button className={panel.ghostBtn} onClick={() => openProtectedPdf(myContractPreviewPdfUrl())}>
-                              Baixar PDF (rascunho, sem assinatura)
-                            </button>
-                          </p>
-                        )}
-
-                        {!agreement.signedCurrent && (
-                          <div className={panel.card} style={{ marginTop: "1rem", maxWidth: 520 }}>
-                            <strong>Assinar eletronicamente</strong>
-                            <div className={panel.form} style={{ marginTop: "0.6rem" }}>
-                              <label className={panel.filterField}>
-                                <span>Nome completo</span>
-                                <input
-                                  value={signerName}
-                                  onChange={(e) => setSignerName(e.target.value)}
-                                  disabled={!agreement.canSign}
-                                />
-                              </label>
-                              <FormField label="CPF" kind="cpf" required placeholder="000.000.000-00"
-                                value={signerCpf} onChange={setSignerCpf} disabled={!agreement.canSign} />
-                              <label className={panel.toggleRow}>
-                                <input
-                                  type="checkbox"
-                                  checked={accepted}
-                                  onChange={(e) => setAccepted(e.target.checked)}
-                                  disabled={!agreement.canSign}
-                                />
-                                {agreement.acceptanceText}
-                              </label>
-                              <span className={panel.muted}>
-                                Sua assinatura registra data e hora, o seu IP e o dispositivo, além de um código
-                                de integridade do documento — com validade legal (MP 2.200-2/2001).
-                              </span>
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                                <button className={panel.primaryBtn} onClick={signContract} disabled={contractBusy || !accepted || !agreement.canSign}>
-                                  {contractBusy ? "Assinando…" : "Assinar contrato"}
-                                </button>
-                                {!agreement.canSign && agreement.blockedReason && <HelpHint text={agreement.blockedReason} />}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
               </div>
             </>
           )}
@@ -662,7 +356,7 @@ function ProfilePage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="freelancer">
+    <RequireAuth role="freelancer" enforceOnboarding>
       <ProfilePage />
     </RequireAuth>
   );

@@ -36,8 +36,8 @@ export interface FreelancerAgreement {
   templateTitle: string | null;
   renderedHtml: string;
   missing: string[];
-  onboardingApproved: boolean;
-  contractComplete: boolean;
+  /** O funil de onboarding chegou na fase de assinatura (agência já liberou o contrato). */
+  readyToSign: boolean;
   signerName: string;
   signerCpf: string | null;
   signedCurrent: boolean;

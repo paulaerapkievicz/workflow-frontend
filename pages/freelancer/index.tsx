@@ -9,7 +9,6 @@ import {
   getAvailableJobs, acceptJob, Job, formatShifts, formatShiftPeriods, minutesToHours, mapUrl, readGeolocation,
 } from "@/src/services/jobService";
 import { distanceInMeters, formatDistance } from "@/src/lib/distance";
-import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
 import { fmtDate } from "@/src/lib/datetime";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
@@ -125,7 +124,6 @@ function AvailableJobs() {
       }
       sidebar={<Sidebar />}
     >
-      <OnboardingBanner />
       {error && <p className={panel.error}>{error}</p>}
 
       <CollapsibleFilterBar>
@@ -234,7 +232,7 @@ function AvailableJobs() {
 
 export default function Page() {
   return (
-    <RequireAuth role="freelancer">
+    <RequireAuth role="freelancer" enforceOnboarding>
       <AvailableJobs />
     </RequireAuth>
   );

@@ -26,7 +26,6 @@ import { downloadFreelancerReportPdf } from "@/src/services/billingService";
 import { authService } from "@/src/services/authService";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useToast } from "@/src/hooks/useToast";
-import OnboardingBanner from "@/src/components/freelancer/OnboardingBanner";
 import { fmtDate } from "@/src/lib/datetime";
 import DateRangeQuickFilter from "@/src/components/DateRangeQuickFilter";
 import CollapsibleFilterBar from "@/src/components/panel/CollapsibleFilterBar";
@@ -284,8 +283,6 @@ function MyJobs() {
       }
       sidebar={<Sidebar />}
     >
-      <OnboardingBanner />
-
       <CollapsibleFilterBar>
         <DateRangeQuickFilter
           value={range}
@@ -614,7 +611,7 @@ function MyJobs() {
 
 export default function Page() {
   return (
-    <RequireAuth role="freelancer">
+    <RequireAuth role="freelancer" enforceOnboarding>
       <MyJobs />
     </RequireAuth>
   );

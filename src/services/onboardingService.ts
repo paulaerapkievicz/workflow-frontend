@@ -2,6 +2,64 @@ import api from "@/src/services/api";
 
 export const SHIRT_SIZES = ["PP", "P", "M", "G", "GG", "XGG"] as const;
 
+/**
+ * Funil único de onboarding (pipeline substitui o antigo gate por perfil+uniforme+foto
+ * recomputado ao vivo): pré-cadastro -> triagem de documentos -> ASO -> geração do contrato ->
+ * assinatura -> ativação final. Colaboradores que já existiam antes desse funil nascem 'active'.
+ */
+export const ONBOARDING_STATUSES = [
+  "draft",
+  "pending_docs_review",
+  "pending_aso_upload",
+  "pending_contract_generation",
+  "pending_user_signature",
+  "pending_final_activation",
+  "active",
+] as const;
+export type OnboardingStatus = (typeof ONBOARDING_STATUSES)[number];
+
+/** Título de cada coluna da esteira da agência (as duas pontas do funil não entram na esteira). */
+export const ONBOARDING_BOARD_COLUMNS: { status: OnboardingStatus; label: string }[] = [
+  { status: "pending_docs_review", label: "Documentos em análise" },
+  { status: "pending_aso_upload", label: "Aguardando ASO" },
+  { status: "pending_contract_generation", label: "Pronto para liberar contrato" },
+  { status: "pending_user_signature", label: "Aguardando assinatura" },
+  { status: "pending_final_activation", label: "Pronto para ativar" },
+];
+
+export interface FreelancerOnboarding {
+  status: OnboardingStatus;
+  statusReason?: string | null;
+  phaseMessage?: string | null;
+  blocked?: boolean;
+  registrationStatus?: "pending" | "approved" | "rejected";
+  awaitingRegistration?: boolean;
+  requireUniformPurchase?: boolean;
+  requirePhotoApproval?: boolean;
+  uniformStatus?: UniformStatus | null;
+  photoStatus?: PhotoStatus;
+  photoRejectionReason?: string | null;
+  documentIdPhotoUrl?: string | null;
+  addressProofPhotoUrl?: string | null;
+  documentSelfiePhotoUrl?: string | null;
+  asoDocumentUrl?: string | null;
+}
+
+export interface OnboardingBoardFreelancer {
+  id: string;
+  name: string;
+  email: string;
+  onboardingStatus: OnboardingStatus;
+  onboardingStatusReason?: string | null;
+  documentIdPhotoUrl?: string | null;
+  addressProofPhotoUrl?: string | null;
+  documentSelfiePhotoUrl?: string | null;
+  asoDocumentUrl?: string | null;
+  updatedAt: string;
+}
+
+export type OnboardingBoard = Record<string, OnboardingBoardFreelancer[]>;
+
 export type UniformStatus = "pending_payment" | "paid" | "shipped" | "delivered";
 
 export const UNIFORM_STATUS_LABELS: Record<UniformStatus, string> = {
@@ -44,18 +102,7 @@ export interface FreelancerContract {
   id: string;
   freelancerId: string;
   completedAt?: string | null;
-  /** Preenchido quando a agência conferiu os dados e confirmou — libera a assinatura do contrato. */
-  approvedAt?: string | null;
-  approvedBy?: string | null;
   [key: string]: unknown;
-}
-
-/** Colaborador com o perfil contratual completo aguardando a agência revisar e aprovar. */
-export interface OnboardingReviewRow {
-  id: string;
-  name: string;
-  email: string;
-  completedAt: string;
 }
 
 export interface UniformOrder {
@@ -75,6 +122,30 @@ export const getContract = async (): Promise<FreelancerContract | null> =>
 
 export const saveContract = async (data: Record<string, unknown>): Promise<FreelancerContract> =>
   (await api.put("/freelancer/contract", data)).data;
+
+export interface OnboardingDocumentPhotos {
+  documentIdPhoto?: File | null;
+  addressProofPhoto?: File | null;
+  documentSelfiePhoto?: File | null;
+}
+
+/** Fase 1 (pré-cadastro): dados do perfil contratual + as 3 fotos de documento, num só envio. */
+export const submitOnboardingDocuments = async (
+  data: Record<string, unknown>,
+  photos: OnboardingDocumentPhotos
+): Promise<{ onboardingStatus: OnboardingStatus }> => {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(data)) {
+    if (value != null) form.append(key, String(value));
+  }
+  if (photos.documentIdPhoto) form.append("documentIdPhoto", photos.documentIdPhoto);
+  if (photos.addressProofPhoto) form.append("addressProofPhoto", photos.addressProofPhoto);
+  if (photos.documentSelfiePhoto) form.append("documentSelfiePhoto", photos.documentSelfiePhoto);
+  const { data: result } = await api.put("/freelancer/onboarding/documents", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return result;
+};
 
 export const getUniform = async (): Promise<UniformOrder | null> =>
   (await api.get("/freelancer/uniform")).data;
@@ -99,17 +170,42 @@ export const markUniformPaid = async (id: string): Promise<UniformOrder> =>
 export const shipUniform = async (id: string, trackingCode?: string): Promise<UniformOrder> =>
   (await api.post(`/agency/uniforms/${id}/ship`, { trackingCode })).data;
 
-/** Fila de revisão dos dados do onboarding (perfil contratual completo aguardando aprovação). */
-export const getOnboardingReviews = async (): Promise<OnboardingReviewRow[]> =>
-  (await api.get("/agency/onboarding-reviews")).data;
-
 /** Dados completos do onboarding de um colaborador — só a agência dele enxerga. */
 export const getFreelancerContractForAgency = async (freelancerId: string): Promise<FreelancerContract | null> =>
   (await api.get(`/agency/freelancers/${freelancerId}/contract`)).data;
 
-/** A agência confere os dados e confirma — libera a seção no perfil e a etapa do contrato. */
-export const approveOnboarding = async (freelancerId: string): Promise<FreelancerContract> =>
-  (await api.post(`/agency/freelancers/${freelancerId}/onboarding/approve`)).data;
+/** Esteira da agência: colaboradores agrupados pelas 5 fases intermediárias do funil. */
+export const getOnboardingBoard = async (): Promise<OnboardingBoard> =>
+  (await api.get("/agency/onboarding-board")).data;
+
+/** Fase 2: "Aprovar Documentos". */
+export const approveOnboardingDocuments = async (freelancerId: string): Promise<OnboardingBoardFreelancer> =>
+  (await api.post(`/agency/freelancers/${freelancerId}/onboarding/approve-documents`)).data;
+
+/** Recusa a triagem e devolve o colaborador pro pré-cadastro, com o motivo. */
+export const rejectOnboardingDocuments = async (
+  freelancerId: string,
+  reason: string
+): Promise<OnboardingBoardFreelancer> =>
+  (await api.post(`/agency/freelancers/${freelancerId}/onboarding/reject-documents`, { reason })).data;
+
+/** Fase 3: anexa o PDF do ASO (exame admissional feito por telemedicina, fora do sistema). */
+export const uploadOnboardingAso = async (freelancerId: string, file: File): Promise<OnboardingBoardFreelancer> => {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post(`/agency/freelancers/${freelancerId}/onboarding/aso`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+
+/** Fase 4: "Liberar Contrato". */
+export const releaseOnboardingContract = async (freelancerId: string): Promise<OnboardingBoardFreelancer> =>
+  (await api.post(`/agency/freelancers/${freelancerId}/onboarding/release-contract`)).data;
+
+/** Fase 6: "Ativar Colaborador". */
+export const activateFreelancerOnboarding = async (freelancerId: string): Promise<OnboardingBoardFreelancer> =>
+  (await api.post(`/agency/freelancers/${freelancerId}/onboarding/activate`)).data;
 
 // ----- Foto de perfil (onboarding) -----
 export const getAgencyPhotoReviews = async (): Promise<FreelancerPhotoReview[]> =>

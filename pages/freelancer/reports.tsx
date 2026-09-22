@@ -157,7 +157,7 @@ function ReportsPage() {
 
 export default function Page() {
   return (
-    <RequireAuth role="freelancer">
+    <RequireAuth role="freelancer" enforceOnboarding>
       <ReportsPage />
     </RequireAuth>
   );

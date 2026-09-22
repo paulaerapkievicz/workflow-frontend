@@ -290,7 +290,7 @@ function Dashboard() {
 
 export default function Page() {
   return (
-    <RequireAuth role="freelancer">
+    <RequireAuth role="freelancer" enforceOnboarding>
       <Dashboard />
     </RequireAuth>
   );
