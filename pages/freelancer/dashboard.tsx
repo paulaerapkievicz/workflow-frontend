@@ -24,18 +24,25 @@ interface AffiliatedAgency {
 const errText = (err: unknown) =>
   axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : err instanceof Error ? err.message : "Erro.";
 
-const WEEKDAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const WEEKDAY_LABELS = ["Domingo", "Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado"];
+const NEXT_WEEKDAY_LABELS = [
+  "Próximo Domingo", "Próxima Segunda-Feira", "Próxima Terça-Feira", "Próxima Quarta-Feira",
+  "Próxima Quinta-Feira", "Próxima Sexta-Feira", "Próximo Sábado",
+];
 
-/** "Hoje" / "Amanhã" / dia da semana (até 6 dias à frente) / "DD/MM/AAAA" daí pra frente. */
+/** "Hoje" / "Amanhã" / dia da semana (até 6 dias à frente) / "Próximo(a) <dia>" (semana seguinte)
+ *  / "DD/MM/AAAA" daí em diante. */
 const relativeDayLabel = (value: string): string => {
   const target = isoDateBR(value);
   const today = isoDateBR(new Date());
   if (target === today) return "Hoje";
+  const targetDate = new Date(`${target}T00:00:00-03:00`);
   const diffDays = Math.round(
-    (new Date(`${target}T00:00:00-03:00`).getTime() - new Date(`${today}T00:00:00-03:00`).getTime()) / 86_400_000
+    (targetDate.getTime() - new Date(`${today}T00:00:00-03:00`).getTime()) / 86_400_000
   );
   if (diffDays === 1) return "Amanhã";
-  if (diffDays > 1 && diffDays < 7) return WEEKDAY_NAMES[new Date(`${target}T00:00:00-03:00`).getDay()];
+  if (diffDays > 1 && diffDays < 7) return WEEKDAY_LABELS[targetDate.getDay()];
+  if (diffDays >= 7 && diffDays < 14) return NEXT_WEEKDAY_LABELS[targetDate.getDay()];
   return fmtDate(value);
 };
 
