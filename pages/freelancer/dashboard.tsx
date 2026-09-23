@@ -250,21 +250,23 @@ function Home() {
     >
       {error && <p className={panel.error}>{error}</p>}
 
-      {loading ? (
-        <p className={panel.muted}>Carregando…</p>
-      ) : focusJob ? (
-        renderFocusCard()
-      ) : (
-        <div className={styles.highlightCard}>
-          <h3>Vagas próximas à sua região</h3>
-          {sortedNearby.length === 0 ? (
-            <p className={panel.muted}>Nenhuma vaga disponível no momento.</p>
-          ) : (
-            <JobCarousel jobs={sortedNearby.slice(0, 8)} distanceOf={distanceOf} acceptingId={acceptingId} onAccept={accept} />
-          )}
-          <Link href="/freelancer" className={panel.linkBtn}>Ver todas as vagas</Link>
-        </div>
-      )}
+      <div className={styles.homeStage}>
+        {loading ? (
+          <p className={panel.muted}>Carregando…</p>
+        ) : focusJob ? (
+          renderFocusCard()
+        ) : (
+          <div className={styles.highlightCard}>
+            <h3>Vagas próximas à sua região</h3>
+            {sortedNearby.length === 0 ? (
+              <p className={panel.muted}>Nenhuma vaga disponível no momento.</p>
+            ) : (
+              <JobCarousel jobs={sortedNearby.slice(0, 8)} distanceOf={distanceOf} acceptingId={acceptingId} onAccept={accept} />
+            )}
+            <Link href="/freelancer" className={panel.linkBtn}>Ver todas as vagas</Link>
+          </div>
+        )}
+      </div>
     </PanelPage>
   );
 }
