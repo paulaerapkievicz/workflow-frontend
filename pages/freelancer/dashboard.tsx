@@ -11,11 +11,10 @@ import {
   getJobs, getAvailableJobs, acceptJob, checkIn, checkOut, endBreak, readGeolocation, hasOpenBreak, Job, JobShift,
   currentShift, nextPendingShift, sortShifts,
 } from "@/src/services/jobService";
-import { shiftLabel } from "@/src/services/shifts";
 import { getJobPhotos, uploadJobPhoto, photoUrl } from "@/src/services/jobPhotoService";
 import { getFreelancerReputation, FreelancerReputation as Reputation } from "@/src/services/reviewService";
 import { distanceInMeters } from "@/src/lib/distance";
-import { fmtDate, isoDateBR } from "@/src/lib/datetime";
+import { fmtDate, fmtTime, isoDateBR } from "@/src/lib/datetime";
 import { useAuth } from "@/src/hooks/useAuth";
 
 interface AffiliatedAgency {
@@ -25,8 +24,23 @@ interface AffiliatedAgency {
 const errText = (err: unknown) =>
   axios.isAxiosError(err) ? err.response?.data?.message ?? "Erro." : err instanceof Error ? err.message : "Erro.";
 
-/** Rótulo do período de um turno — nome próprio se houver, senão manhã/tarde/noite/madrugada. */
-const periodOf = (s: JobShift) => (s.label && s.label.trim()) || shiftLabel(s.nominalPeriod);
+const WEEKDAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+/** "Hoje" / "Amanhã" / dia da semana (até 6 dias à frente) / "DD/MM/AAAA" daí pra frente. */
+const relativeDayLabel = (value: string): string => {
+  const target = isoDateBR(value);
+  const today = isoDateBR(new Date());
+  if (target === today) return "Hoje";
+  const diffDays = Math.round(
+    (new Date(`${target}T00:00:00-03:00`).getTime() - new Date(`${today}T00:00:00-03:00`).getTime()) / 86_400_000
+  );
+  if (diffDays === 1) return "Amanhã";
+  if (diffDays > 1 && diffDays < 7) return WEEKDAY_NAMES[new Date(`${target}T00:00:00-03:00`).getDay()];
+  return fmtDate(value);
+};
+
+/** "das HH:MM às HH:MM" do turno — o horário real, não o rótulo do período. */
+const shiftWindow = (s: JobShift) => `das ${fmtTime(s.startTime)} às ${fmtTime(s.endTime)}`;
 
 function Home() {
   const { profile } = useAuth();
@@ -59,9 +73,6 @@ function Home() {
   useEffect(() => {
     if (profile?.id) getFreelancerReputation(profile.id).then(setReputation).catch(() => {});
   }, [profile?.id]);
-
-  const todayStr = isoDateBR(new Date());
-  const isToday = (j: Job) => isoDateBR(j.startTime) === todayStr;
 
   const focusJob =
     jobs.find((j) => j.status === "in_progress") ??
@@ -139,34 +150,41 @@ function Home() {
       })
     : nearby;
 
-  /** Card único de foco: mesma estrutura sempre — cabeçalho (dia + período), função, local, botão. */
-  const renderFocus = (headline: string, shift: JobShift | undefined, job: Job, action: { label: string; onClick?: () => void; href?: string; disabled?: boolean }) => {
+  /** Cabeçalho + função + local — sempre igual, não importa a ação. */
+  const focusHeader = (job: Job, shift: JobShift | undefined) => {
     const local = `${job.jobSupermarket?.name ?? "—"}${job.jobBranch?.name ? ` — ${job.jobBranch.name}` : ""}`;
+    const dayLabel = relativeDayLabel(shift?.startTime ?? job.startTime);
     return (
-      <div className={styles.highlightCardDark}>
-        <p className={styles.focusHeadline}>{headline}{shift ? `, ${periodOf(shift)}` : ""}</p>
+      <>
+        <p className={styles.focusHeadline}>{dayLabel}{shift ? `, ${shiftWindow(shift)}` : ""}</p>
         <p className={styles.focusTitle}>{job.jobCategory?.name ?? "Vaga"}</p>
         <p className={styles.focusLocal}>{local}</p>
-        {action.href ? (
-          <Link href={action.href} className={styles.focusActionBtn}>{action.label}</Link>
-        ) : (
-          <button className={styles.focusActionBtn} disabled={action.disabled} onClick={action.onClick}>
-            {action.label}
-          </button>
-        )}
-      </div>
+      </>
     );
   };
 
+  /** Card único de foco: mesma estrutura sempre — cabeçalho (dia + horário), função, local, botão. */
+  const renderFocus = (job: Job, shift: JobShift | undefined, action: { label: string; onClick?: () => void; href?: string; disabled?: boolean }) => (
+    <div className={styles.highlightCardDark}>
+      {focusHeader(job, shift)}
+      {action.href ? (
+        <Link href={action.href} className={styles.focusActionBtn}>{action.label}</Link>
+      ) : (
+        <button className={styles.focusActionBtn} disabled={action.disabled} onClick={action.onClick}>
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
+
   const renderFocusCard = () => {
     if (!focusJob) return null;
-    const headline = isToday(focusJob) ? "Hoje" : fmtDate(focusJob.startTime);
 
     if (focusJob.status === "in_progress") {
       const cur = currentShift(focusJob);
       if (cur) {
         if (hasOpenBreak(focusJob.shifts)) {
-          return renderFocus(headline, cur, focusJob, {
+          return renderFocus(focusJob, cur, {
             label: busy ? "Localizando…" : "Retomar ponto",
             disabled: busy,
             onClick: () => geoAction((geo) => endBreak(focusJob.id, geo)),
@@ -174,12 +192,9 @@ function Home() {
         }
         const needsPhoto = requirePhoto && photoCount === 0;
         if (needsPhoto) {
-          const local = `${focusJob.jobSupermarket?.name ?? "—"}${focusJob.jobBranch?.name ? ` — ${focusJob.jobBranch.name}` : ""}`;
           return (
             <div className={styles.highlightCardDark}>
-              <p className={styles.focusHeadline}>{headline}, {periodOf(cur)}</p>
-              <p className={styles.focusTitle}>{focusJob.jobCategory?.name ?? "Vaga"}</p>
-              <p className={styles.focusLocal}>{local}</p>
+              {focusHeader(focusJob, cur)}
               <p className={styles.focusLocal}>Anexe uma foto pra liberar o check-out.</p>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                 <input
@@ -195,7 +210,7 @@ function Home() {
             </div>
           );
         }
-        return renderFocus(headline, cur, focusJob, {
+        return renderFocus(focusJob, cur, {
           label: busy ? "Localizando…" : "Check-out",
           disabled: busy,
           onClick: () => geoAction((geo) => checkOut(focusJob.id, geo)),
@@ -204,19 +219,19 @@ function Home() {
 
       const nxt = nextPendingShift(focusJob);
       if (nxt) {
-        return renderFocus(headline, nxt, focusJob, {
+        return renderFocus(focusJob, nxt, {
           label: busy ? "Localizando…" : "Check-in",
           disabled: busy,
           onClick: () => geoAction((geo) => checkIn(focusJob.id, geo)),
         });
       }
 
-      return renderFocus(headline, undefined, focusJob, { label: "Ver detalhes", href: "/freelancer/jobs" });
+      return renderFocus(focusJob, undefined, { label: "Ver detalhes", href: "/freelancer/jobs" });
     }
 
     // accepted, ainda não iniciada — mostra só o próximo turno, não todos.
     const nxt = nextPendingShift(focusJob) ?? sortShifts(focusJob.shifts)[0];
-    return renderFocus(headline, nxt, focusJob, {
+    return renderFocus(focusJob, nxt, {
       label: busy ? "Localizando…" : "Check-in",
       disabled: busy,
       onClick: () => geoAction((geo) => checkIn(focusJob.id, geo)),
