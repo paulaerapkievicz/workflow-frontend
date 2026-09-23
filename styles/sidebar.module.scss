@@ -35,6 +35,7 @@
 }
 
 .link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.7rem;
@@ -66,6 +67,19 @@
   color: var(--primary-dark);
 
   &:hover { background: var(--primary-soft); color: var(--primary-dark); }
+
+  // Traço de destaque à esquerda — mesmo gradiente do stat card (panel.module.scss
+  // .cards .card::before), pra repetir a assinatura visual entre menu e conteúdo.
+  &::before {
+    content: "";
+    position: absolute;
+    left: -0.35rem;
+    top: 0.3rem;
+    bottom: 0.3rem;
+    width: 4px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+  }
 }
 
 // Badge numérico do menu lateral (desktop/tablet).
@@ -130,11 +144,18 @@
 
   .mobileActive {
     color: var(--primary);
+
+    .mobileIconWrap {
+      background: var(--primary-soft);
+      border-radius: 999px;
+    }
   }
 
   .mobileIconWrap {
     position: relative;
     display: inline-flex;
+    padding: 0.3rem 0.55rem;
+    transition: background 0.14s ease;
   }
 
   .mobileLabel {

@@ -18,6 +18,9 @@ body[data-theme='light'] {
   --primary-soft: rgba(78, 108, 255, 0.1);
   --accent: #f56a31;
   --accent-dark: #e05821;
+  --gradient-primary: linear-gradient(120deg, #4e6cff, #6a5bff);
+  --glow-primary: 0 16px 32px -16px rgba(78, 108, 255, 0.55);
+  --glow-accent: 0 16px 32px -16px rgba(245, 106, 49, 0.5);
   --danger: #e53935;
   --danger-soft: rgba(229, 57, 53, 0.1);
   --ok: #16a34a;
@@ -43,6 +46,9 @@ body[data-theme='dark'] {
   --primary-soft: rgba(111, 134, 255, 0.16);
   --accent: #ff7c48;
   --accent-dark: #ff8c5e;
+  --gradient-primary: linear-gradient(120deg, #6f86ff, #8a9bff);
+  --glow-primary: 0 16px 32px -16px rgba(111, 134, 255, 0.5);
+  --glow-accent: 0 16px 32px -16px rgba(255, 124, 72, 0.45);
   --danger: #ff6b6b;
   --danger-soft: rgba(255, 107, 107, 0.14);
   --ok: #4ade80;

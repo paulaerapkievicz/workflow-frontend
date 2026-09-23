@@ -75,6 +75,10 @@
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
 
+@media (prefers-reduced-motion: reduce) {
+  .modalBackdrop, .modal { animation: none; }
+}
+
 @media (max-width: 768px) {
   .modal { max-width: 100%; border-radius: 14px; }
   .modalHeader { padding: 1rem; }
